@@ -1,0 +1,13 @@
+{
+	"recommendations": [
+		"dbaeumer.vscode-eslint",
+		"qwtel.sqlite-viewer",
+		"tamasfe.even-better-toml",
+		"typescriptteam.native-preview"
+	],
+	"unwantedRecommendations": [
+		"esbenp.prettier-vscode",
+		"rvest.vs-code-prettier-eslint",
+		"vadimcn.vscode-lldb"
+	]
+}

@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  role         String
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  variantRuns  VariantRun[]
+}
+
+model Product {
+  id          String       @id
+  slug        String       @unique
+  name        String
+  price       String
+  description String
+  features    String
+  imageSrc    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  variantRuns VariantRun[]
+}
+
+model VariantRun {
+  id                       String    @id @default(cuid())
+  productId                String
+  userId                   String
+  status                   String
+  campaignBrief            String
+  campaignGoal             String
+  workspacePath            String
+  requestedAuthMode        String    @default("auto")
+  selectedAuthMode         String    @default("subscription")
+  requestedModel           String    @default("codex-default")
+  selectedModel            String    @default("codex-default")
+  requestedEffort          String    @default("codex-default")
+  selectedEffort           String    @default("codex-default")
+  codexCommand             String    @default("")
+  inputPrompt              String
+  manifest                 String    @default("")
+  transcript               String    @default("")
+  stdout                   String    @default("")
+  stderr                   String    @default("")
+  testsPassed              Boolean?
+  buildPassed              Boolean?
+  commerceInvariantsOk     Boolean?
+  changedFiles             String    @default("[]")
+  validationResult         String    @default("")
+  error                    String?
+  outputSummary            String    @default("")
+  previewHtml              String    @default("")
+  startedAt                DateTime  @default(now())
+  completedAt              DateTime?
+  product                  Product   @relation(fields: [productId], references: [id])
+  user                     User      @relation(fields: [userId], references: [id])
+}
