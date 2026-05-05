@@ -1,26 +1,79 @@
 # Storefront Variant Workspace
 
-You are modifying a product page for the Ribbed Market Tote.
+## Purpose
 
-## Immutable Rules
-- Do NOT change product price (must remain $42.00)
-- Do NOT change SKU (must remain RMT-001)
-- Do NOT change inventory count (must remain 3)
-- Do NOT modify the cart API or checkout behavior
-- Do NOT modify package.json or package-lock.json
-- Do NOT call external APIs or services
-- Do NOT modify files outside this workspace
+Guide agents that are editing the isolated Vite storefront template for the Ribbed Market Tote. The goal is a visibly different campaign variant that preserves commerce behavior and produces a reviewable manifest.
 
-## What You CAN Change
-- ProductPage.tsx — layout, copy, sections
-- theme.ts — colors, fonts, spacing, design tokens
-- Add new components in src/components/
-- Add new tests in tests/
+## Repository map
 
-## Required Actions
-1. Read the human-authored source files first: AGENTS.md, BRAND_RULES.md, package.json, src/**/*.ts, src/**/*.tsx, src/**/*.css, and tests/**/*.ts*. Do not read package-lock.json, node_modules, or dist.
-2. Implement the requested campaign variant
-3. Run `npm test` — all must pass
-4. Run `npm run build` — must succeed
-5. If anything fails, read the error and fix it
-6. Write artifact/manifest.json with: summary, changedFiles, commandsRun, testsPassed, buildPassed, commerceInvariantsPreserved, previewPath
+- `src/product.ts` — product facts that variants must preserve.
+- `src/cart.ts` — cart API behavior that variants must preserve.
+- `src/ProductPage.tsx`, `src/components/`, `src/styles.css`, `src/theme.ts` — normal variant surface.
+- `tests/` — storefront and commerce-invariant tests.
+- `artifact/manifest.json` — required run receipt written after successful test/build.
+
+## Operating rules
+
+- Read `AGENTS.md`, `BRAND_RULES.md`, `package.json`, source files, styles, and tests before editing.
+- Implement the requested campaign as source-code changes, not as prose for the host app.
+- Prefer changing layout, copy, sections, styling, design tokens, and added components/tests.
+- Stop once the campaign intent is visible, tests pass, build passes, and the manifest is written.
+
+## Setup and commands
+
+Run inside the storefront workspace:
+
+```bash
+npm test
+npm run build
+```
+
+Use `npm install` only when dependencies are missing. Do not add dependencies unless the user explicitly asks and the variant cannot be built with existing React/Vite code.
+
+## Coding conventions
+
+- Keep React components simple, typed, and local to `src/`.
+- Preserve accessible headings, alt text, button text, and readable contrast.
+- Add or update tests when changing behavior that existing tests do not cover.
+- Do not edit `dist/`, `node_modules/`, or lockfiles for normal campaign variants.
+
+## Validation and done criteria
+
+Done means:
+
+- `npm test` passes.
+- `npm run build` succeeds.
+- Product price remains `$42.00` / `42`.
+- SKU remains `RMT-001`.
+- Inventory remains `3`.
+- Cart API returns the same SKU, quantity, and unit price.
+- `artifact/manifest.json` exists and truthfully records summary, changed files, commands, pass/fail booleans, commerce invariants, and `previewPath: "dist/index.html"`.
+
+## Planning and large changes
+
+Do not plan a broad redesign. Choose one clear campaign direction, make the smallest coherent set of source edits, then validate.
+
+## Security and side effects
+
+MUST NOT change:
+
+- `src/product.ts` commerce facts.
+- `src/cart.ts` cart API behavior.
+- `package.json` or `package-lock.json`.
+- Files outside the current workspace.
+
+NEVER call external APIs or services from the storefront variant.
+
+## Progress updates and handoff
+
+When handing off, summarize:
+
+- Campaign direction implemented.
+- Files changed.
+- `npm test` result.
+- `npm run build` result.
+- Manifest path and preview path.
+
+## Updating this file
+
+Update this file only when storefront-specific invariants, commands, or allowed variant surfaces change. Keep host-app rules in the root `AGENTS.md`.
