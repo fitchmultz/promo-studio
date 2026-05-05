@@ -29,7 +29,8 @@ Required autonomous workflow:
 3. Keep product price, SKU, inventory, cart API, package.json, and package-lock.json unchanged.
 4. Run npm test. If it fails, inspect the failure, edit code, and rerun until it passes.
 5. Run npm run build. If it fails, inspect the failure, edit code, and rerun until it passes.
-6. Write artifact/manifest.json with this exact JSON shape:
+6. Do not attempt browser-based testing, visual inspection, or starting a local dev server. This isolated workspace cannot reliably bind ports or access a browser; rely on source review, npm test, npm run build, and the generated dist preview artifact.
+7. Write artifact/manifest.json with this exact JSON shape:
 {
   "summary": "one sentence summary of the code changes",
   "changedFiles": ["relative/path.tsx"],
