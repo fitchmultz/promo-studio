@@ -9,7 +9,7 @@
 	"scripts": {
 		"test": "tsx scripts/ensure-sqlite-database.ts test.db && DATABASE_URL=file:./test.db prisma db push --force-reset --accept-data-loss && DATABASE_URL=file:./test.db tsx prisma/seed.ts && DATABASE_URL=file:./test.db vitest run",
 		"dev": "next dev",
-		"build": "next build",
+		"build": "prisma generate && next build",
 		"start": "next start",
 		"setup": "npm run db:push && npm run seed",
 		"ci": "npm run validate",
@@ -20,12 +20,13 @@
 		"lint": "biome lint .",
 		"format": "biome format --write .",
 		"format:check": "biome format .",
-		"typecheck": "next typegen && tsc --noEmit",
+		"typecheck": "prisma generate && next typegen && tsc --noEmit",
 		"seed": "DATABASE_URL=file:./dev.db tsx prisma/seed.ts",
 		"db:push": "tsx scripts/ensure-sqlite-database.ts dev.db && DATABASE_URL=file:./dev.db prisma db push --force-reset --accept-data-loss && DATABASE_URL=file:./dev.db prisma generate",
 		"validate": "npm run db:push && npm run seed && npm run typecheck && npm run format:check && npm run lint && npm run test && npm run build",
 		"reset:workspaces": "tsx scripts/reset-workspaces.ts",
-		"demo:zip": "tsx scripts/package-demo.ts"
+		"demo:zip": "tsx scripts/package-demo.ts",
+		"postinstall": "prisma generate"
 	},
 	"keywords": [],
 	"author": "",
