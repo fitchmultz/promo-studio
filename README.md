@@ -6,7 +6,7 @@ This is not a static mockup or text-generation wrapper. Codex edits real storefr
 
 ## Walkthrough video
 
-[Watch the Promo Studio walkthrough](https://youtu.be/zPRLtiP8v7w)
+[![Watch the Promo Studio walkthrough](https://img.youtube.com/vi/zPRLtiP8v7w/maxresdefault.jpg)](https://youtu.be/zPRLtiP8v7w)
 
 ## Quick start
 
