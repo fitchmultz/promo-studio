@@ -6,11 +6,7 @@ This is not a static mockup or text-generation wrapper. Codex edits real storefr
 
 ## Walkthrough video
 
-A short walkthrough video will be linked here after it is uploaded to YouTube.
-
-<!-- Replace after upload:
-[Watch the Promo Studio walkthrough](https://www.youtube.com/watch?v=VIDEO_ID)
--->
+[Watch the Promo Studio walkthrough](https://youtu.be/zPRLtiP8v7w)
 
 ## Quick start
 
