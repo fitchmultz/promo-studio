@@ -81,13 +81,6 @@ export function VariantForm({ productId }: { productId: string }) {
 				Codex will copy the storefront template, edit code, run tests, build,
 				and save a receipt.
 			</p>
-			<button
-				className="button primary-button create-button"
-				disabled={isPending}
-				type="submit"
-			>
-				{isPending ? "Starting Codex..." : "Create Variant"}
-			</button>
 			<fieldset className="goal-chips" aria-label="Campaign goals">
 				{presets.map((preset) => (
 					<button
@@ -111,7 +104,7 @@ export function VariantForm({ productId }: { productId: string }) {
 			</label>
 			{error ? <p className="badge sev-1">{error}</p> : null}
 			<button
-				className="button secondary-button"
+				className="button primary-button create-button"
 				disabled={isPending}
 				type="submit"
 			>
