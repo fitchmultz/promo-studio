@@ -1,6 +1,6 @@
 # Sources
 
-Promo Studio is built from local project code and the installed Codex CLI contract exercised by this repository.
+Promo Studio is built from local project code and the installed Codex SDK/CLI contract exercised by this repository.
 
 ## Local source of truth
 
@@ -19,6 +19,6 @@ The seeded product is the Ribbed Market Tote:
 - Inventory: `3`
 - Features and description are seeded in `prisma/seed.ts` and mirrored in the storefront template.
 
-## Codex command contract
+## Codex runtime contract
 
-The integration expects `codex exec` to support JSONL output, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides with `-c model_reasoning_effort=...`.
+The integration uses `CODEX_RUNTIME=sdk` by default through `@openai/codex-sdk` streamed turns. The preserved `CODEX_RUNTIME=exec` fallback expects `codex exec` to support JSONL output, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides with `-c model_reasoning_effort=...`.

@@ -4,7 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { RunReceipt } from "@/components/RunReceipt";
 
-function runWithCommand(codexCommand: string): VariantRun {
+function runWithInvocation(
+	codexCommand: string,
+	codexRuntime = "sdk",
+): VariantRun {
 	return {
 		id: "run-1",
 		productId: "ribbed-market-tote",
@@ -19,8 +22,9 @@ function runWithCommand(codexCommand: string): VariantRun {
 		selectedModel: "gpt-5.5",
 		requestedEffort: "low",
 		selectedEffort: "low",
+		codexRuntime,
 		codexCommand,
-		inputPrompt: "Prompt sent to Codex over stdin.",
+		inputPrompt: "Prompt sent to Codex.",
 		outputSummary: "Done",
 		transcript: "",
 		stdout: "",
@@ -39,25 +43,44 @@ function runWithCommand(codexCommand: string): VariantRun {
 }
 
 describe("RunReceipt", () => {
-	it("renders the execution evidence as wrapped monospace code", () => {
-		const command =
-			'codex exec --json --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -m gpt-5.5 -c model_reasoning_effort="low" -';
+	it("renders SDK execution evidence as wrapped monospace code", () => {
+		const invocation =
+			"Codex TypeScript SDK runStreamed workingDirectory=<isolated-workspace> sandboxMode=workspace-write skipGitRepoCheck=true model=gpt-5.5 modelReasoningEffort=low";
 		const markup = renderToStaticMarkup(
-			React.createElement(RunReceipt, { run: runWithCommand(command) }),
+			React.createElement(RunReceipt, {
+				run: runWithInvocation(invocation),
+			}),
 		);
 
 		expect(markup).toContain("Run outcome");
 		expect(markup).toContain("Codex execution");
+		expect(markup).toContain("Runtime");
+		expect(markup).toContain("SDK");
 		expect(markup).toContain("Reasoning effort");
 		expect(markup).toContain("Workspace path");
 		expect(markup).toContain("/tmp/workspace/run-1/storefront");
+		expect(markup).toContain("Codex invocation");
 		expect(markup).toContain('class="receipt-command"');
-		expect(markup).toContain("codex exec --json");
-		expect(markup).toContain("Prompt sent to Codex over stdin.");
+		expect(markup).toContain("Codex TypeScript SDK runStreamed");
+		expect(markup).toContain("Prompt sent to Codex.");
 		expect(markup).toContain("<summary>Manifest</summary>");
 		expect(markup).toContain("<summary>Input prompt</summary>");
 		expect(markup).toContain('<details class="proof-details" open="">');
 		expect(markup).not.toContain("&lt;isolated-workspace&gt;");
-		expect(markup).not.toContain("<strong>codex exec");
+	});
+
+	it("renders the exec fallback command accurately", () => {
+		const command =
+			'codex exec --json --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -m gpt-5.5 -c model_reasoning_effort="low" -';
+		const markup = renderToStaticMarkup(
+			React.createElement(RunReceipt, {
+				run: runWithInvocation(command, "exec"),
+			}),
+		);
+
+		expect(markup).toContain("codex exec");
+		expect(markup).toContain("codex exec --json");
+		expect(markup).toContain("trailing <code>-</code> argument");
+		expect(markup).not.toContain("&lt;isolated-workspace&gt;");
 	});
 });

@@ -32,6 +32,7 @@ const EnvSchema = z.object({
 	DATABASE_URL: z.string().default("file:./dev.db"),
 	SESSION_SECRET: z.string().min(32).default(deriveLocalSecret()),
 	CODEX_AUTH_MODE: z.enum(["auto", "subscription", "api-key"]).default("auto"),
+	CODEX_RUNTIME: z.enum(["sdk", "exec"]).default("sdk"),
 	CODEX_MODEL: z.string().default("gpt-5.5"),
 	CODEX_REASONING_EFFORT: z.string().default("low"),
 	CODEX_API_KEY: z.string().optional(),
@@ -41,6 +42,7 @@ const EnvSchema = z.object({
 });
 
 export type CodexAuthMode = "auto" | "subscription" | "api-key";
+export type CodexRuntime = "sdk" | "exec";
 export type SelectedCodexAuthMode = "subscription" | "api-key";
 export type CodexReasoningEffort =
 	| "minimal"

@@ -24,6 +24,8 @@ describe("buildVariantPrompt", () => {
 
 		expect(prompt).toContain("Do not attempt browser-based testing");
 		expect(prompt).toContain("cannot reliably bind ports or access a browser");
+		expect(prompt).toContain("Preserve the full product photo");
+		expect(prompt).toContain("object-fit: contain");
 		expect(prompt).toContain("npm test");
 		expect(prompt).toContain("npm run build");
 	});

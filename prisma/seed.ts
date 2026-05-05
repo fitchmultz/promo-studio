@@ -24,7 +24,7 @@ const product = {
 };
 
 function seededPreviewHtml() {
-	return `<!doctype html><html><head><style>body{margin:0;font-family:Inter,Arial,sans-serif;background:#10231d;color:#fff}.wrap{max-width:980px;margin:0 auto;padding:44px 24px}.hero{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}.art{height:360px;border-radius:28px;background:#fff8e5;display:grid;place-items:center;overflow:hidden}.art img{display:block;width:auto;max-width:100%;height:auto;max-height:100%;object-fit:contain}.eyebrow{color:#f6dfb4;text-transform:uppercase;font-weight:800}h1{font-size:54px;line-height:.95;margin:0 0 18px}.price{font-size:30px}.panel{margin-top:24px;background:#fff;color:#10231d;border-radius:22px;padding:24px}button{min-height:48px;border:0;border-radius:999px;background:#f6dfb4;color:#10231d;font-weight:900;padding:0 24px}</style></head><body><main class="wrap"><section class="hero"><div><p class="eyebrow">Gift-ready commuter carry</p><h1>Carry the season without carrying waste.</h1><p>The Ribbed Market Tote turns office days, errands, and last-minute gifting into one durable ritual.</p><p class="price">$42.00</p><button>Add to cart</button></div><div class="art"><img src="/products/ribbed-market-tote.webp" alt="Ribbed Market Tote"></div></section><section class="panel"><h2>Why it works</h2><p>Organic cotton, reinforced handles, and a useful pocket make this a practical gift with a lighter footprint.</p><p>SKU: RMT-001 · 3 left in stock</p></section></main></body></html>`;
+	return `<!doctype html><html><head><style>body{margin:0;font-family:Inter,Arial,sans-serif;background:#10231d;color:#fff}.wrap{max-width:980px;margin:0 auto;padding:44px 24px}.hero{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}.art{height:360px;border-radius:28px;background:#fff8e5;display:grid;place-items:center;overflow:hidden}.art img{display:block;width:auto;max-width:100%;height:auto;max-height:100%;min-width:0;min-height:0;object-fit:contain}.eyebrow{color:#f6dfb4;text-transform:uppercase;font-weight:800}h1{font-size:54px;line-height:.95;margin:0 0 18px}.price{font-size:30px}.panel{margin-top:24px;background:#fff;color:#10231d;border-radius:22px;padding:24px}button{min-height:48px;border:0;border-radius:999px;background:#f6dfb4;color:#10231d;font-weight:900;padding:0 24px}</style></head><body><main class="wrap"><section class="hero"><div><p class="eyebrow">Gift-ready commuter carry</p><h1>Carry the season without carrying waste.</h1><p>The Ribbed Market Tote turns office days, errands, and last-minute gifting into one durable ritual.</p><p class="price">$42.00</p><button>Add to cart</button></div><div class="art"><img src="/products/ribbed-market-tote.webp" alt="Ribbed Market Tote"></div></section><section class="panel"><h2>Why it works</h2><p>Organic cotton, reinforced handles, and a useful pocket make this a practical gift with a lighter footprint.</p><p>SKU: RMT-001 · 3 left in stock</p></section></main></body></html>`;
 }
 
 async function createSeededWorkspace() {
@@ -179,6 +179,7 @@ async function main() {
 		error: null,
 		outputSummary: manifest.summary,
 		previewHtml: seededPreviewHtml(),
+		codexRuntime: "sdk",
 		completedAt: new Date(),
 	};
 	await prisma.variantRun.upsert({
@@ -193,7 +194,7 @@ async function main() {
 			selectedModel: "codex-default",
 			requestedEffort: "codex-default",
 			selectedEffort: "codex-default",
-			codexCommand: `codex exec --json --sandbox workspace-write --skip-git-repo-check --cd ${common.workspacePath} -`,
+			codexCommand: `Codex TypeScript SDK runStreamed workingDirectory=${common.workspacePath} sandboxMode=workspace-write skipGitRepoCheck=true model=codex-default modelReasoningEffort=codex-default`,
 			inputPrompt:
 				"Seeded demo data; create a live run from the studio to execute Codex.",
 		},

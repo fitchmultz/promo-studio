@@ -7,10 +7,13 @@ import {
 	CODEX_DEFAULT_MODEL,
 	CODEX_DEFAULT_REASONING_EFFORT,
 	type CodexAuthMode,
+	type CodexReasoningEffort,
+	type CodexRuntime,
 	codexChildEnv,
 	codexModelArgs,
 	codexReasoningArgs,
 	env,
+	paths as appPaths,
 	normalizeCodexModel,
 	normalizeCodexReasoningEffort,
 	redactSecrets,
@@ -23,8 +26,8 @@ import {
 import { prisma } from "@/lib/db";
 import {
 	isSafeWorkspaceFile,
-	validateVariantReceipt,
 	readVariantManifest,
+	validateVariantReceipt,
 } from "@/lib/validation";
 import { buildVariantPrompt } from "@/lib/variant-prompt";
 import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
@@ -52,11 +55,31 @@ interface CodexSelection {
 	keySource: "CODEX_API_KEY" | "OPENAI_API_KEY" | "none";
 }
 
+interface RuntimeOptions {
+	input: string;
+	keySource: CodexSelection["keySource"];
+	requestedEffort: CodexReasoningEffort | "";
+	requestedModel: string;
+	timeoutMs: number;
+	workspace: string;
+	onStdoutLine?: (line: string) => void;
+	onStderrLine?: (line: string) => void;
+}
+
 export type VariantProcessRunner = (
 	command: string,
 	args: string[],
 	options: ProcessOptions,
 ) => Promise<ProcessResult>;
+
+export type VariantSdkRunner = (
+	options: RuntimeOptions,
+) => Promise<ProcessResult>;
+
+interface ExecuteVariantRunOptions {
+	processRunner?: VariantProcessRunner;
+	sdkRunner?: VariantSdkRunner;
+}
 
 function appendLimited(current: string, next: string) {
 	const combined = current + next;
@@ -146,28 +169,188 @@ function looksLikeAuthFailure(result: ProcessResult) {
 	);
 }
 
+function codexExecArgs(
+	workspace: string,
+	requestedModel: string,
+	requestedEffort: string,
+) {
+	return [
+		"exec",
+		"--json",
+		"--sandbox",
+		"workspace-write",
+		"--skip-git-repo-check",
+		"--cd",
+		workspace,
+		...codexModelArgs(requestedModel),
+		...codexReasoningArgs(requestedEffort),
+		"-",
+	];
+}
+
+function buildCodexExecInvocation(
+	workspace: string,
+	requestedModel: string,
+	requestedEffort: string,
+) {
+	return [
+		"codex",
+		...codexExecArgs(workspace, requestedModel, requestedEffort),
+	].join(" ");
+}
+
+function buildCodexSdkInvocation(params: {
+	workspace: string;
+	selectedModel: string;
+	selectedEffort: string;
+}) {
+	return [
+		"Codex TypeScript SDK runStreamed",
+		`workingDirectory=${params.workspace}`,
+		"sandboxMode=workspace-write",
+		"skipGitRepoCheck=true",
+		`model=${params.selectedModel}`,
+		`modelReasoningEffort=${params.selectedEffort}`,
+	].join(" ");
+}
+
+function buildCodexInvocation(params: {
+	runtime: CodexRuntime;
+	workspace: string;
+	requestedModel: string;
+	requestedEffort: string;
+	selectedModel: string;
+	selectedEffort: string;
+}) {
+	if (params.runtime === "exec") {
+		return buildCodexExecInvocation(
+			params.workspace,
+			params.requestedModel,
+			params.requestedEffort,
+		);
+	}
+	return buildCodexSdkInvocation(params);
+}
+
+function codexNpmCliPath() {
+	return path.join(
+		appPaths.projectRoot,
+		"node_modules",
+		"@openai",
+		"codex",
+		"bin",
+		"codex.js",
+	);
+}
+
+function toSdkEnv(childEnv: NodeJS.ProcessEnv): Record<string, string> {
+	return Object.fromEntries(
+		Object.entries(childEnv).filter(
+			(entry): entry is [string, string] => typeof entry[1] === "string",
+		),
+	);
+}
+
+async function runExecRuntime(
+	options: RuntimeOptions,
+	processRunner: VariantProcessRunner,
+) {
+	return processRunner(
+		"codex",
+		codexExecArgs(
+			options.workspace,
+			options.requestedModel,
+			options.requestedEffort,
+		),
+		{
+			cwd: options.workspace,
+			env: codexChildEnv(options.keySource),
+			input: options.input,
+			timeoutMs: options.timeoutMs,
+			onStdoutLine: options.onStdoutLine,
+			onStderrLine: options.onStderrLine,
+		},
+	);
+}
+
+export const defaultSdkRunner: VariantSdkRunner = async (options) => {
+	const { Codex } = await import("@openai/codex-sdk");
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+	let stdout = "";
+	let streamFailure = "";
+	try {
+		const codex = new Codex({
+			codexPathOverride: codexNpmCliPath(),
+			env: toSdkEnv(codexChildEnv(options.keySource)),
+		});
+		const thread = codex.startThread({
+			workingDirectory: options.workspace,
+			skipGitRepoCheck: true,
+			sandboxMode: "workspace-write",
+			model: options.requestedModel || undefined,
+			modelReasoningEffort: options.requestedEffort || undefined,
+		});
+		const { events } = await thread.runStreamed(options.input, {
+			signal: controller.signal,
+		});
+		for await (const event of events) {
+			const line = redactSecrets(JSON.stringify(event));
+			stdout = appendLimited(stdout, `${line}\n`);
+			options.onStdoutLine?.(line);
+			if (event.type === "turn.failed") streamFailure = event.error.message;
+			if (event.type === "error") streamFailure = event.message;
+		}
+		if (streamFailure) {
+			const message = redactSecrets(streamFailure);
+			options.onStderrLine?.(message);
+			return { code: 1, stdout, stderr: message, timedOut: false };
+		}
+		return { code: 0, stdout, stderr: "", timedOut: false };
+	} catch (error) {
+		const message = redactSecrets(
+			error instanceof Error ? error.message : String(error),
+		);
+		if (controller.signal.aborted) {
+			return { code: null, stdout, stderr: message, timedOut: true };
+		}
+		options.onStderrLine?.(message);
+		return { code: 1, stdout, stderr: message, timedOut: false };
+	} finally {
+		clearTimeout(timeout);
+	}
+};
+
 async function runCodexWithFallback(params: {
-	args: string[];
+	runtime: CodexRuntime;
 	input: string;
 	processRunner: VariantProcessRunner;
+	sdkRunner: VariantSdkRunner;
 	requestedAuthMode: CodexAuthMode;
+	requestedModel: string;
+	requestedEffort: CodexReasoningEffort | "";
 	selection: CodexSelection;
 	workspace: string;
 	onStdoutLine?: (line: string) => void;
 	onStderrLine?: (line: string) => void;
 }) {
 	const baseOptions = {
-		cwd: params.workspace,
 		input: params.input,
 		timeoutMs: env.CODEX_TIMEOUT_MS,
+		requestedModel: params.requestedModel,
+		requestedEffort: params.requestedEffort,
+		workspace: params.workspace,
 		onStdoutLine: params.onStdoutLine,
 		onStderrLine: params.onStderrLine,
 	};
+	const runRuntime = (keySource: CodexSelection["keySource"]) => {
+		const options = { ...baseOptions, keySource };
+		return params.runtime === "sdk"
+			? params.sdkRunner(options)
+			: runExecRuntime(options, params.processRunner);
+	};
 	let selection = params.selection;
-	let result = await params.processRunner("codex", params.args, {
-		...baseOptions,
-		env: codexChildEnv(selection.keySource),
-	});
+	let result = await runRuntime(selection.keySource);
 	if (
 		params.requestedAuthMode === "auto" &&
 		selection.selectedMode === "subscription" &&
@@ -177,10 +360,7 @@ async function runCodexWithFallback(params: {
 		const fallback = selectCodexApiKeyFallbackMode();
 		if (fallback.keySource !== "none") {
 			selection = fallback;
-			result = await params.processRunner("codex", params.args, {
-				...baseOptions,
-				env: codexChildEnv(selection.keySource),
-			});
+			result = await runRuntime(selection.keySource);
 		}
 	}
 	return { result, selection };
@@ -261,7 +441,9 @@ export async function createVariantRun(params: {
 	requestedAuthMode: CodexAuthMode;
 	requestedModel?: string;
 	requestedEffort?: string;
+	runtime?: CodexRuntime;
 	runner?: VariantProcessRunner;
+	sdkRunner?: VariantSdkRunner;
 }) {
 	const selection = selectCodexMode(params.requestedAuthMode);
 	if (selection.selectedMode === "api-key" && selection.keySource === "none") {
@@ -269,6 +451,7 @@ export async function createVariantRun(params: {
 			"API-key mode requested, but neither CODEX_API_KEY nor OPENAI_API_KEY is configured.",
 		);
 	}
+	const runtime = params.runtime ?? env.CODEX_RUNTIME;
 	const runId = randomUUID();
 	const workspace = await createVariantWorkspace(runId);
 	const requestedModel = normalizeCodexModel(
@@ -284,19 +467,14 @@ export async function createVariantRun(params: {
 		campaignBrief: params.campaignBrief,
 		campaignGoal: params.campaignGoal,
 	});
-	const codexCommand = [
-		"codex",
-		"exec",
-		"--json",
-		"--sandbox",
-		"workspace-write",
-		"--skip-git-repo-check",
-		"--cd",
+	const codexCommand = buildCodexInvocation({
+		runtime,
 		workspace,
-		...codexModelArgs(requestedModel),
-		...codexReasoningArgs(requestedEffort),
-		"-",
-	].join(" ");
+		requestedModel,
+		requestedEffort,
+		selectedModel,
+		selectedEffort,
+	});
 	const runRecord = await prisma.variantRun.create({
 		data: {
 			id: runId,
@@ -312,24 +490,35 @@ export async function createVariantRun(params: {
 			selectedModel,
 			requestedEffort: requestedEffort || CODEX_DEFAULT_REASONING_EFFORT,
 			selectedEffort,
+			codexRuntime: runtime,
 			codexCommand,
 			inputPrompt: prompt,
 			outputSummary: `Codex ${selectedModel} is editing an isolated storefront workspace with ${selectedEffort} reasoning.`,
 		},
 	});
-	void executeVariantRun(runRecord.id, params.runner).catch(() => undefined);
+	void executeVariantRun(runRecord.id, {
+		processRunner: params.runner,
+		sdkRunner: params.sdkRunner,
+	}).catch(() => undefined);
 	return runRecord;
 }
 
 export async function executeVariantRun(
 	runId: string,
-	runner?: VariantProcessRunner,
+	options: ExecuteVariantRunOptions | VariantProcessRunner = {},
 ) {
 	const runRecord = await prisma.variantRun.findUnique({
 		where: { id: runId },
 	});
 	if (!runRecord) throw new Error(`Variant run ${runId} was not found.`);
-	const processRunner = runner ?? run;
+	const executeOptions =
+		typeof options === "function" ? { processRunner: options } : options;
+	const processRunner = executeOptions.processRunner ?? run;
+	const sdkRunner = executeOptions.sdkRunner ?? defaultSdkRunner;
+	const runtime =
+		runRecord.codexRuntime === "exec" || runRecord.codexRuntime === "sdk"
+			? runRecord.codexRuntime
+			: env.CODEX_RUNTIME;
 	const requestedModel =
 		runRecord.requestedModel === CODEX_DEFAULT_MODEL
 			? ""
@@ -337,32 +526,23 @@ export async function executeVariantRun(
 	const requestedEffort =
 		runRecord.requestedEffort === CODEX_DEFAULT_REASONING_EFFORT
 			? ""
-			: runRecord.requestedEffort;
+			: normalizeCodexReasoningEffort(runRecord.requestedEffort);
 	const initialSelection = selectCodexMode(
 		runRecord.requestedAuthMode as CodexAuthMode,
 	);
-	const args = [
-		"exec",
-		"--json",
-		"--sandbox",
-		"workspace-write",
-		"--skip-git-repo-check",
-		"--cd",
-		runRecord.workspacePath,
-		...codexModelArgs(requestedModel),
-		...codexReasoningArgs(requestedEffort),
-		"-",
-	];
 	let transcript = runRecord.transcript;
 	let transcriptWrite = Promise.resolve();
 	let transcriptWriteError: unknown;
 	let stderrText = "";
 	try {
 		const { result, selection } = await runCodexWithFallback({
-			args,
+			runtime,
 			input: runRecord.inputPrompt,
 			processRunner,
+			sdkRunner,
 			requestedAuthMode: runRecord.requestedAuthMode as CodexAuthMode,
+			requestedModel,
+			requestedEffort,
 			selection: initialSelection,
 			workspace: runRecord.workspacePath,
 			onStdoutLine: (line) => {

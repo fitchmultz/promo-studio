@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Help agents change Promo Studio safely. Promo Studio is a Codex commerce demo: the host Next.js app creates isolated storefront workspaces, runs `codex exec`, streams activity, validates the generated storefront, and stores an execution receipt.
+Help agents change Promo Studio safely. Promo Studio is a Codex commerce demo: the host Next.js app creates isolated storefront workspaces, runs the Codex TypeScript SDK by default with a preserved `codex exec` fallback, streams activity, validates the generated storefront, and stores an execution receipt.
 
 ## Repository map
 
 - `app/` — Next.js routes for login, studio, run detail, history, proof, and API endpoints.
 - `components/` — UI for campaign form, activity stream, previews, diffs, run history, and receipts.
-- `lib/codex-runner.ts` — Codex process launch, JSONL transcript persistence, fallback auth mode, manifest parsing, validation, and preview inlining.
+- `lib/codex-runner.ts` — Codex SDK/exec runtime launch, JSONL transcript persistence, fallback auth mode, manifest parsing, validation, and preview inlining.
 - `lib/workspace.ts` — copies `templates/storefront` into `codex-workspaces/run-<id>/storefront` and detects changed files.
 - `lib/validation.ts` — manifest schema, safe-path checks, forbidden changed files, and receipt summary.
 - `prisma/` — SQLite schema and seed data for the demo user, product, and seeded run.
@@ -20,7 +20,7 @@ Help agents change Promo Studio safely. Promo Studio is a Codex commerce demo: t
 - Prefer the smallest change that satisfies the user-visible outcome and preserves the demo thesis: bounded Codex code edits with isolation, validation, and auditability.
 - Proceed without asking when the change is local, reversible, and covered by existing commands. Ask before changing product scope, public positioning, auth/security behavior, data model shape, or dependency set.
 - Stop exploring once you have identified the authoritative code path and validation command. Do not add parallel workflows or duplicate sources of truth.
-- Keep public-facing language focused on the product workflow. Do not add private process, recruiting, or assessment context to the public repo.
+- Keep public-facing language focused on the product workflow. Do not add private process or review context to the public repo.
 - Do not edit generated or local-runtime output: `.next/`, `node_modules/`, `dev.db`, `test.db`, `tsconfig.tsbuildinfo`, `codex-workspaces/run-*`, `tmp/`, or built `dist/` directories.
 
 ## Setup and commands

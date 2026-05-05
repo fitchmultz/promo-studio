@@ -1,10 +1,15 @@
 import type { VariantRun } from "@prisma/client";
 
+function runtimeLabel(runtime: string) {
+	return runtime === "exec" ? "codex exec" : "SDK";
+}
+
 export function RunReceipt({ run }: { run: VariantRun }) {
-	const codexCommand = run.codexCommand.replace(
+	const codexInvocation = run.codexCommand.replace(
 		"<isolated-workspace>",
 		run.workspacePath,
 	);
+	const isExecRuntime = run.codexRuntime === "exec";
 
 	return (
 		<div className="receipt-stack">
@@ -39,6 +44,10 @@ export function RunReceipt({ run }: { run: VariantRun }) {
 				<h3 id="codex-execution-title">Codex execution</h3>
 				<div className="receipt-grid">
 					<div className="receipt-card">
+						<span>Runtime</span>
+						<strong>{runtimeLabel(run.codexRuntime)}</strong>
+					</div>
+					<div className="receipt-card">
 						<span>Auth mode</span>
 						<strong>{run.selectedAuthMode}</strong>
 					</div>
@@ -55,12 +64,18 @@ export function RunReceipt({ run }: { run: VariantRun }) {
 						<code className="receipt-command">{run.workspacePath}</code>
 					</div>
 					<div className="receipt-card receipt-card--wide">
-						<span>Codex command</span>
+						<span>Codex invocation</span>
 						<p className="receipt-help">
-							This is the command executed for this run. The prompt was sent
-							through stdin via the trailing <code>-</code> argument.
+							{isExecRuntime ? (
+								<>
+									This is the command executed for this run. The prompt was sent
+									through stdin via the trailing <code>-</code> argument.
+								</>
+							) : (
+								"This is the SDK invocation descriptor for this run. The prompt was sent through the Codex TypeScript SDK streaming API."
+							)}
 						</p>
-						<code className="receipt-command">{codexCommand}</code>
+						<code className="receipt-command">{codexInvocation}</code>
 					</div>
 				</div>
 			</section>

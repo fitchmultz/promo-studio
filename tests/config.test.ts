@@ -46,7 +46,8 @@ describe("Codex auth mode selection", () => {
 		expect(resolveRequestedMode(form)).toBe(env.CODEX_AUTH_MODE);
 	});
 
-	it("defaults Codex model and reasoning to configured settings", () => {
+	it("defaults Codex runtime, model, and reasoning to configured settings", () => {
+		expect(env.CODEX_RUNTIME).toBe("sdk");
 		expect(env.CODEX_MODEL).toBe("gpt-5.5");
 		expect(env.CODEX_REASONING_EFFORT).toBe("low");
 	});

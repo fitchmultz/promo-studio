@@ -34,6 +34,7 @@ Use `npm install` only when dependencies are missing. Do not add dependencies un
 
 - Keep React components simple, typed, and local to `src/`.
 - Preserve accessible headings, alt text, button text, and readable contrast.
+- Preserve the full product photo. Do not crop, stretch, filter, replace, or cover the tote image; keep `.product-image img` using `max-width: 100%`, `max-height: 100%`, `min-width: 0`, `min-height: 0`, and `object-fit: contain`.
 - Add or update tests when changing behavior that existing tests do not cover.
 - Do not edit `dist/`, `node_modules/`, or lockfiles for normal campaign variants.
 
@@ -47,6 +48,7 @@ Done means:
 - SKU remains `RMT-001`.
 - Inventory remains `3`.
 - Cart API returns the same SKU, quantity, and unit price.
+- Product image presentation keeps the full tote photo visible with `object-fit: contain`.
 - `artifact/manifest.json` exists and truthfully records summary, changed files, commands, pass/fail booleans, commerce invariants, and `previewPath: "dist/index.html"`.
 
 ## Planning and large changes

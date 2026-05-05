@@ -43,6 +43,7 @@ model VariantRun {
   selectedModel            String    @default("codex-default")
   requestedEffort          String    @default("codex-default")
   selectedEffort           String    @default("codex-default")
+  codexRuntime             String    @default("sdk")
   codexCommand             String    @default("")
   inputPrompt              String
   manifest                 String    @default("")

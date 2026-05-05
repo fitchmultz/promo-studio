@@ -1,8 +1,8 @@
 # Promo Studio — Codex Commerce Demo
 
-Promo Studio is a Next.js demo that shows Codex acting as an autonomous commerce code agent. A user starts with a campaign goal and brief, then Promo Studio copies a storefront template into an isolated workspace, launches `codex exec`, streams live JSONL activity, validates the result, and stores an auditable receipt in SQLite.
+Promo Studio is a Next.js demo that shows Codex acting as an autonomous commerce code agent. A user starts with a campaign goal and brief, then Promo Studio copies a storefront template into an isolated workspace, runs Codex through the official TypeScript SDK by default, streams live JSONL activity, validates the result, and stores an auditable receipt in SQLite.
 
-This is not a static mockup or text-generation wrapper. Codex edits real storefront source files, runs tests, runs a production build, writes a manifest, and leaves behind the command, prompt, transcript, changed files, preview HTML, and validation result for inspection.
+This is not a static mockup or text-generation wrapper. Codex edits real storefront source files, runs tests, runs a production build, writes a manifest, and leaves behind the runtime invocation, prompt, transcript, changed files, preview HTML, and validation result for inspection.
 
 ## Walkthrough video
 
@@ -31,7 +31,7 @@ Open `http://localhost:3000/login` and sign in with:
 2. Choose a campaign goal chip. The campaign brief updates to match the selected intent unless you have typed a custom brief.
 3. Click **Create Variant**.
 4. Promo Studio copies `templates/storefront` into `codex-workspaces/run-<id>/storefront`.
-5. Codex runs with `--sandbox workspace-write`, reads files, edits source, runs `npm test`, runs `npm run build`, and writes `artifact/manifest.json`.
+5. Codex runs in `workspace-write`, reads files, edits source, runs `npm test`, runs `npm run build`, and writes `artifact/manifest.json`.
 6. Watch the live Codex activity stream at the top of the run page.
 7. Inspect the before/after preview, red/green code diff, execution receipt, manifest, input prompt, and transcript.
 8. Open `/history` for persisted runs or `/proof` for the latest full execution receipt.
@@ -42,7 +42,7 @@ Open `http://localhost:3000/login` and sign in with:
 - **Workspace isolation** — every run gets a fresh storefront copy under `codex-workspaces/run-<id>/storefront`.
 - **Live observability** — Codex JSONL output is persisted and rendered while the run is active.
 - **Validation gates** — the storefront template protects commerce invariants with tests, and every accepted variant must pass both tests and build.
-- **Auditable receipts** — the app records command, workspace path, model, reasoning effort, prompt, manifest, transcript, changed files, and preview HTML.
+- **Auditable receipts** — the app records runtime, invocation, workspace path, model, reasoning effort, prompt, manifest, transcript, changed files, and preview HTML.
 - **Human-readable review UI** — completed runs include before/after preview, colored diffs, validation receipt, and transcript tabs.
 
 ## Validation
@@ -74,7 +74,7 @@ npm run demo:zip           # zip git-tracked demo files only
 
 - `app/` — Next.js routes, auth pages, studio pages, and API routes.
 - `components/` — form, stream, preview, diff, receipt, and history components.
-- `lib/codex-runner.ts` — Codex process lifecycle, JSONL streaming, auth fallback, manifest parsing, and persistence.
+- `lib/codex-runner.ts` — Codex SDK/exec runtime lifecycle, JSONL streaming, auth fallback, manifest parsing, and persistence.
 - `lib/workspace.ts` — isolated storefront workspace copy and change detection.
 - `lib/validation.ts` — manifest and commerce validation receipt checks.
 - `templates/storefront/` — intentionally plain Vite storefront that Codex modifies.
@@ -86,7 +86,8 @@ npm run demo:zip           # zip git-tracked demo files only
 - `DATABASE_URL` defaults to `file:./dev.db`.
 - `SESSION_SECRET` is derived locally when omitted.
 - `CODEX_AUTH_MODE` supports `auto`, `subscription`, or `api-key`.
-- `CODEX_MODEL` and `CODEX_REASONING_EFFORT` configure the CLI model arguments.
+- `CODEX_RUNTIME` defaults to `sdk`; set it to `exec` to use the direct `codex exec` fallback.
+- `CODEX_MODEL` and `CODEX_REASONING_EFFORT` configure the selected Codex model arguments.
 - `CODEX_API_KEY` or `OPENAI_API_KEY` are used only for explicit API-key mode or auto fallback.
 - `CODEX_TIMEOUT_MS` defaults to `300000`.
 
