@@ -7,22 +7,22 @@ const presets = [
 	{
 		label: "Holiday gift push",
 		brief:
-			"Make the Ribbed Market Tote feel like the perfect thoughtful gift for commuters who want durable, low-waste everyday carry.",
+			"Turn the Ribbed Market Tote into the gift they'll actually use every weekday: a premium organic-cotton commuter carryall for coffee runs, laptops, errands, and last-minute holiday gifting. Keep it warm, useful, and low-waste without sounding preachy.",
 	},
 	{
 		label: "Back-to-work launch",
 		brief:
-			"Position the Ribbed Market Tote as a polished back-to-work carryall for laptops, lunches, books, and after-office errands.",
+			"Reframe the Ribbed Market Tote as the Monday-morning reset bag: structured enough for a laptop and planner, roomy enough for lunch and errands, and polished enough to carry from commute to office to after-work plans.",
 	},
 	{
 		label: "Eco-conscious story",
 		brief:
-			"Tell a warm eco-conscious story about replacing disposable bags with a durable organic cotton tote built for everyday routines.",
+			"Tell a grounded sustainability story for shoppers who are tired of throwaway bags: organic cotton, reinforced handles, washable construction, and one durable tote that makes everyday low-waste habits feel easy.",
 	},
 	{
 		label: "Low-stock urgency",
 		brief:
-			"Create tasteful urgency around the Ribbed Market Tote being a small-batch item with only 3 left in stock, without sounding pushy.",
+			"Create calm, premium urgency around the Ribbed Market Tote being a small-batch item with only 3 left in stock. Make the page feel decisive and timely, but avoid countdown-timer pressure or gimmicky scarcity copy.",
 	},
 ] as const;
 

@@ -14,16 +14,20 @@ A short walkthrough video will be linked here after it is uploaded to YouTube.
 
 ## Quick start
 
+Use this path to run the demo locally:
+
 ```bash
 npm install
 npm run setup
 npm run dev
 ```
 
-Open `http://localhost:3000/login` and sign in with:
+Open the URL printed by Next.js and sign in. The default is `http://localhost:3000/login`. If port 3000 is already busy, Next.js dev mode automatically chooses another port and prints the selected URL.
 
 - Email: `demo@promostudio.test`
 - Password: `promo-studio`
+
+No production build is required for `npm run dev`. The required setup step is `npm run setup`, which creates the local SQLite tables and seeds the demo login/product data. If login fails with a missing `User` table, run `npm run setup` from the project root and retry.
 
 ## Demo flow
 
@@ -64,7 +68,9 @@ npm run build
 
 ```bash
 npm run setup              # reset local SQLite DB and seed demo data
-npm run dev                # start Next.js dev server
+npm run dev                # start Next.js dev server; defaults to 3000, Next.js falls forward if busy
+npm run build              # optional production build check
+npm run start              # optional production server after npm run build
 npm run validate           # full local gate
 npm run reset:workspaces   # remove generated Codex workspaces
 npm run demo:zip           # zip git-tracked demo files only
