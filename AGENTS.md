@@ -89,6 +89,16 @@ For multi-step or tool-heavy work, give short progress updates when a phase comp
 - Validation commands run and results.
 - Known limitations, skipped checks, or follow-up needed.
 
+## Cursor Cloud specific instructions
+
+- **Prisma consent**: All Prisma destructive commands (`npm run setup`, `npm test`, `npm run validate`) require the environment variable `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="yes"` when run from Cursor. This applies to `db push --force-reset`. The databases are local SQLite files (`dev.db`, `test.db`), so this is always safe in this repo.
+- **Environment file**: Copy `.env.example` to `.env` if `.env` does not already exist. No secrets are required for local dev, tests, or the seeded proof flow.
+- **Dev server**: `npm run dev` starts Next.js on port 3000. The app redirects unauthenticated requests to `/login`.
+- **Demo login**: Email `demo@promostudio.test`, password `promo-studio`.
+- **Quick proof path after login**: `/proof` (seeded receipt), `/studio` (campaign form), `/history` (run list), `/runs/seeded-demo-variant` (preview, diff, validation, transcript tabs).
+- **Live Codex runs** require `CODEX_API_KEY` or `OPENAI_API_KEY` in `.env`. All other functionality (seeded data, tests, build, proof UI) works without API keys.
+- **All validation commands** are documented in the "Setup and commands" section above. Use `npm run validate` for the full gate.
+
 ## Updating this file
 
 Update `AGENTS.md` when repo commands, durable constraints, validation gates, or public-demo boundaries change. Keep it concise; put materially different storefront-agent rules in `templates/storefront/AGENTS.md` instead of bloating this root file.
