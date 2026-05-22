@@ -37,7 +37,18 @@ import {
 	buildInvocationDescriptor,
 } from "@/lib/agent/invocation";
 import { runPiRuntime } from "@/lib/agent/pi-adapter";
-import { appendLimited, appendTranscript, runProcess } from "@/lib/agent/process";
+import {
+	appendLimited,
+	MAX_POLL_TRANSCRIPT_CHARS,
+	runProcess,
+	tailJsonlForPoll,
+} from "@/lib/agent/process";
+import {
+	appendRunTranscriptLine,
+	readRunTranscriptFile,
+	resolveFullTranscript,
+	transcriptBodyForDb,
+} from "@/lib/agent/transcript-store";
 import type {
 	AgentCore,
 	AgentHarness,
@@ -275,15 +286,20 @@ export async function executeVariantRun(
 	const initialSelection = resolveCodexSelection(
 		parseStoredCodexAuthMode(runRecord.requestedAuthMode),
 	);
-	let transcript = runRecord.transcript;
+	let pollTranscript = runRecord.transcript;
+	let fileWrite = Promise.resolve();
 	let transcriptWrite = Promise.resolve();
 	let transcriptWriteError: unknown;
 	let stderrText = "";
 	try {
 		const onStdoutLine = (line: string) => {
-			transcript = appendTranscript(transcript, `${line}\n`);
+			fileWrite = fileWrite.then(() => appendRunTranscriptLine(runId, line));
+			pollTranscript = tailJsonlForPoll(
+				`${pollTranscript}${line}\n`,
+				MAX_POLL_TRANSCRIPT_CHARS,
+			);
 			transcriptWrite = transcriptWrite
-				.then(() => persistTranscript(runId, transcript))
+				.then(() => persistTranscript(runId, pollTranscript))
 				.catch((error: unknown) => {
 					transcriptWriteError ??= error;
 				});
@@ -321,11 +337,18 @@ export async function executeVariantRun(
 					});
 
 		const { result, selection } = agentResult;
-		// Line-built transcript is canonical; result.stdout shares the 120k process buffer cap.
-		transcript = redactSecrets(transcript.trim() || result.stdout.trim());
+		await fileWrite;
+		const fullTranscript = redactSecrets(
+			(
+				await readRunTranscriptFile(runId)
+			)?.trim() ||
+				pollTranscript.trim() ||
+				result.stdout.trim(),
+		);
+		const dbTranscript = transcriptBodyForDb(fullTranscript);
 		stderrText = redactSecrets(result.stderr.trim() || stderrText.trim());
 		transcriptWrite = transcriptWrite
-			.then(() => persistTranscript(runId, transcript))
+			.then(() => persistTranscript(runId, dbTranscript))
 			.catch((error: unknown) => {
 				transcriptWriteError ??= error;
 			});
@@ -351,8 +374,8 @@ export async function executeVariantRun(
 				status: "succeeded",
 				selectedAuthMode: selection.selectedMode,
 				manifest: JSON.stringify(manifest, null, 2),
-				transcript,
-				stdout: transcript,
+				transcript: dbTranscript,
+				stdout: dbTranscript,
 				stderr: stderrText,
 				testsPassed: manifest.testsPassed,
 				buildPassed: manifest.buildPassed,
@@ -365,18 +388,23 @@ export async function executeVariantRun(
 			},
 		});
 	} catch (error) {
+		await fileWrite;
 		await transcriptWrite;
 		const failure = error ?? transcriptWriteError;
 		const message = redactSecrets(
 			failure instanceof Error ? failure.message : String(failure),
 		);
 		const agentName = core === "pi" ? "Pi" : "Codex";
+		const fullTranscript = redactSecrets(
+			await resolveFullTranscript(runId, pollTranscript),
+		);
+		const dbTranscript = transcriptBodyForDb(fullTranscript);
 		return prisma.variantRun.update({
 			where: { id: runId },
 			data: {
 				status: "failed",
-				transcript,
-				stdout: transcript,
+				transcript: dbTranscript,
+				stdout: dbTranscript,
 				stderr: stderrText,
 				error: message,
 				validationResult: `Validation: failed\n${message}`,

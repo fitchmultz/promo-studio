@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
 	appendLimited,
-	appendTranscript,
+	MAX_POLL_TRANSCRIPT_CHARS,
 	MAX_PROCESS_OUTPUT_CHARS,
-	MAX_TRANSCRIPT_CHARS,
-	TRANSCRIPT_TRUNCATED_MARKER,
+	tailJsonlForPoll,
 } from "@/lib/agent/process";
+import { transcriptBodyForDb } from "@/lib/agent/transcript-store";
 
 describe("transcript capture buffers", () => {
 	it("appendLimited keeps the tail for subprocess buffers", () => {
@@ -15,17 +15,31 @@ describe("transcript capture buffers", () => {
 		expect(result.length).toBe(MAX_PROCESS_OUTPUT_CHARS);
 	});
 
-	it("appendTranscript keeps the head for persisted JSONL", () => {
-		const session = '{"type":"session","version":3}\n';
-		const tail = "z".repeat(MAX_TRANSCRIPT_CHARS);
-		const result = appendTranscript(session, tail);
-		expect(result.startsWith(session)).toBe(true);
-		expect(result).toContain(TRANSCRIPT_TRUNCATED_MARKER);
+	it("tailJsonlForPoll keeps recent lines without injecting markers", () => {
+		const lines = Array.from(
+			{ length: 50 },
+			(_, index) => `{"type":"message_update","n":${index}}`,
+		);
+		const full = `${lines.join("\n")}\n`;
+		const tailed = tailJsonlForPoll(full, 200);
+		expect(tailed).not.toContain("[promo-studio:");
+		expect(tailed).toContain('"n":49');
+		expect(tailed.length).toBeLessThanOrEqual(200 + 80);
 	});
 
-	it("appendTranscript does not grow after truncation marker is written", () => {
-		const first = appendTranscript("", "x".repeat(MAX_TRANSCRIPT_CHARS + 1));
-		const second = appendTranscript(first, "more\n");
-		expect(second).toBe(first);
+	it("tailJsonlForPoll returns full text when under cap", () => {
+		const small = '{"type":"session"}\n{"type":"agent_start"}\n';
+		expect(tailJsonlForPoll(small, MAX_POLL_TRANSCRIPT_CHARS)).toBe(small);
+	});
+
+	it("transcriptBodyForDb uses tail only when over DB cap", () => {
+		const lines = Array.from(
+			{ length: 200 },
+			(_, index) => `{"type":"message_update","n":${index},"pad":"${"y".repeat(30_000)}"}`,
+		);
+		const huge = `${lines.join("\n")}\n`;
+		const body = transcriptBodyForDb(huge);
+		expect(body.length).toBeLessThan(huge.length);
+		expect(body).not.toContain("[promo-studio:");
 	});
 });

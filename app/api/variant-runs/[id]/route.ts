@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { parseCodexEvents } from "@/lib/codex-runner";
+import { resolveFullTranscript } from "@/lib/agent/transcript-store";
 import { prisma } from "@/lib/db";
 import { parseStringArrayJson } from "@/lib/json";
 
@@ -19,9 +20,10 @@ export async function GET(
 	if (user.role !== "admin" && run.userId !== user.id) {
 		return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 	}
+	const transcript = await resolveFullTranscript(run.id, run.transcript);
 	return NextResponse.json({
-		run,
-		events: parseCodexEvents(run.transcript),
+		run: { ...run, transcript },
+		events: parseCodexEvents(transcript),
 		changedFiles: parseStringArrayJson(run.changedFiles),
 	});
 }

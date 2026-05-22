@@ -5,10 +5,14 @@ import type { ProcessOptions, ProcessResult } from "@/lib/agent/types";
 /** In-memory cap for subprocess stdout/stderr buffers (not the persisted transcript). */
 export const MAX_PROCESS_OUTPUT_CHARS = 120000;
 
-/** Persisted JSONL transcript cap (Pi runs can exceed 120k quickly). */
-export const MAX_TRANSCRIPT_CHARS = 2_000_000;
+/** Live poll + DB fallback: recent JSONL lines only (full trace is on disk). */
+export const MAX_POLL_TRANSCRIPT_CHARS = 800_000;
 
-export const TRANSCRIPT_TRUNCATED_MARKER =
+/** Max transcript stored in SQLite when the on-disk file is larger. */
+export const MAX_DB_TRANSCRIPT_CHARS = 4_000_000;
+
+/** Injected by an older build; filter from parsed events. */
+export const LEGACY_TRANSCRIPT_TRUNCATED_MARKER =
 	"[promo-studio: transcript truncated";
 
 export function appendLimited(current: string, next: string) {
@@ -17,14 +21,23 @@ export function appendLimited(current: string, next: string) {
 	return combined.slice(combined.length - MAX_PROCESS_OUTPUT_CHARS);
 }
 
-/** Grow transcript from the start; on overflow keep the head (session + early events). */
-export function appendTranscript(current: string, next: string) {
-	if (current.includes(TRANSCRIPT_TRUNCATED_MARKER)) return current;
-	const combined = current + next;
-	if (combined.length <= MAX_TRANSCRIPT_CHARS) return combined;
-	const marker = `\n${TRANSCRIPT_TRUNCATED_MARKER} at ${MAX_TRANSCRIPT_CHARS} characters; earlier JSONL preserved]\n`;
-	const headBudget = MAX_TRANSCRIPT_CHARS - marker.length;
-	return combined.slice(0, headBudget) + marker;
+/**
+ * Keep the most recent complete JSONL lines for live polling.
+ * Drops oldest lines silently — never injects promo-studio markers into the stream.
+ */
+export function tailJsonlForPoll(full: string, maxChars: number): string {
+	if (full.length <= maxChars) return full;
+	const lines = full.split(/\r?\n/).filter((line) => line.trim());
+	const kept: string[] = [];
+	let size = 0;
+	for (let index = lines.length - 1; index >= 0; index -= 1) {
+		const line = lines[index] ?? "";
+		const add = line.length + (kept.length ? 1 : 0);
+		if (size + add > maxChars && kept.length > 0) break;
+		kept.unshift(line);
+		size += add;
+	}
+	return kept.length ? `${kept.join("\n")}\n` : "";
 }
 
 function emitLines(

@@ -7,10 +7,11 @@ import { RunReceipt } from "@/components/RunReceipt";
 import { requireUser } from "@/lib/auth";
 import { parseCodexEvents } from "@/lib/codex-runner";
 import { prisma } from "@/lib/db";
+import { LEGACY_TRANSCRIPT_TRUNCATED_MARKER } from "@/lib/agent/process";
 import {
-	MAX_PROCESS_OUTPUT_CHARS,
-	TRANSCRIPT_TRUNCATED_MARKER,
-} from "@/lib/agent/process";
+	resolveFullTranscript,
+	runTranscriptFileByteLength,
+} from "@/lib/agent/transcript-store";
 import { agentDisplayName } from "@/lib/agent-display";
 import { parseStringArrayJson } from "@/lib/json";
 
@@ -30,10 +31,15 @@ export default async function RunDetailPage({
 	if (!run) notFound();
 	if (user.role !== "admin" && run.userId !== user.id) redirect("/forbidden");
 	const changedFiles = parseStringArrayJson(run.changedFiles);
-	const events = parseCodexEvents(run.transcript);
-	const transcriptTruncated = run.transcript.includes(TRANSCRIPT_TRUNCATED_MARKER);
+	const fullTranscript = await resolveFullTranscript(run.id, run.transcript);
+	const fileBytes = await runTranscriptFileByteLength(run.id);
+	const events = parseCodexEvents(fullTranscript);
+	const legacyMarkerTruncated = fullTranscript.includes(
+		LEGACY_TRANSCRIPT_TRUNCATED_MARKER,
+	);
 	const legacyTailTruncated =
-		run.transcript.length >= MAX_PROCESS_OUTPUT_CHARS - 1 &&
+		!fileBytes &&
+		run.transcript.length >= 119_000 &&
 		!run.transcript.trimStart().startsWith("{");
 	const activity = (
 		<ActivityStream
@@ -81,11 +87,11 @@ export default async function RunDetailPage({
 				transcript: (
 					<>
 						<h2>Transcript</h2>
-						{transcriptTruncated ? (
+						{legacyMarkerTruncated ? (
 							<p className="muted">
-								This run hit the stored transcript size limit. The file below
-								keeps the beginning of the Pi JSONL stream; scroll for the
-								truncation marker.
+								This run used an older transcript cap that injected a truncation
+								marker into the stream. Start a new variant run for the full
+								trace without that message.
 							</p>
 						) : legacyTailTruncated ? (
 							<p className="muted">
@@ -95,12 +101,12 @@ export default async function RunDetailPage({
 							</p>
 						) : null}
 						<p className="muted transcript-meta">
-							{run.transcript
-								? `${run.transcript.length.toLocaleString()} characters · ${events.length.toLocaleString()} JSONL lines`
+							{fullTranscript
+								? `${fullTranscript.length.toLocaleString()} characters · ${events.length.toLocaleString()} JSONL lines${fileBytes ? " · full trace on disk" : ""}`
 								: "Agent transcript is still streaming."}
 						</p>
 						<pre className="transcript">
-							{run.transcript || "Agent transcript is still streaming."}
+							{fullTranscript || "Agent transcript is still streaming."}
 						</pre>
 					</>
 				),

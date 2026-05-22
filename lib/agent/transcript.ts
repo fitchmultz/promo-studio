@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { LEGACY_TRANSCRIPT_TRUNCATED_MARKER } from "@/lib/agent/process";
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -12,7 +13,10 @@ export function parseAgentEvents(transcript: string) {
 	return transcript
 		.split(/\r?\n/)
 		.map((line) => line.trim())
-		.filter(Boolean)
+		.filter(
+			(line) =>
+				Boolean(line) && !line.includes(LEGACY_TRANSCRIPT_TRUNCATED_MARKER),
+		)
 		.map((line, index) => {
 			const id = eventId(line, index);
 			try {

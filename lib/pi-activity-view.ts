@@ -36,9 +36,43 @@ function piMessageUpdateKind(
 ): "text" | "thinking" | "other" {
 	const assistantEvent = event.parsed.assistantMessageEvent;
 	if (!isJsonObject(assistantEvent)) return "other";
-	if (assistantEvent.type === "text_delta") return "text";
-	if (assistantEvent.type === "thinking_delta") return "thinking";
+	const updateType = assistantEvent.type;
+	if (
+		updateType === "text_delta" ||
+		updateType === "text_start" ||
+		updateType === "text_end"
+	) {
+		return "text";
+	}
+	if (
+		updateType === "thinking_delta" ||
+		updateType === "thinking_start" ||
+		updateType === "thinking_end"
+	) {
+		return "thinking";
+	}
 	return "other";
+}
+
+/** Latest assistant partial snapshot (cursor-sdk embeds tool-style blocks in thinking). */
+function piPartialProseFromEvent(event: PiActivityInputEvent): string {
+	const assistantEvent = event.parsed.assistantMessageEvent;
+	if (!isJsonObject(assistantEvent)) return "";
+	const partial = assistantEvent.partial ?? event.parsed.message;
+	if (!isJsonObject(partial)) return "";
+	const content = partial.content;
+	if (!Array.isArray(content)) return "";
+	const parts: string[] = [];
+	for (const block of content) {
+		if (!isJsonObject(block)) continue;
+		if (block.type === "thinking" && typeof block.thinking === "string") {
+			parts.push(block.thinking);
+		}
+		if (block.type === "text" && typeof block.text === "string") {
+			parts.push(block.text);
+		}
+	}
+	return parts.join("\n\n");
 }
 
 function piDeltaFromEvent(event: PiActivityInputEvent): string {
@@ -47,6 +81,20 @@ function piDeltaFromEvent(event: PiActivityInputEvent): string {
 		return "";
 	}
 	return assistantEvent.delta;
+}
+
+function appendPiThinkingBuffer(buffer: string, event: PiActivityInputEvent): string {
+	const snapshot = piPartialProseFromEvent(event);
+	if (snapshot.length >= buffer.length) return snapshot;
+	const delta = piDeltaFromEvent(event);
+	return delta ? buffer + delta : buffer;
+}
+
+function appendPiTextBuffer(buffer: string, event: PiActivityInputEvent): string {
+	const snapshot = piPartialProseFromEvent(event);
+	if (snapshot.length >= buffer.length) return snapshot;
+	const delta = piDeltaFromEvent(event);
+	return delta ? buffer + delta : buffer;
 }
 
 function shortenWorkspacePath(path: string): string {
@@ -224,24 +272,13 @@ export function piEventsToActivityRows(
 			const kind = piMessageUpdateKind(event);
 			if (kind === "text") {
 				flushThinking();
-				textBuffer += piDeltaFromEvent(event);
+				textBuffer = appendPiTextBuffer(textBuffer, event);
 				continue;
 			}
 			if (kind === "thinking") {
 				flushText();
-				thinkingBuffer += piDeltaFromEvent(event);
+				thinkingBuffer = appendPiThinkingBuffer(thinkingBuffer, event);
 				continue;
-			}
-			flushAll();
-			const raw = event.raw.trim();
-			if (raw) {
-				out.push({
-					id: event.id,
-					kind: "other",
-					label: "Message update",
-					body: raw.slice(0, maxBodyChars),
-					variant: "muted",
-				});
 			}
 			continue;
 		}
