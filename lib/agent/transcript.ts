@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import { LEGACY_TRANSCRIPT_TRUNCATED_MARKER } from "@/lib/agent/process";
-
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { isJsonObject } from "@/lib/json";
 
 function eventId(line: string, index: number) {
 	return `${index + 1}:${createHash("sha256").update(line).digest("hex").slice(0, 12)}`;

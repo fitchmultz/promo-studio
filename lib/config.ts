@@ -284,6 +284,15 @@ export function selectCodexMode(requested: CodexAuthMode): {
 	return { selectedMode: "subscription", keySource: "none" };
 }
 
+function toProcessEnv(
+	record: Record<string, string | undefined>,
+): NodeJS.ProcessEnv {
+	const entries = Object.entries(record).filter(
+		(entry): entry is [string, string] => typeof entry[1] === "string",
+	);
+	return Object.fromEntries(entries) as NodeJS.ProcessEnv;
+}
+
 export function selectCodexApiKeyFallbackMode(): {
 	selectedMode: "api-key";
 	keySource: "CODEX_API_KEY" | "OPENAI_API_KEY" | "none";
@@ -318,7 +327,7 @@ export function codexChildEnv(
 		childEnv.CODEX_API_KEY = env.CODEX_API_KEY;
 	if (keySource === "OPENAI_API_KEY" && env.OPENAI_API_KEY)
 		childEnv.CODEX_API_KEY = env.OPENAI_API_KEY;
-	return childEnv as NodeJS.ProcessEnv;
+	return toProcessEnv(childEnv);
 }
 
 export function piChildEnv() {
@@ -336,7 +345,7 @@ export function piChildEnv() {
 	};
 	if (env.ANTHROPIC_API_KEY) childEnv.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
 	if (env.OPENAI_API_KEY) childEnv.OPENAI_API_KEY = env.OPENAI_API_KEY;
-	return childEnv as NodeJS.ProcessEnv;
+	return toProcessEnv(childEnv);
 }
 
 export function redactSecrets(text: string): string {

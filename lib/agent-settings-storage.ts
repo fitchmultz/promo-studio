@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type AgentCoreChoice = "codex" | "pi";
 
 export interface AgentSettings {
@@ -18,34 +20,26 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
 	authMode: "auto",
 };
 
+const StoredAgentSettingsSchema = z.object({
+	agentCore: z.enum(["codex", "pi"]).catch("codex"),
+	agentHarness: z.string().catch(DEFAULT_AGENT_SETTINGS.agentHarness),
+	model: z.string().catch(DEFAULT_AGENT_SETTINGS.model),
+	reasoningEffort: z.string().catch(DEFAULT_AGENT_SETTINGS.reasoningEffort),
+	authMode: z.string().catch(DEFAULT_AGENT_SETTINGS.authMode),
+});
+
 export function readAgentSettings(): AgentSettings {
 	if (typeof window === "undefined") return DEFAULT_AGENT_SETTINGS;
 	try {
 		const raw = window.localStorage.getItem(AGENT_SETTINGS_STORAGE_KEY);
 		if (!raw) return DEFAULT_AGENT_SETTINGS;
 		const parsed: unknown = JSON.parse(raw);
-		if (!parsed || typeof parsed !== "object") return DEFAULT_AGENT_SETTINGS;
-		const record = parsed as Record<string, unknown>;
-		const agentCore = record.agentCore === "pi" ? "pi" : "codex";
-		const harness =
-			typeof record.agentHarness === "string"
-				? record.agentHarness
-				: DEFAULT_AGENT_SETTINGS.agentHarness;
+		const result = StoredAgentSettingsSchema.safeParse(parsed);
+		if (!result.success) return DEFAULT_AGENT_SETTINGS;
+		const data = result.data;
 		return {
-			agentCore,
-			agentHarness: agentCore === "pi" ? "json" : harness,
-			model:
-				typeof record.model === "string"
-					? record.model
-					: DEFAULT_AGENT_SETTINGS.model,
-			reasoningEffort:
-				typeof record.reasoningEffort === "string"
-					? record.reasoningEffort
-					: DEFAULT_AGENT_SETTINGS.reasoningEffort,
-			authMode:
-				typeof record.authMode === "string"
-					? record.authMode
-					: DEFAULT_AGENT_SETTINGS.authMode,
+			...data,
+			agentHarness: data.agentCore === "pi" ? "json" : data.agentHarness,
 		};
 	} catch {
 		return DEFAULT_AGENT_SETTINGS;

@@ -3,6 +3,8 @@
  * merged thinking/assistant prose, bash as `$ command`, edit/write/read with paths.
  */
 
+import { isJsonObject } from "@/lib/json";
+
 export interface PiActivityInputEvent {
 	id: string;
 	type: string;
@@ -25,10 +27,6 @@ export interface PiActivityRow {
 	body: string;
 	/** prose = thinking/assistant; tool = monospace command block */
 	variant: "prose" | "tool" | "muted";
-}
-
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function piMessageUpdateKind(

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { agentDisplayName } from "@/lib/agent-display";
+import { isJsonObject } from "@/lib/json";
 import { piEventsToActivityRows } from "@/lib/pi-activity-view";
 import { VariantRunPollSchema } from "@/lib/variant-run-api";
 
@@ -14,10 +15,6 @@ interface EventItem {
 }
 
 const CODEX_OUTPUT_PREVIEW_CHARS = 600;
-
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function itemFor(event: EventItem): Record<string, unknown> | undefined {
 	const item = event.parsed.item;
