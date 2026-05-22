@@ -85,14 +85,14 @@ function piDeltaFromEvent(event: PiActivityInputEvent): string {
 
 function appendPiThinkingBuffer(buffer: string, event: PiActivityInputEvent): string {
 	const snapshot = piPartialProseFromEvent(event);
-	if (snapshot.length >= buffer.length) return snapshot;
+	if (snapshot && snapshot.length >= buffer.length) return snapshot;
 	const delta = piDeltaFromEvent(event);
 	return delta ? buffer + delta : buffer;
 }
 
 function appendPiTextBuffer(buffer: string, event: PiActivityInputEvent): string {
 	const snapshot = piPartialProseFromEvent(event);
-	if (snapshot.length >= buffer.length) return snapshot;
+	if (snapshot && snapshot.length >= buffer.length) return snapshot;
 	const delta = piDeltaFromEvent(event);
 	return delta ? buffer + delta : buffer;
 }

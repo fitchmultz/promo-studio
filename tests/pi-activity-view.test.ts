@@ -52,6 +52,32 @@ describe("piEventsToActivityRows", () => {
 		expect(rows[0]?.body).toBe("$ npm test");
 	});
 
+	it("renders thinking_start partial blocks like the Pi TUI (not raw JSON)", () => {
+		const rows = piEventsToActivityRows(
+			[
+				ev("message_update", {
+					assistantMessageEvent: {
+						type: "thinking_start",
+						partial: {
+							role: "assistant",
+							content: [
+								{
+									type: "thinking",
+									thinking: "read package.json\n\n{\n  \"name\": \"demo\"\n}",
+								},
+							],
+						},
+					},
+				}),
+			],
+			8000,
+		);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.label).toBe("Thinking");
+		expect(rows[0]?.body).toContain("read package.json");
+		expect(rows[0]?.body).not.toContain("assistantMessageEvent");
+	});
+
 	it("skips message_start and message_end noise", () => {
 		const rows = piEventsToActivityRows(
 			[

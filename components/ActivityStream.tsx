@@ -192,8 +192,14 @@ export function ActivityStream({
 						<p className="muted activity-list-meta">
 							Showing last{" "}
 							{isPi ? visiblePiRows.length : visibleCodexEvents.length} of{" "}
-							{isPi ? piRows.length : events.length} events (
-							{events.length} raw JSONL lines in transcript).
+							{isPi ? piRows.length : events.length}{" "}
+							{isPi ? "activity steps" : "events"}.
+							{isPi ? (
+								<>
+									{" "}
+									Full raw JSONL is on the Transcript tab.
+								</>
+							) : null}
 						</p>
 					) : null}
 					<ol className="activity-list" ref={activityListRef}>

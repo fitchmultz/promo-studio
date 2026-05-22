@@ -33,7 +33,9 @@ export default async function RunDetailPage({
 	const changedFiles = parseStringArrayJson(run.changedFiles);
 	const fullTranscript = await resolveFullTranscript(run.id, run.transcript);
 	const fileBytes = await runTranscriptFileByteLength(run.id);
-	const events = parseCodexEvents(fullTranscript);
+	const pollTranscript =
+		run.status === "running" ? run.transcript : fullTranscript;
+	const events = parseCodexEvents(pollTranscript);
 	const legacyMarkerTruncated = fullTranscript.includes(
 		LEGACY_TRANSCRIPT_TRUNCATED_MARKER,
 	);
@@ -87,6 +89,10 @@ export default async function RunDetailPage({
 				transcript: (
 					<>
 						<h2>Transcript</h2>
+						<p className="muted">
+							Raw JSONL from the agent (one JSON object per line). The live
+							activity panel above is a readable, TUI-style view of the same run.
+						</p>
 						{legacyMarkerTruncated ? (
 							<p className="muted">
 								This run used an older transcript cap that injected a truncation

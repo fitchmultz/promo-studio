@@ -20,10 +20,15 @@ export async function GET(
 	if (user.role !== "admin" && run.userId !== user.id) {
 		return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 	}
-	const transcript = await resolveFullTranscript(run.id, run.transcript);
+	// Live activity poll: recent JSONL tail in SQLite (no truncation markers).
+	// Transcript tab loads the full on-disk JSONL via server render when the run finishes.
+	const pollTranscript =
+		run.status === "running"
+			? run.transcript
+			: await resolveFullTranscript(run.id, run.transcript);
 	return NextResponse.json({
-		run: { ...run, transcript },
-		events: parseCodexEvents(transcript),
+		run: { ...run, transcript: pollTranscript },
+		events: parseCodexEvents(pollTranscript),
 		changedFiles: parseStringArrayJson(run.changedFiles),
 	});
 }
