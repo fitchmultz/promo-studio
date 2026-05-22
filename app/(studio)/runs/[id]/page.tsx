@@ -11,6 +11,7 @@ import {
 	MAX_PROCESS_OUTPUT_CHARS,
 	TRANSCRIPT_TRUNCATED_MARKER,
 } from "@/lib/agent/process";
+import { agentDisplayName } from "@/lib/agent-display";
 import { parseStringArrayJson } from "@/lib/json";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,12 @@ export default async function RunDetailPage({
 				preview: (
 					<>
 						<h2>Before and after preview</h2>
-						<BeforeAfter product={run.product} previewHtml={run.previewHtml} />
+						<BeforeAfter
+							product={run.product}
+							previewHtml={run.previewHtml}
+							agentCore={run.agentCore}
+							status={run.status}
+						/>
 					</>
 				),
 				code: (
@@ -104,9 +110,18 @@ export default async function RunDetailPage({
 	return (
 		<main className="studio-page" id="main-content">
 			<section className="studio-hero studio-hero--compact">
-				<p className="section-kicker">Run detail</p>
-				<h1>{run.campaignGoal}</h1>
-				<p>{run.campaignBrief}</p>
+				<div className="split-heading">
+					<div>
+						<p className="section-kicker">
+							Run detail · {agentDisplayName(run.agentCore)}
+						</p>
+						<h1>{run.campaignGoal}</h1>
+						<p>{run.campaignBrief}</p>
+					</div>
+					<span className={`status-pill status-pill--${run.status}`}>
+						{run.status}
+					</span>
+				</div>
 			</section>
 			{activity}
 			{tabs}

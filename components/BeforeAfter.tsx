@@ -1,4 +1,5 @@
 import type { Product } from "@prisma/client";
+import { builtVariantHeading } from "@/lib/agent-display";
 import { parseFeatures } from "@/lib/products";
 
 function escapeHtml(value: string) {
@@ -20,10 +21,19 @@ function beforeHtml(product: Product) {
 export function BeforeAfter({
 	product,
 	previewHtml,
+	agentCore = "codex",
+	status = "succeeded",
 }: {
 	product: Product;
 	previewHtml: string;
+	agentCore?: string;
+	status?: string;
 }) {
+	const afterHeading = builtVariantHeading(agentCore);
+	const previewPlaceholder =
+		status === "running"
+			? "<p><strong>Variant preview is not ready.</strong></p><p>The agent is editing the storefront, running tests, and building. Watch the activity stream above for progress.</p>"
+			: "<p>Variant preview is not ready.</p>";
 	return (
 		<div className="preview-grid">
 			<section>
@@ -35,11 +45,11 @@ export function BeforeAfter({
 				/>
 			</section>
 			<section>
-				<h3>After: Codex-built campaign variant</h3>
+				<h3>{afterHeading}</h3>
 				<iframe
 					sandbox="allow-scripts"
 					title="Variant product page"
-					srcDoc={previewHtml || "<p>Variant preview is not ready.</p>"}
+					srcDoc={previewHtml || previewPlaceholder}
 				/>
 			</section>
 		</div>

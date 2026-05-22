@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { agentDisplayName } from "@/lib/agent-display";
+import { piEventsToActivityRows } from "@/lib/pi-activity-view";
 import { VariantRunPollSchema } from "@/lib/variant-run-api";
 
 interface EventItem {
@@ -10,6 +12,8 @@ interface EventItem {
 	raw: string;
 	parsed: Record<string, unknown>;
 }
+
+const CODEX_OUTPUT_PREVIEW_CHARS = 600;
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -46,98 +50,6 @@ function labelForCodex(event: EventItem) {
 	return event.type;
 }
 
-function piMessageUpdateKind(event: EventItem): "text" | "thinking" | "other" {
-	const assistantEvent = event.parsed.assistantMessageEvent;
-	if (!isJsonObject(assistantEvent)) return "other";
-	if (assistantEvent.type === "text_delta") return "text";
-	if (assistantEvent.type === "thinking_delta") return "thinking";
-	return "other";
-}
-
-function labelForPi(event: EventItem) {
-	if (event.type === "merged_assistant_text") return "Assistant";
-	if (event.type === "merged_thinking_text") return "Thinking";
-	if (event.type === "session") return "Pi session";
-	if (event.type === "agent_start") return "Pi agent started";
-	if (event.type === "agent_end") return "Pi agent finished";
-	if (event.type === "turn_start") return "Pi turn";
-	if (event.type === "turn_end") return "Pi turn finished";
-	if (event.type === "tool_execution_start") return "Tool started";
-	if (event.type === "tool_execution_update") return "Tool progress";
-	if (event.type === "tool_execution_end") return "Tool finished";
-	if (event.type === "message_start") return "Message started";
-	if (event.type === "message_update") {
-		const kind = piMessageUpdateKind(event);
-		if (kind === "thinking") return "Thinking";
-		if (kind === "text") return "Message update (text)";
-		return "Message update";
-	}
-	if (event.type === "message_end") return "Message finished";
-	return event.type;
-}
-
-function labelFor(agentCore: string, event: EventItem) {
-	return agentCore === "pi" ? labelForPi(event) : labelForCodex(event);
-}
-
-function piDeltaFromEvent(event: EventItem): string {
-	const assistantEvent = event.parsed.assistantMessageEvent;
-	if (!isJsonObject(assistantEvent) || typeof assistantEvent.delta !== "string") {
-		return "";
-	}
-	return assistantEvent.delta;
-}
-
-/** Merge consecutive Pi text_delta / thinking_delta message_update lines. */
-function mergePiMessageUpdateDeltas(events: EventItem[]): EventItem[] {
-	const out: EventItem[] = [];
-	let textBuffer = "";
-	let thinkingBuffer = "";
-	const flushText = () => {
-		if (!textBuffer) return;
-		out.push({
-			id: `merged-assistant-${out.length}`,
-			type: "merged_assistant_text",
-			raw: textBuffer,
-			parsed: { type: "merged_assistant_text", text: textBuffer },
-		});
-		textBuffer = "";
-	};
-	const flushThinking = () => {
-		if (!thinkingBuffer) return;
-		out.push({
-			id: `merged-thinking-${out.length}`,
-			type: "merged_thinking_text",
-			raw: thinkingBuffer,
-			parsed: { type: "merged_thinking_text", text: thinkingBuffer },
-		});
-		thinkingBuffer = "";
-	};
-	const flushAll = () => {
-		flushText();
-		flushThinking();
-	};
-	for (const event of events) {
-		if (event.type === "message_update") {
-			const kind = piMessageUpdateKind(event);
-			if (kind === "text") {
-				flushThinking();
-				textBuffer += piDeltaFromEvent(event);
-				continue;
-			}
-			if (kind === "thinking") {
-				flushText();
-				thinkingBuffer += piDeltaFromEvent(event);
-				continue;
-			}
-		}
-		flushAll();
-		out.push(event);
-	}
-	flushAll();
-	return out;
-}
-
 function formatChanges(changes: unknown) {
 	if (!Array.isArray(changes)) return "";
 	return changes
@@ -152,33 +64,8 @@ function formatChanges(changes: unknown) {
 		.join("\n");
 }
 
-function eventText(
-	agentCore: string,
-	event: EventItem,
-	maxChars: number,
-) {
-	if (
-		event.type === "merged_assistant_text" ||
-		event.type === "merged_thinking_text"
-	) {
-		const text =
-			typeof event.parsed.text === "string" ? event.parsed.text : "";
-		return text.trim().slice(0, maxChars);
-	}
+function codexEventText(event: EventItem, maxChars: number) {
 	const item = itemFor(event);
-	if (agentCore === "pi") {
-		if (
-			event.type === "tool_execution_start" ||
-			event.type === "tool_execution_end"
-		) {
-			const toolName =
-				typeof event.parsed.toolName === "string"
-					? event.parsed.toolName
-					: "tool";
-			return toolName;
-		}
-		if (event.raw.trim()) return event.raw.trim().slice(0, maxChars);
-	}
 	if (
 		event.type === "thread.started" &&
 		typeof event.parsed.thread_id === "string"
@@ -191,19 +78,22 @@ function eventText(
 			typeof item.command === "string"
 				? item.command.replace(/^\/bin\/zsh -lc /, "")
 				: "shell command";
-		const output =
-			typeof item.aggregated_output === "string" &&
-			item.aggregated_output.trim()
-				? `\n${item.aggregated_output.trim().slice(0, maxChars)}`
+		const rawOutput =
+			typeof item.aggregated_output === "string"
+				? item.aggregated_output.trim()
 				: "";
-		return `${command}${output}`;
+		if (!rawOutput) return command;
+		if (rawOutput.length > CODEX_OUTPUT_PREVIEW_CHARS) {
+			return `${command}\n(${rawOutput.length.toLocaleString()} chars of output — see Transcript tab)`;
+		}
+		return `${command}\n${rawOutput.slice(0, maxChars)}`;
 	}
 	if (item?.type === "file_change")
 		return formatChanges(item.changes) || "Source files changed.";
 	if (typeof item?.text === "string") return item.text;
 	if (typeof item?.name === "string") return item.name;
 	if (typeof event.parsed.message === "string") return event.parsed.message;
-	return event.raw.trim().slice(0, maxChars) || labelFor(agentCore, event);
+	return event.raw.trim().slice(0, maxChars) || labelForCodex(event);
 }
 
 export function ActivityStream({
@@ -221,7 +111,8 @@ export function ActivityStream({
 	const [events, setEvents] = useState(initialEvents);
 	const [status, setStatus] = useState(initialStatus);
 	const activityListRef = useRef<HTMLOListElement>(null);
-	const agentName = agentCore === "pi" ? "Pi" : "Codex";
+	const isPi = agentCore === "pi";
+	const agentName = agentDisplayName(agentCore);
 
 	useEffect(() => {
 		if (status !== "running") return undefined;
@@ -247,29 +138,41 @@ export function ActivityStream({
 		};
 	}, [router, runId, status]);
 
-	const displayEvents = useMemo(() => {
-		if (agentCore === "pi") {
-			return mergePiMessageUpdateDeltas(events);
-		}
-		return events;
-	}, [agentCore, events]);
+	const textLimit = status === "running" ? 4000 : 12000;
+
+	const piRows = useMemo(() => {
+		if (!isPi) return [];
+		return piEventsToActivityRows(events, textLimit);
+	}, [events, isPi, textLimit]);
 
 	const maxVisibleEvents = status === "running" ? 200 : 400;
-	const visibleEvents = useMemo(
-		() =>
-			displayEvents.length > maxVisibleEvents
-				? displayEvents.slice(-maxVisibleEvents)
-				: displayEvents,
-		[displayEvents, maxVisibleEvents],
-	);
-	const textLimit = status === "running" ? 4000 : 12000;
-	const hiddenEventCount = Math.max(0, displayEvents.length - visibleEvents.length);
+	const maxVisiblePiRows = status === "running" ? 120 : 200;
+
+	const visiblePiRows = useMemo(() => {
+		if (!isPi) return [];
+		return piRows.length > maxVisiblePiRows
+			? piRows.slice(-maxVisiblePiRows)
+			: piRows;
+	}, [isPi, maxVisiblePiRows, piRows]);
+
+	const visibleCodexEvents = useMemo(() => {
+		if (isPi) return [];
+		return events.length > maxVisibleEvents
+			? events.slice(-maxVisibleEvents)
+			: events;
+	}, [events, isPi, maxVisibleEvents]);
+
+	const hiddenCount = isPi
+		? Math.max(0, piRows.length - visiblePiRows.length)
+		: Math.max(0, events.length - visibleCodexEvents.length);
+
+	const hasContent = isPi ? visiblePiRows.length > 0 : visibleCodexEvents.length > 0;
 
 	useEffect(() => {
 		const activityList = activityListRef.current;
 		if (!activityList) return;
 		activityList.scrollTop = activityList.scrollHeight;
-	}, [visibleEvents.length, status]);
+	}, [hasContent, status, visibleCodexEvents.length, visiblePiRows.length]);
 
 	return (
 		<section
@@ -283,29 +186,39 @@ export function ActivityStream({
 				</div>
 				<span className={`status-pill status-pill--${status}`}>{status}</span>
 			</div>
-			{visibleEvents.length ? (
+			{hasContent ? (
 				<>
-					{hiddenEventCount > 0 ? (
+					{hiddenCount > 0 ? (
 						<p className="muted activity-list-meta">
-							Showing last {visibleEvents.length} of {displayEvents.length}{" "}
-							events ({events.length} raw lines in transcript).
+							Showing last{" "}
+							{isPi ? visiblePiRows.length : visibleCodexEvents.length} of{" "}
+							{isPi ? piRows.length : events.length} events (
+							{events.length} raw JSONL lines in transcript).
 						</p>
 					) : null}
 					<ol className="activity-list" ref={activityListRef}>
-						{visibleEvents.map((event) => (
-							<li
-								key={event.id}
-								className={
-									event.type === "merged_assistant_text" ||
-									event.type === "merged_thinking_text"
-										? "activity-item--prose"
-										: undefined
-								}
-							>
-								<strong>{labelFor(agentCore, event)}</strong>
-								<code>{eventText(agentCore, event, textLimit)}</code>
-							</li>
-						))}
+						{isPi
+							? visiblePiRows.map((row) => (
+									<li
+										key={row.id}
+										className={
+											row.variant === "prose"
+												? "activity-item--prose"
+												: row.variant === "tool"
+													? "activity-item--tool"
+													: "activity-item--muted"
+										}
+									>
+										<strong>{row.label}</strong>
+										<code>{row.body.trim().slice(0, textLimit)}</code>
+									</li>
+								))
+							: visibleCodexEvents.map((event) => (
+									<li key={event.id}>
+										<strong>{labelForCodex(event)}</strong>
+										<code>{codexEventText(event, textLimit)}</code>
+									</li>
+								))}
 					</ol>
 				</>
 			) : (

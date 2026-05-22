@@ -1,4 +1,5 @@
 import type { VariantRun } from "@prisma/client";
+import { agentDisplayName, workspacePathForDisplay } from "@/lib/agent-display";
 import { runtimeLabel } from "@/lib/agent/invocation";
 import { parseStoredAgentCore, receiptHarness } from "@/lib/agent/stored-run";
 
@@ -30,7 +31,8 @@ export function RunReceipt({ run }: { run: VariantRun }) {
 		run.workspacePath,
 	);
 	const effortLabel = core === "pi" ? "Thinking level" : "Reasoning effort";
-	const agentName = core === "pi" ? "Pi" : "Codex";
+	const agentName = agentDisplayName(core);
+	const workspaceDisplay = workspacePathForDisplay(core, run.workspacePath);
 
 	return (
 		<div className="receipt-stack">
@@ -72,21 +74,25 @@ export function RunReceipt({ run }: { run: VariantRun }) {
 						<span>Harness</span>
 						<strong>{runtimeLabel(core, harness)}</strong>
 					</div>
-					<div className="receipt-card">
-						<span>Auth mode</span>
-						<strong>{run.selectedAuthMode}</strong>
-					</div>
+					{core === "codex" ? (
+						<div className="receipt-card">
+							<span>Auth mode</span>
+							<strong>{run.selectedAuthMode}</strong>
+						</div>
+					) : null}
 					<div className="receipt-card">
 						<span>Model</span>
 						<strong>{run.selectedModel}</strong>
 					</div>
-					<div className="receipt-card">
-						<span>{effortLabel}</span>
-						<strong>{run.selectedEffort}</strong>
-					</div>
+					{core === "codex" ? (
+						<div className="receipt-card">
+							<span>{effortLabel}</span>
+							<strong>{run.selectedEffort}</strong>
+						</div>
+					) : null}
 					<div className="receipt-card receipt-card--wide">
 						<span>Workspace path</span>
-						<code className="receipt-command">{run.workspacePath}</code>
+						<code className="receipt-command">{workspaceDisplay}</code>
 					</div>
 					<div className="receipt-card receipt-card--wide">
 						<span>{agentName} invocation</span>

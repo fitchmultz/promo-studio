@@ -319,6 +319,14 @@ code {
 	line-height: 1.5;
 	white-space: pre-wrap;
 }
+.activity-list li.activity-item--tool code {
+	color: #a5f3fc;
+	font-size: 0.9rem;
+}
+.activity-list li.activity-item--muted code {
+	color: #94a3b8;
+	font-size: 0.85rem;
+}
 .preview-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -601,6 +609,9 @@ code {
 }
 .agent-settings-fields .field:last-child {
 	margin-bottom: 0;
+}
+.agent-settings-fields input[readonly] {
+	opacity: 0.9;
 }
 .field-note {
 	font-size: 0.82rem;
