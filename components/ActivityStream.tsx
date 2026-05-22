@@ -11,6 +11,20 @@ interface EventItem {
 	parsed: Record<string, unknown>;
 }
 
+const PI_ACTIVITY_TYPES = new Set([
+	"session",
+	"agent_start",
+	"agent_end",
+	"turn_start",
+	"turn_end",
+	"tool_execution_start",
+	"tool_execution_update",
+	"tool_execution_end",
+	"message_start",
+	"message_update",
+	"message_end",
+]);
+
 function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -47,6 +61,7 @@ function labelForCodex(event: EventItem) {
 }
 
 function labelForPi(event: EventItem) {
+	if (event.type === "merged_assistant_text") return "Assistant";
 	if (event.type === "session") return "Pi session";
 	if (event.type === "agent_start") return "Pi agent started";
 	if (event.type === "agent_end") return "Pi agent finished";
@@ -65,6 +80,51 @@ function labelFor(agentCore: string, event: EventItem) {
 	return agentCore === "pi" ? labelForPi(event) : labelForCodex(event);
 }
 
+/** Only user-visible text deltas; skip thinking/reasoning JSON from the stream. */
+function piTextDeltaFromEvent(event: EventItem): string {
+	const assistantEvent = event.parsed.assistantMessageEvent;
+	if (!isJsonObject(assistantEvent)) return "";
+	if (assistantEvent.type !== "text_delta") return "";
+	return typeof assistantEvent.delta === "string" ? assistantEvent.delta : "";
+}
+
+function shouldShowPiEvent(event: EventItem): boolean {
+	if (!PI_ACTIVITY_TYPES.has(event.type)) return false;
+	if (event.type === "message_update") {
+		return piTextDeltaFromEvent(event).length > 0;
+	}
+	if (event.raw.trim().startsWith("{")) return false;
+	return true;
+}
+
+/** Merge Pi message_update text into one assistant block; drop thinking noise. */
+function normalizePiActivityEvents(events: EventItem[]): EventItem[] {
+	const out: EventItem[] = [];
+	let textBuffer = "";
+	const flushText = () => {
+		const trimmed = textBuffer.trim();
+		if (!trimmed) return;
+		out.push({
+			id: `merged-assistant-${out.length}`,
+			type: "merged_assistant_text",
+			raw: trimmed,
+			parsed: { type: "merged_assistant_text", text: trimmed },
+		});
+		textBuffer = "";
+	};
+	for (const event of events) {
+		if (!shouldShowPiEvent(event)) continue;
+		if (event.type === "message_update") {
+			textBuffer += piTextDeltaFromEvent(event);
+			continue;
+		}
+		flushText();
+		out.push(event);
+	}
+	flushText();
+	return out;
+}
+
 function formatChanges(changes: unknown) {
 	if (!Array.isArray(changes)) return "";
 	return changes
@@ -79,7 +139,16 @@ function formatChanges(changes: unknown) {
 		.join("\n");
 }
 
-function eventText(agentCore: string, event: EventItem) {
+function eventText(
+	agentCore: string,
+	event: EventItem,
+	maxChars: number,
+) {
+	if (event.type === "merged_assistant_text") {
+		const text =
+			typeof event.parsed.text === "string" ? event.parsed.text : "";
+		return text.trim().slice(0, maxChars);
+	}
 	const item = itemFor(event);
 	if (agentCore === "pi") {
 		if (
@@ -91,14 +160,6 @@ function eventText(agentCore: string, event: EventItem) {
 					? event.parsed.toolName
 					: "tool";
 			return toolName;
-		}
-		if (event.type === "message_update") {
-			const assistantEvent = event.parsed.assistantMessageEvent;
-			const delta = isJsonObject(assistantEvent)
-				? assistantEvent.delta
-				: undefined;
-			if (typeof delta === "string" && delta.trim())
-				return delta.trim().slice(0, 700);
 		}
 	}
 	if (
@@ -116,7 +177,7 @@ function eventText(agentCore: string, event: EventItem) {
 		const output =
 			typeof item.aggregated_output === "string" &&
 			item.aggregated_output.trim()
-				? `\n${item.aggregated_output.trim().slice(0, 700)}`
+				? `\n${item.aggregated_output.trim().slice(0, maxChars)}`
 				: "";
 		return `${command}${output}`;
 	}
@@ -125,7 +186,7 @@ function eventText(agentCore: string, event: EventItem) {
 	if (typeof item?.text === "string") return item.text;
 	if (typeof item?.name === "string") return item.name;
 	if (typeof event.parsed.message === "string") return event.parsed.message;
-	return event.raw;
+	return labelFor(agentCore, event);
 }
 
 export function ActivityStream({
@@ -169,13 +230,30 @@ export function ActivityStream({
 		};
 	}, [router, runId, status]);
 
-	const visibleEvents = useMemo(() => events.slice(-80), [events]);
+	const displayEvents = useMemo(() => {
+		if (agentCore === "pi") {
+			return normalizePiActivityEvents(events);
+		}
+		return events;
+	}, [agentCore, events]);
+
+	const maxVisibleEvents =
+		status === "running" ? 120 : agentCore === "pi" ? 80 : 250;
+	const visibleEvents = useMemo(
+		() =>
+			displayEvents.length > maxVisibleEvents
+				? displayEvents.slice(-maxVisibleEvents)
+				: displayEvents,
+		[displayEvents, maxVisibleEvents],
+	);
+	const textLimit = status === "running" ? 1200 : 6000;
+	const hiddenEventCount = Math.max(0, displayEvents.length - visibleEvents.length);
 
 	useEffect(() => {
 		const activityList = activityListRef.current;
 		if (!activityList) return;
 		activityList.scrollTop = activityList.scrollHeight;
-	});
+	}, [visibleEvents.length, status]);
 
 	return (
 		<section
@@ -190,14 +268,29 @@ export function ActivityStream({
 				<span className={`status-pill status-pill--${status}`}>{status}</span>
 			</div>
 			{visibleEvents.length ? (
-				<ol className="activity-list" ref={activityListRef}>
-					{visibleEvents.map((event) => (
-						<li key={event.id}>
-							<strong>{labelFor(agentCore, event)}</strong>
-							<code>{eventText(agentCore, event)}</code>
-						</li>
-					))}
-				</ol>
+				<>
+					{hiddenEventCount > 0 ? (
+						<p className="muted activity-list-meta">
+							Showing last {visibleEvents.length} of {displayEvents.length}{" "}
+							stream events ({events.length} raw).
+						</p>
+					) : null}
+					<ol className="activity-list" ref={activityListRef}>
+						{visibleEvents.map((event) => (
+							<li
+								key={event.id}
+								className={
+									event.type === "merged_assistant_text"
+										? "activity-item--prose"
+										: undefined
+								}
+							>
+								<strong>{labelFor(agentCore, event)}</strong>
+								<code>{eventText(agentCore, event, textLimit)}</code>
+							</li>
+						))}
+					</ol>
+				</>
 			) : (
 				<p className="muted">
 					Waiting for {agentName} to emit its first file read, edit, or command
