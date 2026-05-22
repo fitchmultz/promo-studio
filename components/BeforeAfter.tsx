@@ -1,6 +1,12 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import type { Product } from "@prisma/client";
+import { RunPhaseStepper } from "@/components/RunPhaseStepper";
 import { builtVariantHeading } from "@/lib/agent-display";
 import { parseFeatures } from "@/lib/products";
+import { inferRunPhase } from "@/lib/run-phase";
+import { VariantRunPollSchema } from "@/lib/variant-run-api";
 
 function escapeHtml(value: string) {
 	return value
@@ -22,34 +28,89 @@ export function BeforeAfter({
 	product,
 	previewHtml,
 	agentCore = "codex",
-	status = "succeeded",
+	status: initialStatus = "succeeded",
+	runId,
 }: {
 	product: Product;
 	previewHtml: string;
 	agentCore?: string;
 	status?: string;
+	/** When set, polls run status to show live phase above the after preview. */
+	runId?: string;
 }) {
+	const [status, setStatus] = useState(initialStatus);
+	const [livePreview, setLivePreview] = useState(previewHtml);
+	const [pollEvents, setPollEvents] = useState<
+		Array<{ type: string; parsed: Record<string, unknown>; raw?: string }>
+	>([]);
+	const [hasPreview, setHasPreview] = useState(Boolean(previewHtml?.trim()));
+
+	useEffect(() => {
+		setStatus(initialStatus);
+		setLivePreview(previewHtml);
+		setHasPreview(Boolean(previewHtml?.trim()));
+	}, [initialStatus, previewHtml]);
+
+	useEffect(() => {
+		if (!runId || status !== "running") return undefined;
+		let active = true;
+		async function poll() {
+			const response = await fetch(`/api/variant-runs/${runId}`, {
+				cache: "no-store",
+			});
+			if (!active || !response.ok) return;
+			const parsed = VariantRunPollSchema.safeParse(await response.json());
+			if (!parsed.success) return;
+			setStatus(parsed.data.run.status);
+			setHasPreview(parsed.data.run.hasPreview ?? false);
+			setPollEvents(parsed.data.events);
+		}
+		void poll();
+		const timer = setInterval(() => void poll(), 1500);
+		return () => {
+			active = false;
+			clearInterval(timer);
+		};
+	}, [runId, status]);
+
 	const afterHeading = builtVariantHeading(agentCore);
+	const phase = useMemo(
+		() =>
+			inferRunPhase({
+				status,
+				agentCore,
+				hasPreview,
+				events: pollEvents,
+			}),
+		[status, agentCore, hasPreview, pollEvents],
+	);
+
 	const previewPlaceholder =
 		status === "running"
-			? "<p><strong>Variant preview is not ready.</strong></p><p>The agent is editing the storefront, running tests, and building. Watch the activity stream above for progress.</p>"
+			? `<p><strong>Variant preview is not ready.</strong></p><p>Current phase: <strong>${escapeHtml(phase.label)}</strong> (step ${phase.step} of ${phase.total}).</p>`
 			: "<p>Variant preview is not ready.</p>";
+
 	return (
 		<div className="preview-grid">
-			<section>
+			<section className="preview-pane preview-pane--before">
 				<h3>Before: plain storefront template</h3>
 				<iframe
 					sandbox=""
 					title="Original product page"
 					srcDoc={beforeHtml(product)}
+					tabIndex={-1}
+					loading="lazy"
 				/>
 			</section>
-			<section>
+			<section className="preview-pane preview-pane--after">
 				<h3>{afterHeading}</h3>
+				{status === "running" ? <RunPhaseStepper phase={phase} /> : null}
 				<iframe
 					sandbox="allow-scripts"
 					title="Variant product page"
-					srcDoc={previewHtml || previewPlaceholder}
+					srcDoc={livePreview || previewPlaceholder}
+					tabIndex={-1}
+					loading="lazy"
 				/>
 			</section>
 		</div>

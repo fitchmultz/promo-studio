@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RunPhaseStepper } from "@/components/RunPhaseStepper";
 import { agentDisplayName } from "@/lib/agent-display";
 import { isJsonObject } from "@/lib/json";
 import { piEventsToActivityRows } from "@/lib/pi-activity-view";
+import { inferRunPhase } from "@/lib/run-phase";
 import { VariantRunPollSchema } from "@/lib/variant-run-api";
 
 interface EventItem {
@@ -107,6 +109,7 @@ export function ActivityStream({
 	const router = useRouter();
 	const [events, setEvents] = useState(initialEvents);
 	const [status, setStatus] = useState(initialStatus);
+	const [hasPreview, setHasPreview] = useState(false);
 	const activityListRef = useRef<HTMLOListElement>(null);
 	const isPi = agentCore === "pi";
 	const agentName = agentDisplayName(agentCore);
@@ -125,6 +128,7 @@ export function ActivityStream({
 			const nextStatus = payload.run.status;
 			setEvents(payload.events);
 			setStatus(nextStatus);
+			setHasPreview(payload.run.hasPreview ?? false);
 			if (nextStatus !== "running") router.refresh();
 		}
 		void poll();
@@ -139,7 +143,7 @@ export function ActivityStream({
 
 	const piRows = useMemo(() => {
 		if (!isPi) return [];
-		return piEventsToActivityRows(events, textLimit);
+		return piEventsToActivityRows(events, textLimit, { demoLive: true });
 	}, [events, isPi, textLimit]);
 
 	const maxVisibleEvents = status === "running" ? 200 : 400;
@@ -165,6 +169,17 @@ export function ActivityStream({
 
 	const hasContent = isPi ? visiblePiRows.length > 0 : visibleCodexEvents.length > 0;
 
+	const runPhase = useMemo(
+		() =>
+			inferRunPhase({
+				status,
+				agentCore,
+				hasPreview,
+				events,
+			}),
+		[status, agentCore, hasPreview, events],
+	);
+
 	useEffect(() => {
 		const activityList = activityListRef.current;
 		if (!activityList) return;
@@ -183,6 +198,7 @@ export function ActivityStream({
 				</div>
 				<span className={`status-pill status-pill--${status}`}>{status}</span>
 			</div>
+			{status === "running" ? <RunPhaseStepper phase={runPhase} /> : null}
 			{hasContent ? (
 				<>
 					{hiddenCount > 0 ? (

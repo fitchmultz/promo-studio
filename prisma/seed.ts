@@ -1,8 +1,17 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import bcrypt from "bcryptjs";
+import { serializeAgentSettings } from "../lib/agent-settings-storage";
 import { prisma } from "../lib/db";
 import { createVariantWorkspace } from "../lib/workspace";
+
+const DEMO_AGENT_PREFERENCES = serializeAgentSettings({
+	agentCore: "pi",
+	agentHarness: "json",
+	model: "cursor/composer-2.5",
+	reasoningEffort: "codex-default",
+	authMode: "auto",
+});
 
 const SEEDED_RUN_ID = "seeded-demo-variant";
 
@@ -129,12 +138,18 @@ async function main() {
 	const passwordHash = await bcrypt.hash("promo-studio", 10);
 	const user = await prisma.user.upsert({
 		where: { email: "demo@promostudio.test" },
-		update: { name: "Demo User", role: "admin", passwordHash },
+		update: {
+			name: "Demo User",
+			role: "admin",
+			passwordHash,
+			agentPreferences: DEMO_AGENT_PREFERENCES,
+		},
 		create: {
 			email: "demo@promostudio.test",
 			name: "Demo User",
 			role: "admin",
 			passwordHash,
+			agentPreferences: DEMO_AGENT_PREFERENCES,
 		},
 	});
 	await prisma.product.upsert({

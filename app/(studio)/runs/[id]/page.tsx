@@ -62,6 +62,7 @@ export default async function RunDetailPage({
 							previewHtml={run.previewHtml}
 							agentCore={run.agentCore}
 							status={run.status}
+							runId={run.id}
 						/>
 					</>
 				),

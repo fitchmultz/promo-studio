@@ -11,7 +11,10 @@ export type EventItemPayload = z.infer<typeof EventItemSchema>;
 
 export const VariantRunPollSchema = z.object({
 	events: z.array(EventItemSchema),
-	run: z.object({ status: z.string() }),
+	run: z.object({
+		status: z.string(),
+		hasPreview: z.boolean().optional(),
+	}),
 });
 
 export const CreateVariantRunResponseSchema = z.object({

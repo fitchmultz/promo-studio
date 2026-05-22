@@ -1,9 +1,14 @@
 /**
- * Maps Pi JSON CLI events to activity rows similar to the interactive TUI:
- * merged thinking/assistant prose, bash as `$ command`, edit/write/read with paths.
+ * Maps Pi JSON CLI events to demo-friendly activity rows (Codex-parity step labels).
+ * Raw JSONL stays on the Transcript tab only.
  */
 
 import { isJsonObject } from "@/lib/json";
+import {
+	extractThinkingActions,
+	labelForPiAction,
+	summarizeAssistantProse,
+} from "@/lib/pi-activity-steps";
 
 export interface PiActivityInputEvent {
 	id: string;
@@ -25,8 +30,12 @@ export interface PiActivityRow {
 	kind: PiActivityRowKind;
 	label: string;
 	body: string;
-	/** prose = thinking/assistant; tool = monospace command block */
 	variant: "prose" | "tool" | "muted";
+}
+
+export interface PiActivityViewOptions {
+	/** When true (default), live stream shows actionable steps only — no essay blocks or raw JSON. */
+	demoLive?: boolean;
 }
 
 function piMessageUpdateKind(
@@ -52,7 +61,6 @@ function piMessageUpdateKind(
 	return "other";
 }
 
-/** Latest assistant partial snapshot (cursor-sdk embeds tool-style blocks in thinking). */
 function piPartialProseFromEvent(event: PiActivityInputEvent): string {
 	const assistantEvent = event.parsed.assistantMessageEvent;
 	if (!isJsonObject(assistantEvent)) return "";
@@ -150,18 +158,29 @@ function formatPiToolCall(toolName: string, args: unknown): string {
 				: toolName;
 		}
 		default:
-			if (isJsonObject(args) && Object.keys(args).length > 0) {
-				try {
-					const compact = JSON.stringify(args);
-					const preview =
-						compact.length > 200 ? `${compact.slice(0, 200)}…` : compact;
-					return `${toolName} ${preview}`;
-				} catch {
-					return toolName;
-				}
-			}
 			return toolName;
 	}
+}
+
+function codexStyleToolLabel(
+	toolName: string,
+	phase: "start" | "end",
+	isError?: boolean,
+): string {
+	if (toolName === "bash") {
+		return phase === "start"
+			? "Shell command started"
+			: isError
+				? "Shell command failed"
+				: "Shell command completed";
+	}
+	if (toolName === "edit" || toolName === "write") {
+		return phase === "start" ? "File edit started" : "File edit completed";
+	}
+	if (toolName === "read") {
+		return phase === "start" ? "Read file" : "Read file completed";
+	}
+	return phase === "start" ? "Tool started" : isError ? "Tool failed" : "Tool finished";
 }
 
 function toolResultText(result: unknown, maxChars: number): string {
@@ -178,51 +197,41 @@ function toolResultText(result: unknown, maxChars: number): string {
 	const joined = parts.join("\n").trim();
 	if (!joined) return "";
 	if (joined.length <= maxChars) return joined;
-	return `${joined.slice(0, maxChars)}… (${joined.length.toLocaleString()} chars — see Transcript tab)`;
+	return `(${joined.length.toLocaleString()} chars — see Transcript tab)`;
 }
 
-function lifecycleLabel(type: string): string | null {
-	switch (type) {
-		case "session":
-			return "Session";
-		case "agent_start":
-			return "Agent started";
-		case "agent_end":
-			return "Agent finished";
-		case "turn_start":
-			return "Turn";
-		case "turn_end":
-			return "Turn finished";
-		case "message_start":
-			return null;
-		case "message_end":
-			return null;
-		default:
-			return null;
+const SKIP_TYPES = new Set([
+	"message_start",
+	"message_end",
+	"tool_execution_update",
+]);
+
+function emitThinkingAsSteps(
+	out: PiActivityRow[],
+	buffer: string,
+	seen: Set<string>,
+	serial: number,
+) {
+	for (const action of extractThinkingActions(buffer)) {
+		if (seen.has(action)) continue;
+		seen.add(action);
+		out.push({
+			id: `pi-step-${serial}-${seen.size}`,
+			kind: "tool",
+			label: labelForPiAction(action),
+			body: action,
+			variant: "tool",
+		});
 	}
 }
 
-function lifecycleBody(event: PiActivityInputEvent): string {
-	if (event.type === "session") {
-		const cwd = typeof event.parsed.cwd === "string" ? event.parsed.cwd : "";
-		return cwd ? shortenWorkspacePath(cwd) : event.raw.trim();
-	}
-	if (event.type === "agent_end" && isJsonObject(event.parsed)) {
-		const messages = event.parsed.messages;
-		if (Array.isArray(messages)) {
-			return `${messages.length} message(s) in session`;
-		}
-	}
-	return "";
-}
-
-function pushMerged(
+function pushMergedProse(
 	out: PiActivityRow[],
 	kind: "thinking" | "assistant",
 	buffer: string,
 	serial: number,
 ) {
-	if (!buffer) return;
+	if (!buffer.trim()) return;
 	out.push({
 		id: `merged-${kind}-${serial}`,
 		kind,
@@ -232,30 +241,46 @@ function pushMerged(
 	});
 }
 
-const SKIP_TYPES = new Set([
-	"message_start",
-	"message_end",
-	"tool_execution_update",
-]);
-
 /**
- * Convert raw Pi JSONL events into TUI-like activity rows (merge deltas, format tools).
+ * Convert Pi JSONL events into activity rows for the live stream.
  */
 export function piEventsToActivityRows(
 	events: PiActivityInputEvent[],
 	maxBodyChars: number,
+	options: PiActivityViewOptions = {},
 ): PiActivityRow[] {
+	const demoLive = options.demoLive !== false;
 	const out: PiActivityRow[] = [];
 	let textBuffer = "";
 	let thinkingBuffer = "";
 	let mergeSerial = 0;
+	const seenActions = new Set<string>();
 
 	const flushText = () => {
-		pushMerged(out, "assistant", textBuffer, mergeSerial++);
+		if (!textBuffer) return;
+		if (demoLive) {
+			const summary = summarizeAssistantProse(textBuffer);
+			if (summary) {
+				out.push({
+					id: `assistant-summary-${mergeSerial++}`,
+					kind: "assistant",
+					label: "Agent message",
+					body: summary,
+					variant: "muted",
+				});
+			}
+		} else {
+			pushMergedProse(out, "assistant", textBuffer, mergeSerial++);
+		}
 		textBuffer = "";
 	};
 	const flushThinking = () => {
-		pushMerged(out, "thinking", thinkingBuffer, mergeSerial++);
+		if (!thinkingBuffer) return;
+		if (demoLive) {
+			emitThinkingAsSteps(out, thinkingBuffer, seenActions, mergeSerial++);
+		} else {
+			pushMergedProse(out, "thinking", thinkingBuffer, mergeSerial++);
+		}
 		thinkingBuffer = "";
 	};
 	const flushAll = () => {
@@ -288,11 +313,14 @@ export function piEventsToActivityRows(
 				typeof event.parsed.toolName === "string"
 					? event.parsed.toolName
 					: "tool";
+			const body = formatPiToolCall(toolName, event.parsed.args);
+			if (demoLive && seenActions.has(body)) continue;
+			seenActions.add(body);
 			out.push({
 				id: event.id,
 				kind: "tool",
-				label: "Tool",
-				body: formatPiToolCall(toolName, event.parsed.args),
+				label: codexStyleToolLabel(toolName, "start"),
+				body,
 				variant: "tool",
 			});
 			continue;
@@ -304,33 +332,61 @@ export function piEventsToActivityRows(
 					? event.parsed.toolName
 					: "tool";
 			const callLine = formatPiToolCall(toolName, event.parsed.args);
-			const output = toolResultText(event.parsed.result, maxBodyChars);
+			const output = toolResultText(event.parsed.result, 400);
 			const isError = event.parsed.isError === true;
 			const body = output ? `${callLine}\n${output}` : callLine;
 			out.push({
 				id: event.id,
 				kind: "tool",
-				label: isError ? "Tool failed" : "Tool done",
-				body: body.slice(0, maxBodyChars * 2),
+				label: codexStyleToolLabel(toolName, "end", isError),
+				body: body.slice(0, maxBodyChars),
 				variant: "tool",
 			});
 			continue;
 		}
 
-		const label = lifecycleLabel(event.type);
-		if (label) {
-			const body = lifecycleBody(event);
+		if (demoLive) {
+			if (event.type === "session") continue;
+			if (event.type === "turn_start" || event.type === "turn_end") continue;
+			if (event.type === "agent_start") {
+				out.push({
+					id: event.id,
+					kind: "lifecycle",
+					label: "Pi agent started",
+					body: "Running pi --mode json in isolated storefront workspace",
+					variant: "muted",
+				});
+				continue;
+			}
+			if (event.type === "agent_end") continue;
+			continue;
+		}
+
+		if (event.type === "session") {
+			const cwd = typeof event.parsed.cwd === "string" ? event.parsed.cwd : "";
 			out.push({
 				id: event.id,
-				kind: event.type === "session" ? "session" : "lifecycle",
-				label,
-				body: body || event.raw.trim().slice(0, maxBodyChars),
+				kind: "session",
+				label: "Session",
+				body: cwd ? shortenWorkspacePath(cwd) : "",
+				variant: "muted",
+			});
+			continue;
+		}
+
+		if (event.type === "agent_start") {
+			out.push({
+				id: event.id,
+				kind: "lifecycle",
+				label: "Agent started",
+				body: "",
 				variant: "muted",
 			});
 			continue;
 		}
 
 		const raw = event.raw.trim();
+		if (raw.startsWith("{") && demoLive) continue;
 		if (raw) {
 			out.push({
 				id: event.id,

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RunReceipt } from "@/components/RunReceipt";
+import { agentDisplayName } from "@/lib/agent-display";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -15,22 +16,22 @@ export default async function ProofPage() {
 		<main className="studio-page proof-page" id="main-content">
 			<section className="studio-hero studio-hero--compact">
 				<p className="section-kicker">Admin proof</p>
-				<h1>Complete Codex execution receipt</h1>
+				<h1>Complete agent execution receipt</h1>
 				<p>
 					This page is admin-only and shows the full command, prompt, manifest,
-					validation, transcript, and workspace evidence.
+					validation, transcript, and workspace evidence for the latest run.
 				</p>
 			</section>
 			{latestRun ? (
 				<section
 					className="studio-card proof-grid"
-					aria-label="Codex execution proof"
+					aria-label="Agent execution proof"
 				>
 					<div className="proof-alert proof-alert--live">
 						<strong>
 							{latestRun.id === "seeded-demo-variant"
 								? "Seeded demo data"
-								: "Persisted Codex run"}
+								: `Persisted ${agentDisplayName(latestRun.agentCore)} run`}
 						</strong>
 						<span>
 							Run {latestRun.id} for {latestRun.product.name}

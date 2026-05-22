@@ -88,12 +88,25 @@ export async function DiffViewer({
 		<div className="diff-list">
 			{diffs.map((entry) => (
 				<details key={entry.file} open>
-					<summary>{entry.file}</summary>
-					<pre>
+					<summary>
+						{entry.file}
+						<span className="sr-only">
+							{" "}
+							(diff with additions and removals)
+						</span>
+					</summary>
+					<pre aria-label={`Diff for ${entry.file}`}>
 						{entry.diffLines.map((line) => (
 							<span
 								className={`diff-line diff-line--${line.kind}`}
 								key={line.key}
+								aria-label={
+									line.kind === "added"
+										? `Addition: ${line.text.slice(2)}`
+										: line.kind === "removed"
+											? `Removal: ${line.text.slice(2)}`
+											: line.text
+								}
 							>
 								{line.text}
 							</span>

@@ -27,7 +27,11 @@ export async function GET(
 			? run.transcript
 			: await resolveFullTranscript(run.id, run.transcript);
 	return NextResponse.json({
-		run: { ...run, transcript: pollTranscript },
+		run: {
+			...run,
+			transcript: pollTranscript,
+			hasPreview: Boolean(run.previewHtml?.trim()),
+		},
 		events: parseCodexEvents(pollTranscript),
 		changedFiles: parseStringArrayJson(run.changedFiles),
 	});

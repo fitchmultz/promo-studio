@@ -33,6 +33,10 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/codex-runner", () => ({
 	parseCodexEvents: () => [],
 }));
+vi.mock("@/lib/agent/transcript-store", () => ({
+	resolveFullTranscript: async (_id: string, db: string) => db,
+	runTranscriptFileByteLength: async () => null,
+}));
 vi.mock("@/lib/db", () => ({
 	prisma: {
 		variantRun: {

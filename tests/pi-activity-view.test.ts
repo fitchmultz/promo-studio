@@ -14,7 +14,7 @@ function ev(
 }
 
 describe("piEventsToActivityRows", () => {
-	it("merges consecutive thinking and text deltas", () => {
+	it("demo live mode extracts thinking actions instead of essay blocks", () => {
 		const rows = piEventsToActivityRows(
 			[
 				ev("message_update", {
@@ -31,13 +31,13 @@ describe("piEventsToActivityRows", () => {
 				}),
 			],
 			8000,
+			{ demoLive: true },
 		);
-		expect(rows.map((r) => r.label)).toEqual(["Thinking", "Assistant"]);
-		expect(rows[0]?.body).toBe("plan ahead");
-		expect(rows[1]?.body).toBe("Hello world");
+		expect(rows.map((r) => r.label)).toEqual(["Agent message"]);
+		expect(rows[0]?.body).toContain("Hello");
 	});
 
-	it("formats bash tool like the Pi TUI", () => {
+	it("demo live mode maps bash tool to Codex-style labels", () => {
 		const rows = piEventsToActivityRows(
 			[
 				ev("tool_execution_start", {
@@ -47,12 +47,13 @@ describe("piEventsToActivityRows", () => {
 				}),
 			],
 			4000,
+			{ demoLive: true },
 		);
-		expect(rows[0]?.variant).toBe("tool");
+		expect(rows[0]?.label).toBe("Shell command started");
 		expect(rows[0]?.body).toBe("$ npm test");
 	});
 
-	it("renders thinking_start partial blocks like the Pi TUI (not raw JSON)", () => {
+	it("extracts read/edit lines from thinking_start partials (cursor-sdk)", () => {
 		const rows = piEventsToActivityRows(
 			[
 				ev("message_update", {
@@ -63,7 +64,8 @@ describe("piEventsToActivityRows", () => {
 							content: [
 								{
 									type: "thinking",
-									thinking: "read package.json\n\n{\n  \"name\": \"demo\"\n}",
+									thinking:
+										"read package.json\n\n{\n  \"name\": \"demo\"\n}\n100% organic cotton canvas",
 								},
 							],
 						},
@@ -71,23 +73,23 @@ describe("piEventsToActivityRows", () => {
 				}),
 			],
 			8000,
+			{ demoLive: true },
 		);
-		expect(rows).toHaveLength(1);
-		expect(rows[0]?.label).toBe("Thinking");
+		expect(rows.map((r) => r.label)).toEqual(["Read file"]);
 		expect(rows[0]?.body).toContain("read package.json");
-		expect(rows[0]?.body).not.toContain("assistantMessageEvent");
+		expect(rows[0]?.body).not.toContain("organic cotton");
 	});
 
-	it("skips message_start and message_end noise", () => {
+	it("skips raw JSON lifecycle noise in demo mode", () => {
 		const rows = piEventsToActivityRows(
 			[
-				ev("message_start", { message: { role: "assistant" } }),
-				ev("message_end", { message: { role: "assistant" } }),
+				ev("turn_start", { turn: 1 }),
 				ev("agent_start", {}),
 			],
 			4000,
+			{ demoLive: true },
 		);
-		expect(rows.map((r) => r.label)).toEqual(["Agent started"]);
+		expect(rows.map((r) => r.label)).toEqual(["Pi agent started"]);
 	});
 });
 

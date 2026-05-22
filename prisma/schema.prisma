@@ -7,13 +7,14 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String
-  role         String
-  passwordHash String
-  createdAt    DateTime     @default(now())
-  variantRuns  VariantRun[]
+  id               String       @id @default(cuid())
+  email            String       @unique
+  name             String
+  role             String
+  passwordHash     String
+  agentPreferences String       @default("")
+  createdAt        DateTime     @default(now())
+  variantRuns      VariantRun[]
 }
 
 model Product {
