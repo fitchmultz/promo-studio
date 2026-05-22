@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { Product, VariantRun } from "@prisma/client";
-import { agentDisplayName, workspacePathForDisplay } from "@/lib/agent-display";
+import {
+	runAgentDisplayLabel,
+	workspacePathForDisplay,
+} from "@/lib/agent-display";
 
 export function RunHistory({
 	runs,
@@ -18,7 +21,11 @@ export function RunHistory({
 								<div>
 									<strong>{run.campaignGoal}</strong>
 									<span>
-										{run.product.name} · {agentDisplayName(run.agentCore)}
+										{run.product.name} ·{" "}
+										{runAgentDisplayLabel({
+											agentCore: run.agentCore,
+											selectedModel: run.selectedModel,
+										})}
 									</span>
 									<small>{run.outputSummary || run.campaignBrief}</small>
 									<small className="history-workspace">

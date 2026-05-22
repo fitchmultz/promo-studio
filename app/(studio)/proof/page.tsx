@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { RunReceipt } from "@/components/RunReceipt";
-import { TranscriptViewer } from "@/components/TranscriptViewer";
-import { agentDisplayName, workspacePathForDisplay } from "@/lib/agent-display";
+import { ProofTranscriptSection } from "@/components/ProofTranscriptSection";
+import {
+	runAgentDisplayLabel,
+	workspacePathForDisplay,
+} from "@/lib/agent-display";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -32,21 +35,22 @@ export default async function ProofPage() {
 						<strong>
 							{latestRun.id === "seeded-demo-variant"
 								? "Seeded demo data"
-								: `Persisted ${agentDisplayName(latestRun.agentCore)} run`}
+								: `Persisted ${runAgentDisplayLabel({
+										agentCore: latestRun.agentCore,
+										selectedModel: latestRun.selectedModel,
+									})} run`}
 						</strong>
 						<span>
 							Run {latestRun.id} for {latestRun.product.name}
 						</span>
 					</div>
-					<RunReceipt run={latestRun} />
-					<details className="proof-details" open>
-						<summary>Full transcript</summary>
-						<TranscriptViewer
-							runId={latestRun.id}
-							agentCore={latestRun.agentCore}
-							invocation={latestRun.codexCommand}
-						/>
-					</details>
+					<RunReceipt run={latestRun} detailsOpen={false} />
+					<ProofTranscriptSection
+						runId={latestRun.id}
+						agentCore={latestRun.agentCore}
+						selectedModel={latestRun.selectedModel}
+						invocation={latestRun.codexCommand}
+					/>
 					<details className="proof-details">
 						<summary>Workspace path and changed files</summary>
 						<pre>{`${workspacePathForDisplay(latestRun.agentCore, latestRun.workspacePath)}\n${latestRun.changedFiles}`}</pre>

@@ -31,6 +31,7 @@
 	],
 	"exclude": [
 		"node_modules",
+		"agent-workspaces",
 		"codex-workspaces",
 		"artifacts",
 		"templates/storefront/dist"

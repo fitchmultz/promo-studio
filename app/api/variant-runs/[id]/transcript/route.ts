@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { resolveFullTranscript } from "@/lib/agent/transcript-store";
 import { prisma } from "@/lib/db";
 
-const DEFAULT_TAIL_LINES = 400;
+const DEFAULT_TAIL_LINES = 120;
 const MAX_TAIL_LINES = 2000;
 
 export async function GET(

@@ -39,6 +39,8 @@ export interface PiActivityRow {
 export interface PiActivityViewOptions {
 	/** When true (default), live stream shows actionable steps only — no essay blocks or raw JSON. */
 	demoLive?: boolean;
+	/** User-facing agent label (e.g. Composer 2.5); defaults to Pi. */
+	agentLabel?: string;
 }
 
 function piMessageUpdateKind(
@@ -286,6 +288,7 @@ export function piEventsToActivityRows(
 	options: PiActivityViewOptions = {},
 ): PiActivityRow[] {
 	const demoLive = options.demoLive !== false;
+	const agentLabel = options.agentLabel?.trim() || "Pi";
 	const out: PiActivityRow[] = [];
 	let textBuffer = "";
 	let thinkingBuffer = "";
@@ -389,7 +392,7 @@ export function piEventsToActivityRows(
 				out.push({
 					id: event.id,
 					kind: "lifecycle",
-					label: "Pi agent started",
+					label: `${agentLabel} agent started`,
 					body: "Running pi --mode json in isolated storefront workspace",
 					variant: "muted",
 				});

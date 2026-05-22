@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RunPhaseStepper } from "@/components/RunPhaseStepper";
 import {
-	agentDisplayName,
 	formatShellCommandForDisplay,
+	runAgentDisplayLabel,
 } from "@/lib/agent-display";
 import { isJsonObject } from "@/lib/json";
 import { piEventsToActivityRows } from "@/lib/pi-activity-view";
@@ -103,11 +103,13 @@ function codexEventText(event: EventItem, maxChars: number) {
 export function ActivityStream({
 	runId,
 	agentCore = "codex",
+	selectedModel = "",
 	initialEvents = [],
 	initialStatus = "running",
 }: {
 	runId: string;
 	agentCore?: string;
+	selectedModel?: string;
 	initialEvents?: EventItem[];
 	initialStatus?: string;
 }) {
@@ -117,7 +119,7 @@ export function ActivityStream({
 	const [hasPreview, setHasPreview] = useState(false);
 	const activityListRef = useRef<HTMLOListElement>(null);
 	const isPi = agentCore === "pi";
-	const agentName = agentDisplayName(agentCore);
+	const agentName = runAgentDisplayLabel({ agentCore, selectedModel });
 
 	useEffect(() => {
 		if (status !== "running") return undefined;
@@ -148,8 +150,11 @@ export function ActivityStream({
 
 	const piRows = useMemo(() => {
 		if (!isPi) return [];
-		return piEventsToActivityRows(events, textLimit, { demoLive: true });
-	}, [events, isPi, textLimit]);
+		return piEventsToActivityRows(events, textLimit, {
+			demoLive: true,
+			agentLabel: agentName,
+		});
+	}, [agentName, events, isPi, textLimit]);
 
 	const maxVisibleEvents = status === "running" ? 200 : 400;
 	const maxVisiblePiRows = status === "running" ? 120 : 200;

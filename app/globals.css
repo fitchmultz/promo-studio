@@ -420,6 +420,9 @@ code {
 	border-radius: 14px;
 	color: #e2e8f0;
 	margin: 0.75rem 0;
+	max-width: 100%;
+	min-width: 0;
+	overflow: hidden;
 	padding: 0.9rem;
 }
 .diff-list summary,
@@ -428,16 +431,55 @@ code {
 	font-weight: 900;
 }
 .diff-list pre,
-.proof-details pre,
 .transcript-meta {
 	font-size: 0.82rem;
 	margin: 0 0 0.5rem;
 }
+.proof-details pre {
+	font-size: 0.82rem;
+	margin: 0 0 0.5rem;
+	max-height: min(50vh, 420px);
+	max-width: 100%;
+	overflow: auto;
+	white-space: pre;
+	word-break: normal;
+}
 .transcript {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		"Liberation Mono", "Courier New", monospace;
+	font-size: 0.82rem;
 	max-height: min(70vh, 720px);
 	overflow: auto;
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+.transcript-virtual-track {
+	position: relative;
+	width: 100%;
+}
+.transcript-virtual-window {
+	left: 0;
+	position: absolute;
+	right: 0;
+	top: 0;
+}
+.transcript-line {
+	margin: 0;
+	overflow: hidden;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.transcript-load-more {
+	margin-top: 0.75rem;
+}
+.harness-value {
+	font-weight: 700;
+	margin: 0.35rem 0 0;
+}
+.field-label {
+	display: block;
+	font-weight: 700;
+	margin-bottom: 0.35rem;
 }
 .diff-line {
 	display: block;
@@ -460,6 +502,8 @@ code {
 .receipt-stack {
 	display: grid;
 	gap: 1rem;
+	max-width: 100%;
+	min-width: 0;
 }
 .receipt-section {
 	display: grid;
@@ -471,8 +515,10 @@ code {
 }
 .receipt-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 0.75rem;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	max-width: 100%;
+	min-width: 0;
 }
 .receipt-card {
 	background: #f8fafc;
@@ -480,12 +526,21 @@ code {
 	border-radius: 14px;
 	display: grid;
 	gap: 0.3rem;
+	min-width: 0;
+	overflow: hidden;
 	padding: 1rem;
 }
 .receipt-card span {
 	color: var(--muted);
 	font-size: 0.84rem;
 	font-weight: 800;
+}
+.receipt-card strong {
+	display: block;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .receipt-card--wide {
 	grid-column: 1 / -1;
@@ -503,9 +558,12 @@ code {
 	font-size: 0.9rem;
 	font-weight: 700;
 	line-height: 1.55;
-	overflow-wrap: anywhere;
+	max-width: 100%;
+	min-width: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
 	padding: 0.75rem;
-	white-space: pre-wrap;
+	white-space: nowrap;
 }
 .tab-list {
 	background: #eef2ff;
@@ -531,8 +589,18 @@ code {
 	color: white;
 	box-shadow: 0 8px 18px rgba(49, 87, 255, 0.18);
 }
+.run-tabs {
+	max-width: 100%;
+	min-width: 0;
+	overflow: hidden;
+}
 .run-tabs h2 {
 	margin-top: 0.25rem;
+}
+.run-tabs [role="tabpanel"] {
+	max-width: 100%;
+	min-width: 0;
+	overflow: hidden;
 }
 .history-list {
 	display: grid;

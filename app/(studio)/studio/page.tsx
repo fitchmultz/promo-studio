@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { StudioHeroIntro } from "@/components/StudioHeroIntro";
 import { VariantForm } from "@/components/VariantForm";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -24,10 +25,7 @@ export default async function StudioPage() {
 			<section className="studio-hero">
 				<p className="section-kicker">Autonomous commerce code agent</p>
 				<h1>Turn a campaign brief into a tested product page variant.</h1>
-				<p>
-					Signed in as {user.name}. Codex edits an isolated storefront
-					workspace, streams activity, runs validation, and saves the artifact.
-				</p>
+				<StudioHeroIntro userName={user.name} />
 			</section>
 			<div className="studio-grid">
 				<section

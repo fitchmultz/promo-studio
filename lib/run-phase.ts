@@ -1,3 +1,4 @@
+import { isJsonObject } from "@/lib/json";
 import type { PiActivityInputEvent } from "@/lib/pi-activity-view";
 
 export type RunPhaseId =
@@ -44,16 +45,56 @@ function phaseIndex(id: RunPhaseId): number {
 	return index >= 0 ? index + 1 : 1;
 }
 
-function inferFromTranscriptText(text: string): RunPhaseId {
+/** Activity-only text — excludes prompts that mention artifact/manifest.json. */
+function inferFromActivityText(text: string): RunPhaseId {
 	const lower = text.toLowerCase();
-	if (lower.includes("artifact/manifest.json") || lower.includes("manifest.json"))
+	if (
+		/\b(write|edit)\s+\S*manifest\.json/i.test(text) ||
+		/\$\s*.*artifact\/manifest\.json/i.test(lower) ||
+		/\b(cat|tee|echo)\b.*manifest\.json/i.test(lower)
+	) {
 		return "manifest";
+	}
 	if (lower.includes("npm run build")) return "building";
 	if (lower.includes("npm test")) return "testing";
 	if (/\bedit\s+\S/.test(lower) || /\bwrite\s+\S/.test(lower)) return "editing";
 	if (/\bread\s+\S/.test(lower) || /\$ glob/.test(lower) || /\bls\b/.test(lower))
 		return "discovering";
 	return "starting";
+}
+
+function piToolCommand(event: {
+	parsed: Record<string, unknown>;
+}): string {
+	const args = event.parsed.args;
+	if (!isJsonObject(args)) return "";
+	if (typeof args.command === "string") return args.command;
+	if (typeof args.path === "string") {
+		const toolName =
+			typeof event.parsed.toolName === "string" ? event.parsed.toolName : "";
+		return `${toolName} ${args.path}`.trim();
+	}
+	return "";
+}
+
+function piPhaseActivityText(
+	events: Array<{ type: string; parsed: Record<string, unknown>; raw?: string }>,
+): string {
+	const parts: string[] = [];
+	for (const event of events) {
+		if (
+			event.type !== "tool_execution_start" &&
+			event.type !== "tool_execution_end"
+		) {
+			continue;
+		}
+		const command = piToolCommand(event);
+		if (command) parts.push(command);
+		const toolName =
+			typeof event.parsed.toolName === "string" ? event.parsed.toolName : "";
+		if (toolName && toolName !== "bash") parts.push(toolName);
+	}
+	return parts.join("\n");
 }
 
 function inferFromCodexEvents(
@@ -77,8 +118,8 @@ function inferFromCodexEvents(
 					: "";
 			if (command.includes("npm run build")) phase = "building";
 			else if (command.includes("npm test")) phase = "testing";
-			else if (command.includes("manifest")) phase = "manifest";
-			else phase = inferFromTranscriptText(command);
+			else if (/\bmanifest\.json\b/i.test(command)) phase = "manifest";
+			else phase = inferFromActivityText(command);
 		}
 	}
 	return phase;
@@ -117,8 +158,8 @@ export function inferRunPhase(params: {
 
 	let id: RunPhaseId = "starting";
 	if (params.agentCore === "pi") {
-		const joined = params.events.map((e) => e.raw ?? JSON.stringify(e.parsed)).join("\n");
-		id = inferFromTranscriptText(joined);
+		const activityText = piPhaseActivityText(params.events);
+		id = activityText ? inferFromActivityText(activityText) : "starting";
 	} else {
 		id = inferFromCodexEvents(params.events);
 	}

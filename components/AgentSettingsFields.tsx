@@ -62,21 +62,16 @@ export function AgentSettingsFields({
 				</button>
 			</fieldset>
 			{isPi ? (
-				<label className="field">
-					Harness
-					<input
-						className="field-readonly"
-						readOnly
-						value="pi JSON CLI"
-						aria-readonly="true"
-					/>
+				<div className="field">
+					<span className="field-label">Harness</span>
+					<p className="harness-value">pi JSON CLI</p>
 					<p className="muted field-note">
-						Pi runs <code>pi --mode json</code> in the isolated storefront; the
+						Pi runs <code>pi --mode json</code> in the isolated storefront. The
 						campaign prompt is sent on stdin. Extension models (for example{" "}
 						<code>cursor/composer-2.5</code>) are passed via{" "}
 						<code>--model</code>.
 					</p>
-				</label>
+				</div>
 			) : (
 				<label className="field">
 					Harness

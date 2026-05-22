@@ -28,12 +28,14 @@ export function BeforeAfter({
 	product,
 	previewHtml,
 	agentCore = "codex",
+	selectedModel = "",
 	status: initialStatus = "succeeded",
 	runId,
 }: {
 	product: Product;
 	previewHtml: string;
 	agentCore?: string;
+	selectedModel?: string;
 	status?: string;
 	/** When set, polls run status to show live phase above the after preview. */
 	runId?: string;
@@ -73,7 +75,7 @@ export function BeforeAfter({
 		};
 	}, [runId, status]);
 
-	const afterHeading = builtVariantHeading(agentCore);
+	const afterHeading = builtVariantHeading(agentCore, selectedModel);
 	const phase = useMemo(
 		() =>
 			inferRunPhase({

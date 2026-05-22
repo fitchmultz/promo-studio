@@ -8,7 +8,8 @@
 	},
 	"scripts": {
 		"test": "tsx scripts/ensure-sqlite-database.ts test.db && DATABASE_URL=file:./test.db prisma db push --force-reset --accept-data-loss && DATABASE_URL=file:./test.db tsx prisma/seed.ts && DATABASE_URL=file:./test.db vitest run",
-		"dev": "next dev",
+		"dev": "next dev --webpack",
+		"dev:turbo": "next dev",
 		"build": "prisma generate && next build",
 		"start": "next start",
 		"setup": "npm run db:push && npm run seed",

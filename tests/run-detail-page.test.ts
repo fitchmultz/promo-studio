@@ -50,12 +50,16 @@ function run(status: string) {
 		id: "run-1",
 		userId: "user-1",
 		status,
+		agentCore: "codex",
 		campaignGoal: "Holiday gift push",
 		campaignBrief: "Make a campaign.",
 		changedFiles: "[]",
 		transcript: "",
 		previewHtml: "",
 		workspacePath: "/tmp/workspace",
+		startedAt: new Date("2026-05-22T12:00:00Z"),
+		completedAt:
+			status === "running" ? null : new Date("2026-05-22T12:02:05Z"),
 		product: {
 			id: "ribbed-market-tote",
 			name: "Ribbed Market Tote",

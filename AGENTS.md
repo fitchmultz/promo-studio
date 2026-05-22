@@ -30,6 +30,11 @@ Receipts store `agentCore`, `agentHarness`, and legacy `codexRuntime` (`sdk`, `e
 - **Default:** Node 24 (`.node-version` / `mise exec node@24`).
 - **Supported:** Node `>=22.19.0` (Pi SDK floor). Avoid Node 26+ until native deps (e.g. `better-sqlite3`) publish compatible prebuilds.
 
+## Dev server
+
+- Default `npm run dev` uses **webpack** (`next dev --webpack`). Turbopack (`npm run dev:turbo`) can idle at very high CPU in this repo layout (parent `Projects/AI` lockfile + agent workspaces).
+- `turbopack.root` in `next.config.ts` pins the app root for production builds; do not remove it.
+
 ## Operating rules
 
 - Prefer the smallest change that preserves the demo thesis: bounded agent code edits with isolation, validation, and auditability.

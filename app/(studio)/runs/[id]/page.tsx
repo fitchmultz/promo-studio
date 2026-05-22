@@ -3,6 +3,7 @@ import { ActivityStream } from "@/components/ActivityStream";
 import { BeforeAfter } from "@/components/BeforeAfter";
 import { DiffViewer } from "@/components/DiffViewer";
 import { RunDetailTabs } from "@/components/RunDetailTabs";
+import { RunElapsed } from "@/components/RunElapsed";
 import { RunFailureBanner } from "@/components/RunFailureBanner";
 import { RunReceipt } from "@/components/RunReceipt";
 import { TranscriptViewer } from "@/components/TranscriptViewer";
@@ -15,8 +16,7 @@ import {
 	runTranscriptFileByteLength,
 } from "@/lib/agent/transcript-store";
 import {
-	agentDisplayName,
-	formatRunDuration,
+	runAgentDisplayLabel,
 	workspacePathForDisplay,
 } from "@/lib/agent-display";
 import { parseStringArrayJson } from "@/lib/json";
@@ -49,10 +49,15 @@ export default async function RunDetailPage({
 		!fileBytes &&
 		run.transcript.length >= 119_000 &&
 		!run.transcript.trimStart().startsWith("{");
+	const runLabel = runAgentDisplayLabel({
+		agentCore: run.agentCore,
+		selectedModel: run.selectedModel,
+	});
 	const activity = (
 		<ActivityStream
 			runId={run.id}
 			agentCore={run.agentCore}
+			selectedModel={run.selectedModel}
 			initialEvents={events}
 			initialStatus={run.status}
 		/>
@@ -67,6 +72,7 @@ export default async function RunDetailPage({
 							product={run.product}
 							previewHtml={run.previewHtml}
 							agentCore={run.agentCore}
+							selectedModel={run.selectedModel}
 							status={run.status}
 							runId={run.id}
 						/>
@@ -97,7 +103,7 @@ export default async function RunDetailPage({
 					<>
 						<h2>Transcript</h2>
 						<p className="muted">
-							Raw JSONL from {agentDisplayName(run.agentCore)} (one JSON object
+							Raw JSONL from {runLabel} (one JSON object
 							per line). The live activity panel above is the readable,
 							TUI-style view of the same run.
 						</p>
@@ -117,6 +123,7 @@ export default async function RunDetailPage({
 						<TranscriptViewer
 							runId={run.id}
 							agentCore={run.agentCore}
+							selectedModel={run.selectedModel}
 							invocation={run.codexCommand}
 						/>
 					</>
@@ -124,22 +131,24 @@ export default async function RunDetailPage({
 			}}
 		/>
 	);
-	const duration = formatRunDuration(run.startedAt, run.completedAt);
-
 	return (
 		<main className="studio-page" id="main-content">
 			<section className="studio-hero studio-hero--compact">
 				<div className="split-heading">
 					<div>
 						<p className="section-kicker">
-							Run detail · {agentDisplayName(run.agentCore)}
+							Run detail · {runLabel}
 						</p>
 						<h1>{run.campaignGoal}</h1>
 						<p>{run.campaignBrief}</p>
 						<p className="muted run-meta">
 							{workspacePathForDisplay(run.agentCore, run.workspacePath)} ·{" "}
-							{duration}
-							{run.status === "running" ? " elapsed" : ""}
+							<RunElapsed
+								startedAt={run.startedAt.toISOString()}
+								completedAt={run.completedAt?.toISOString() ?? null}
+								status={run.status}
+								showElapsedSuffix={run.status === "running"}
+							/>
 						</p>
 					</div>
 					<span className={`status-pill status-pill--${run.status}`}>

@@ -10,6 +10,10 @@ vi.mock("@/components/VariantForm", () => ({
 	VariantForm: () => null,
 }));
 
+vi.mock("@/components/StudioHeroIntro", () => ({
+	StudioHeroIntro: () => "STUDIO_HERO_INTRO",
+}));
+
 vi.mock("@/lib/auth", () => ({
 	requireUser: vi.fn(async () => ({ name: "Demo User" })),
 }));
@@ -45,5 +49,7 @@ describe("StudioPage", () => {
 		expect(markup).toContain("ribbed-market-tote.webp");
 		expect(markup).toContain("Ribbed Market Tote");
 		expect(markup).not.toContain("Plain tote image area");
+		expect(markup).toContain("STUDIO_HERO_INTRO");
+		expect(markup).not.toContain("Codex edits an isolated");
 	});
 });

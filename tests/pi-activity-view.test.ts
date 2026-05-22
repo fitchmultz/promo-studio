@@ -91,6 +91,15 @@ describe("piEventsToActivityRows", () => {
 		);
 		expect(rows.map((r) => r.label)).toEqual(["Pi agent started"]);
 	});
+
+	it("uses agentLabel for lifecycle rows in demo mode", () => {
+		const rows = piEventsToActivityRows(
+			[ev("agent_start", {})],
+			4000,
+			{ demoLive: true, agentLabel: "Composer 2.5" },
+		);
+		expect(rows.map((r) => r.label)).toEqual(["Composer 2.5 agent started"]);
+	});
 });
 
 describe("formatPiBashCall", () => {
