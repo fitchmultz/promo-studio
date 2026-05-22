@@ -7,6 +7,10 @@ import { RunReceipt } from "@/components/RunReceipt";
 import { requireUser } from "@/lib/auth";
 import { parseCodexEvents } from "@/lib/codex-runner";
 import { prisma } from "@/lib/db";
+import {
+	MAX_PROCESS_OUTPUT_CHARS,
+	TRANSCRIPT_TRUNCATED_MARKER,
+} from "@/lib/agent/process";
 import { parseStringArrayJson } from "@/lib/json";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +30,10 @@ export default async function RunDetailPage({
 	if (user.role !== "admin" && run.userId !== user.id) redirect("/forbidden");
 	const changedFiles = parseStringArrayJson(run.changedFiles);
 	const events = parseCodexEvents(run.transcript);
+	const transcriptTruncated = run.transcript.includes(TRANSCRIPT_TRUNCATED_MARKER);
+	const legacyTailTruncated =
+		run.transcript.length >= MAX_PROCESS_OUTPUT_CHARS - 1 &&
+		!run.transcript.trimStart().startsWith("{");
 	const activity = (
 		<ActivityStream
 			runId={run.id}
@@ -67,6 +75,24 @@ export default async function RunDetailPage({
 				transcript: (
 					<>
 						<h2>Transcript</h2>
+						{transcriptTruncated ? (
+							<p className="muted">
+								This run hit the stored transcript size limit. The file below
+								keeps the beginning of the Pi JSONL stream; scroll for the
+								truncation marker.
+							</p>
+						) : legacyTailTruncated ? (
+							<p className="muted">
+								This run was stored with an older 120KB tail cap, so the start
+								of the Pi JSONL stream is missing. Create a new variant run to
+								capture the full trace.
+							</p>
+						) : null}
+						<p className="muted transcript-meta">
+							{run.transcript
+								? `${run.transcript.length.toLocaleString()} characters · ${events.length.toLocaleString()} JSONL lines`
+								: "Agent transcript is still streaming."}
+						</p>
 						<pre className="transcript">
 							{run.transcript || "Agent transcript is still streaming."}
 						</pre>

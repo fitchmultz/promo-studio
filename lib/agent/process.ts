@@ -2,12 +2,29 @@ import { spawn } from "node:child_process";
 import { redactSecrets } from "@/lib/config";
 import type { ProcessOptions, ProcessResult } from "@/lib/agent/types";
 
+/** In-memory cap for subprocess stdout/stderr buffers (not the persisted transcript). */
 export const MAX_PROCESS_OUTPUT_CHARS = 120000;
+
+/** Persisted JSONL transcript cap (Pi runs can exceed 120k quickly). */
+export const MAX_TRANSCRIPT_CHARS = 2_000_000;
+
+export const TRANSCRIPT_TRUNCATED_MARKER =
+	"[promo-studio: transcript truncated";
 
 export function appendLimited(current: string, next: string) {
 	const combined = current + next;
 	if (combined.length <= MAX_PROCESS_OUTPUT_CHARS) return combined;
 	return combined.slice(combined.length - MAX_PROCESS_OUTPUT_CHARS);
+}
+
+/** Grow transcript from the start; on overflow keep the head (session + early events). */
+export function appendTranscript(current: string, next: string) {
+	if (current.includes(TRANSCRIPT_TRUNCATED_MARKER)) return current;
+	const combined = current + next;
+	if (combined.length <= MAX_TRANSCRIPT_CHARS) return combined;
+	const marker = `\n${TRANSCRIPT_TRUNCATED_MARKER} at ${MAX_TRANSCRIPT_CHARS} characters; earlier JSONL preserved]\n`;
+	const headBudget = MAX_TRANSCRIPT_CHARS - marker.length;
+	return combined.slice(0, headBudget) + marker;
 }
 
 function emitLines(

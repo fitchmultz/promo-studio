@@ -37,7 +37,7 @@ import {
 	buildInvocationDescriptor,
 } from "@/lib/agent/invocation";
 import { runPiRuntime } from "@/lib/agent/pi-adapter";
-import { appendLimited, runProcess } from "@/lib/agent/process";
+import { appendLimited, appendTranscript, runProcess } from "@/lib/agent/process";
 import type {
 	AgentCore,
 	AgentHarness,
@@ -281,7 +281,7 @@ export async function executeVariantRun(
 	let stderrText = "";
 	try {
 		const onStdoutLine = (line: string) => {
-			transcript = appendLimited(transcript, `${line}\n`);
+			transcript = appendTranscript(transcript, `${line}\n`);
 			transcriptWrite = transcriptWrite
 				.then(() => persistTranscript(runId, transcript))
 				.catch((error: unknown) => {
@@ -321,7 +321,8 @@ export async function executeVariantRun(
 					});
 
 		const { result, selection } = agentResult;
-		transcript = redactSecrets(result.stdout.trim() || transcript.trim());
+		// Line-built transcript is canonical; result.stdout shares the 120k process buffer cap.
+		transcript = redactSecrets(transcript.trim() || result.stdout.trim());
 		stderrText = redactSecrets(result.stderr.trim() || stderrText.trim());
 		transcriptWrite = transcriptWrite
 			.then(() => persistTranscript(runId, transcript))

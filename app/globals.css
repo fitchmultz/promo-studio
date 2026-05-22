@@ -346,10 +346,15 @@ code {
 }
 .diff-list pre,
 .proof-details pre,
+.transcript-meta {
+	font-size: 0.82rem;
+	margin: 0 0 0.5rem;
+}
 .transcript {
 	max-height: min(70vh, 720px);
 	overflow: auto;
 	white-space: pre-wrap;
+	word-break: break-word;
 }
 .diff-line {
 	display: block;

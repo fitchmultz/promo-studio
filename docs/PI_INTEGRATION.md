@@ -12,6 +12,8 @@ pi --mode json --no-session --model cursor/composer-2.5
 
 Extension-only models (e.g. **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) work here. Do **not** use `-p`; that flag is for print mode, not JSON mode.
 
+Stdout is captured line-by-line into `VariantRun.transcript` (JSONL). The persisted cap is **2MB** (head preserved if exceeded). Subprocess in-memory buffers stay at **120KB** and are not used as the final transcript source.
+
 ## Configuration
 
 - Gear → **Pi** core, model field (e.g. `cursor/composer-2.5` or `openai-codex/gpt-5.5:low`)
