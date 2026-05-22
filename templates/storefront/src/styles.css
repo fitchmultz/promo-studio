@@ -1,0 +1,90 @@
+body {
+	margin: 0;
+	background: #ffffff;
+	color: #222222;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+button {
+	font: inherit;
+}
+
+.page {
+	max-width: 980px;
+	margin: 0 auto;
+	padding: 32px 20px;
+}
+
+.hero {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 24px;
+	align-items: center;
+	border-bottom: 1px solid #dddddd;
+	padding-bottom: 24px;
+}
+
+.product-image {
+	display: grid;
+	height: 360px;
+	place-items: center;
+	background: #f7f7f7;
+	border: 1px solid #dddddd;
+	overflow: hidden;
+}
+
+.product-image img {
+	display: block;
+	height: auto;
+	max-height: 100%;
+	max-width: 100%;
+	min-height: 0;
+	min-width: 0;
+	object-fit: contain;
+	width: auto;
+}
+
+.eyebrow,
+.muted {
+	color: #666666;
+}
+
+.hero h1 {
+	margin: 8px 0;
+	font-size: 42px;
+	font-weight: 700;
+}
+
+.content-grid {
+	display: grid;
+	grid-template-columns: 1.2fr 0.8fr;
+	gap: 24px;
+	padding-top: 24px;
+}
+
+.details,
+.purchase {
+	border: 1px solid #dddddd;
+	padding: 20px;
+}
+
+.price {
+	font-size: 28px;
+	font-weight: 700;
+}
+
+.purchase button {
+	width: 100%;
+	min-height: 44px;
+	border: 0;
+	background: #333333;
+	color: #ffffff;
+	cursor: pointer;
+}
+
+@media (max-width: 720px) {
+	.hero,
+	.content-grid {
+		grid-template-columns: 1fr;
+	}
+}
