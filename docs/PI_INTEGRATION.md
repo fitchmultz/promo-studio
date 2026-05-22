@@ -1,28 +1,26 @@
 # Pi Integration
 
-Promo Studio Pi can run the same commerce task through the Pi coding agent harness.
+Promo Studio runs storefront variants by spawning **`pi --mode json`** in the isolated workspace. The campaign prompt is sent on **stdin** (same as piping into `pi`).
 
-## SDK path (`AGENT_CORE=pi`, `AGENT_HARNESS=sdk`)
-
-- Uses `createAgentSession({ cwd: workspace, model, thinkingLevel })`.
-- Streams `AgentSessionEvent` objects as JSONL transcript lines.
-- Isolation is the copied workspace plus `cwd`; there is no Codex-style sandbox flag.
-- Requires provider API keys in Pi auth storage or env (`ANTHROPIC_API_KEY`, etc.).
-
-## JSON CLI path (`AGENT_HARNESS=json`)
+## Invocation
 
 ```bash
-pi --mode json --no-session --model openai-codex/gpt-5.5:low -p -
+cd <workspace>
+pi --mode json --no-session --model cursor/composer-2.5
+# prompt on stdin
 ```
 
-- Prompt is sent on stdin; stdout is JSONL (see Pi `docs/json.md`).
-- Subprocess `cwd` is the isolated storefront workspace.
+Extension-only models (e.g. **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) work here. Do **not** use `-p`; that flag is for print mode, not JSON mode.
 
-## Model format (`PI_MODEL` only)
+## Configuration
 
-- `provider/model` — e.g. `openai-codex/gpt-5.5`
-- `provider/model:thinking` — e.g. `openai-codex/gpt-5.5:low` (matches `pi --model`)
-- `pi-default` (form) or empty `PI_MODEL` uses the first available model from `ModelRegistry`
+- Gear → **Pi** core, model field (e.g. `cursor/composer-2.5` or `openai-codex/gpt-5.5:low`)
+- Optional env: `AGENT_CORE=pi`, `PI_MODEL=cursor/composer-2.5`
+- Model format: `provider/model` or `provider/model:thinking`
+
+## Studio model list
+
+`GET /api/agent/pi-models` lists models from Pi `ModelRegistry` (auth-configured providers). Extension models may be missing from the list; type the ref anyway.
 
 ## Doctor
 

@@ -62,6 +62,12 @@ describe("Codex auth mode selection", () => {
 			thinking: "low",
 			cliModel: "openai-codex/gpt-5.5:low",
 		});
+		expect(parsePiModelSpec("cursor/composer-2.5")).toEqual({
+			provider: "cursor",
+			modelId: "composer-2.5",
+			thinking: "",
+			cliModel: "cursor/composer-2.5",
+		});
 		expect(
 			parsePiModelSpec("anthropic/claude-sonnet-4-20250514").cliModel,
 		).toBe("anthropic/claude-sonnet-4-20250514");

@@ -54,7 +54,7 @@ async function writeVariantArtifacts(workspace: string) {
 
 function expectValidatedVariant(
 	completed: Awaited<ReturnType<typeof waitForRun>>,
-	expected?: { model?: string; effort?: string },
+	expected?: { model?: string; effort?: string; invocationIncludesWorkspace?: boolean },
 ) {
 	expect(completed.status).toBe("succeeded");
 	const model = expected?.model ?? "gpt-5.5-mini";
@@ -63,7 +63,9 @@ function expectValidatedVariant(
 	expect(completed.selectedModel).toBe(model);
 	expect(completed.requestedEffort).toBe(effort);
 	expect(completed.selectedEffort).toBe(effort);
-	expect(completed.codexCommand).toContain(completed.workspacePath);
+	if (expected?.invocationIncludesWorkspace !== false) {
+		expect(completed.codexCommand).toContain(completed.workspacePath);
+	}
 	expect(completed.codexCommand).not.toContain("<isolated-workspace>");
 	expect(completed.testsPassed).toBe(true);
 	expect(completed.previewHtml).toContain("Variant $42.00 $&");
@@ -262,21 +264,22 @@ describe("Codex runner", () => {
 		]);
 	});
 
-	it("runs Pi SDK harness with mocked adapter", async () => {
+	it("runs Pi JSON harness with mocked pi subprocess", async () => {
 		const user = await prisma.user.findUniqueOrThrow({
 			where: { email: "demo@promostudio.test" },
 		});
 		const product = await prisma.product.findUniqueOrThrow({
 			where: { id: "ribbed-market-tote" },
 		});
-		const piSdkRunner: VariantSdkRunner = async (options) => {
+		let piArgs: string[] = [];
+		const runner: VariantProcessRunner = async (_command, args, options) => {
+			piArgs = args;
 			const events = [
 				{ type: "agent_start" },
-				{ type: "tool_execution_start", toolName: "bash", toolCallId: "1" },
 				{ type: "agent_end", messages: [] },
 			];
 			for (const event of events) options.onStdoutLine?.(JSON.stringify(event));
-			await writeVariantArtifacts(options.workspace);
+			await writeVariantArtifacts(options.cwd);
 			return {
 				code: 0,
 				stdout: events.map((event) => JSON.stringify(event)).join("\n"),
@@ -291,19 +294,28 @@ describe("Codex runner", () => {
 				"Make the tote compelling for commuters who need a practical gift.",
 			campaignGoal: "Holiday gift push",
 			agentCore: "pi",
-			agentHarness: "sdk",
-			requestedModel: "anthropic/claude-sonnet-4-20250514:medium",
-			piSdkRunner,
+			agentHarness: "json",
+			requestedModel: "cursor/composer-2.5",
+			runner,
 		});
 		const completed = await waitForRun(started.id);
 
+		expect(piArgs).toEqual([
+			"--mode",
+			"json",
+			"--no-session",
+			"--model",
+			"cursor/composer-2.5",
+		]);
 		expect(completed.agentCore).toBe("pi");
-		expect(completed.agentHarness).toBe("sdk");
-		expect(completed.codexCommand).toContain("Pi AgentSession");
+		expect(completed.agentHarness).toBe("json");
+		expect(completed.codexCommand).toContain("pi --mode json");
+		expect(completed.codexCommand).not.toContain("-p");
 		expect(completed.transcript).toContain("agent_start");
 		expectValidatedVariant(completed, {
-			model: "anthropic/claude-sonnet-4-20250514:medium",
-			effort: "medium",
+			model: "cursor/composer-2.5",
+			effort: "default",
+			invocationIncludesWorkspace: false,
 		});
 	});
 });

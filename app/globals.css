@@ -525,6 +525,74 @@ code {
 	width: 100%;
 }
 
+.icon-button {
+	align-items: center;
+	background: white;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	color: var(--muted);
+	cursor: pointer;
+	display: inline-flex;
+	height: 2.35rem;
+	justify-content: center;
+	min-height: 0;
+	padding: 0;
+	width: 2.35rem;
+}
+.icon-button:hover {
+	background: #eef2ff;
+	border-color: #c7d2fe;
+	color: var(--ink);
+}
+.nav-settings-button svg {
+	display: block;
+}
+
+.settings-dialog {
+	border: 0;
+	border-radius: 0;
+	max-width: none;
+	padding: 0;
+	width: min(560px, calc(100vw - 2rem));
+}
+.settings-dialog::backdrop {
+	background: rgba(17, 24, 39, 0.45);
+}
+.settings-dialog__panel {
+	border: 0;
+	margin: 0;
+	max-height: calc(100vh - 3rem);
+	overflow: auto;
+	padding: 1.25rem;
+	width: 100%;
+}
+.settings-dialog__header {
+	align-items: flex-start;
+	display: flex;
+	gap: 1rem;
+	justify-content: space-between;
+	margin-bottom: 0.5rem;
+}
+.settings-dialog__header h2 {
+	margin: 0;
+}
+.settings-dialog__actions {
+	display: flex;
+	justify-content: flex-end;
+	margin: 1rem 0 0;
+	padding: 0;
+}
+.agent-settings-fields .field:last-child {
+	margin-bottom: 0;
+}
+.field-note {
+	font-size: 0.82rem;
+	margin: 0.35rem 0 0;
+}
+.field-note--warn {
+	color: var(--red);
+}
+
 @media (max-width: 900px) {
 	.studio-grid,
 	.preview-grid,

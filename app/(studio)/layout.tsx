@@ -1,5 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AgentSettingsDialog } from "@/components/AgentSettingsDialog";
+import { AgentSettingsNavButton } from "@/components/AgentSettingsNavButton";
+import { AgentSettingsProvider } from "@/components/AgentSettingsProvider";
 import { currentUser } from "@/lib/auth";
 
 export default async function StudioLayout({
@@ -9,7 +12,7 @@ export default async function StudioLayout({
 }) {
 	const user = await currentUser();
 	return (
-		<>
+		<AgentSettingsProvider>
 			<header className="studio-nav">
 				<Link className="brand" href="/studio" aria-label="Promo Studio home">
 					<span aria-hidden="true">PS</span>
@@ -23,6 +26,7 @@ export default async function StudioLayout({
 							Proof
 						</Link>
 					) : null}
+					<AgentSettingsNavButton />
 					{user ? (
 						<form action="/api/logout" className="nav-form" method="post">
 							<button type="submit">Sign out</button>
@@ -32,7 +36,8 @@ export default async function StudioLayout({
 					)}
 				</nav>
 			</header>
+			<AgentSettingsDialog />
 			{children}
-		</>
+		</AgentSettingsProvider>
 	);
 }

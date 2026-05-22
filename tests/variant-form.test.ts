@@ -3,6 +3,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AgentSettingsProvider } from "@/components/AgentSettingsProvider";
 import { VariantForm } from "@/components/VariantForm";
 
 vi.mock("next/navigation", () => ({
@@ -23,7 +24,13 @@ describe("VariantForm", () => {
 		document.body.append(container);
 		root = createRoot(container);
 		act(() => {
-			root.render(React.createElement(VariantForm, { productId: "product-1" }));
+			root.render(
+				React.createElement(
+					AgentSettingsProvider,
+					null,
+					React.createElement(VariantForm, { productId: "product-1" }),
+				),
+			);
 		});
 	});
 

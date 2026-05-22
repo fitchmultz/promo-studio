@@ -36,6 +36,7 @@ import {
 	agentSummary,
 	buildInvocationDescriptor,
 } from "@/lib/agent/invocation";
+import { runPiRuntime } from "@/lib/agent/pi-adapter";
 import { appendLimited, runProcess } from "@/lib/agent/process";
 import type {
 	AgentCore,
@@ -137,14 +138,15 @@ export async function createVariantRun(params: {
 	runtime?: CodexRuntime;
 	runner?: VariantProcessRunner;
 	sdkRunner?: VariantSdkRunner;
-	piSdkRunner?: VariantSdkRunner;
 }) {
 	const core = params.agentCore ?? env.AGENT_CORE;
 	const harness =
-		params.agentHarness ??
-		(params.runtime && core === "codex"
-			? params.runtime
-			: resolveAgentHarness(null, core));
+		core === "pi"
+			? "json"
+			: (params.agentHarness ??
+				(params.runtime && core === "codex"
+					? params.runtime
+					: resolveAgentHarness(null, core)));
 
 	const runId = randomUUID();
 	const workspace = await createVariantWorkspace(runId);
@@ -229,7 +231,6 @@ export async function createVariantRun(params: {
 	void executeVariantRun(runRecord.id, {
 		processRunner: params.runner,
 		codexSdkRunner: params.sdkRunner,
-		piSdkRunner: params.piSdkRunner,
 	}).catch(() => undefined);
 	return runRecord;
 }
@@ -246,7 +247,10 @@ export async function executeVariantRun(
 		typeof options === "function" ? { processRunner: options } : options;
 	const processRunner = executeOptions.processRunner ?? runProcess;
 	const core = parseStoredAgentCore(runRecord.agentCore);
-	const harness = parseStoredAgentHarness(runRecord.agentHarness, core);
+	const harness =
+		core === "pi"
+			? "json"
+			: parseStoredAgentHarness(runRecord.agentHarness, core);
 	const timeoutMs = agentTimeoutMs(core);
 
 	let requestedModel: string;
@@ -290,22 +294,15 @@ export async function executeVariantRun(
 
 		const agentResult =
 			core === "pi"
-				? await (async () => {
-						const { defaultPiSdkRunner, runPiRuntime } = await import(
-							"@/lib/agent/pi-adapter"
-						);
-						return runPiRuntime({
-							harness: harness === "json" ? "json" : "sdk",
-							input: runRecord.inputPrompt,
-							processRunner,
-							sdkRunner: executeOptions.piSdkRunner ?? defaultPiSdkRunner,
-							requestedModel,
-							workspace: runRecord.workspacePath,
-							timeoutMs,
-							onStdoutLine,
-							onStderrLine,
-						});
-					})()
+				? await runPiRuntime({
+						input: runRecord.inputPrompt,
+						processRunner,
+						requestedModel,
+						workspace: runRecord.workspacePath,
+						timeoutMs,
+						onStdoutLine,
+						onStderrLine,
+					})
 				: await runCodexWithFallback({
 						runtime: harness === "exec" ? "exec" : "sdk",
 						input: runRecord.inputPrompt,

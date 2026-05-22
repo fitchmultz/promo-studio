@@ -10,8 +10,7 @@ Promo Studio Pi runs storefront variants through a swappable agent core. The hos
 4. `lib/agent/runner.ts` invokes the selected adapter:
    - **Codex SDK** — `@openai/codex-sdk` streamed JSONL
    - **Codex exec** — `codex exec --json` subprocess
-   - **Pi SDK** — `@earendil-works/pi-coding-agent` `createAgentSession`
-   - **Pi JSON** — `pi --mode json --no-session` subprocess
+   - **Pi** — `pi --mode json --no-session` subprocess (prompt on stdin)
 5. Events are persisted as JSONL on `VariantRun.transcript`.
 6. The agent must edit source, run `npm test`, `npm run build`, and write `artifact/manifest.json`.
 7. The runner validates the manifest and inlines the built preview.
@@ -30,8 +29,7 @@ See `.env.example`. Defaults:
 |------|---------|---------------|
 | codex | sdk | `gpt-5.5` |
 | codex | exec | `gpt-5.5-mini` |
-| pi | sdk | `openai-codex/gpt-5.5:low` |
-| pi | json | same |
+| pi | json | `cursor/composer-2.5` or `openai-codex/gpt-5.5:low` |
 
 ## Docs
 

@@ -1,8 +1,4 @@
-import {
-	codexModelArgs,
-	codexReasoningArgs,
-	parsePiModelSpec,
-} from "@/lib/config";
+import { codexModelArgs, codexReasoningArgs } from "@/lib/config";
 import type { AgentCore, AgentHarness } from "@/lib/agent/types";
 
 function buildCodexExecInvocation(
@@ -40,27 +36,9 @@ function buildCodexSdkInvocation(params: {
 	].join(" ");
 }
 
-function buildPiSdkInvocation(params: {
-	workspace: string;
-	selectedModel: string;
-}) {
-	const modelRef =
-		params.selectedModel === "pi-default"
-			? "<default>"
-			: parsePiModelSpec(params.selectedModel).cliModel;
-	return [
-		"Pi AgentSession createAgentSession",
-		`cwd=${params.workspace}`,
-		`model=${modelRef}`,
-	].join(" ");
-}
-
-function buildPiJsonInvocation(workspace: string, requestedModel: string) {
-	const parts = ["pi", "--mode", "json", "--no-session", `cwd=${workspace}`];
-	if (requestedModel) {
-		parts.push("--model", parsePiModelSpec(requestedModel).cliModel);
-	}
-	parts.push("-p", "-");
+function buildPiJsonInvocation(_workspace: string, requestedModel: string) {
+	const parts = ["pi", "--mode", "json", "--no-session"];
+	if (requestedModel) parts.push("--model", requestedModel);
 	return parts.join(" ");
 }
 
@@ -74,13 +52,7 @@ export function buildInvocationDescriptor(params: {
 	selectedEffort: string;
 }): string {
 	if (params.core === "pi") {
-		if (params.harness === "json") {
-			return buildPiJsonInvocation(params.workspace, params.requestedModel);
-		}
-		return buildPiSdkInvocation({
-			workspace: params.workspace,
-			selectedModel: params.selectedModel,
-		});
+		return buildPiJsonInvocation(params.workspace, params.requestedModel);
 	}
 	if (params.harness === "exec") {
 		return buildCodexExecInvocation(
@@ -97,10 +69,7 @@ export function buildInvocationDescriptor(params: {
 }
 
 export function runtimeLabel(core: AgentCore, runtime: AgentHarness): string {
-	if (core === "pi") {
-		if (runtime === "json") return "pi JSON CLI";
-		return "Pi SDK";
-	}
+	if (core === "pi") return "pi JSON CLI";
 	return runtime === "exec" ? "codex exec" : "Codex SDK";
 }
 

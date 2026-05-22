@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useMemo, useState, useTransition } from "react";
+import { type FormEvent, useState, useTransition } from "react";
+import { useAgentSettings } from "@/components/AgentSettingsProvider";
 import { CreateVariantRunResponseSchema } from "@/lib/variant-run-api";
 
 const presets = [
@@ -29,62 +30,21 @@ const presets = [
 
 const defaultPreset = presets[0];
 
-const codexModels = [
-	"codex-default",
-	"gpt-5.5",
-	"gpt-5.5-mini",
-	"gpt-5.4-mini",
-];
-const piModels = [
-	"pi-default",
-	"openai-codex/gpt-5.5",
-	"openai-codex/gpt-5.5:low",
-	"anthropic/claude-sonnet-4-20250514",
-	"anthropic/claude-sonnet-4-20250514:medium",
-];
-const effortOptions = [
-	{ value: "codex-default", label: "Default" },
-	{ value: "low", label: "Low" },
-	{ value: "medium", label: "Medium" },
-	{ value: "high", label: "High" },
-];
-
 function isPresetBrief(brief: string) {
 	return presets.some((preset) => preset.brief === brief);
 }
 
 export function VariantForm({ productId }: { productId: string }) {
 	const router = useRouter();
+	const { settings } = useAgentSettings();
 	const [goal, setGoal] = useState<string>(defaultPreset.label);
 	const [brief, setBrief] = useState<string>(defaultPreset.brief);
-	const [agentCore, setAgentCore] = useState<"codex" | "pi">("codex");
-	const [agentHarness, setAgentHarness] = useState("sdk");
 	const [error, setError] = useState("");
 	const [isPending, startTransition] = useTransition();
-
-	const harnessOptions = useMemo(() => {
-		if (agentCore === "pi") {
-			return [
-				{ value: "sdk", label: "Pi SDK" },
-				{ value: "json", label: "Pi JSON CLI" },
-			];
-		}
-		return [
-			{ value: "sdk", label: "Codex SDK" },
-			{ value: "exec", label: "codex exec" },
-		];
-	}, [agentCore]);
-
-	const modelOptions = agentCore === "pi" ? piModels : codexModels;
 
 	function selectPreset(preset: (typeof presets)[number]) {
 		setGoal(preset.label);
 		if (isPresetBrief(brief)) setBrief(preset.brief);
-	}
-
-	function onCoreChange(core: "codex" | "pi") {
-		setAgentCore(core);
-		setAgentHarness("sdk");
 	}
 
 	function submit(event: FormEvent<HTMLFormElement>) {
@@ -108,8 +68,6 @@ export function VariantForm({ productId }: { productId: string }) {
 		});
 	}
 
-	const agentLabel = agentCore === "pi" ? "Pi" : "Codex";
-
 	return (
 		<form
 			className="studio-card form-card"
@@ -120,82 +78,25 @@ export function VariantForm({ productId }: { productId: string }) {
 		>
 			<input name="productId" type="hidden" value={productId} />
 			<input name="campaignGoal" type="hidden" value={goal} />
-			<input name="agentCore" type="hidden" value={agentCore} />
-			<input name="agentHarness" type="hidden" value={agentHarness} />
+			<input name="agentCore" type="hidden" value={settings.agentCore} />
+			<input name="agentHarness" type="hidden" value={settings.agentHarness} />
+			<input name="model" type="hidden" value={settings.model} />
+			{settings.agentCore === "codex" ? (
+				<>
+					<input
+						name="reasoningEffort"
+						type="hidden"
+						value={settings.reasoningEffort}
+					/>
+					<input name="authMode" type="hidden" value={settings.authMode} />
+				</>
+			) : null}
 			<p className="section-kicker">Business intent</p>
 			<h2 id="variant-form-title">Create a product page variant</h2>
 			<p className="muted">
-				The selected agent copies the storefront template, edits code, runs
-				tests, builds, and saves a receipt.
+				Copies the storefront template, edits code, runs tests, builds, and
+				saves a receipt.
 			</p>
-			<fieldset className="goal-chips" aria-label="Agent core">
-				<button
-					className={agentCore === "codex" ? "chip chip--active" : "chip"}
-					type="button"
-					onClick={() => onCoreChange("codex")}
-				>
-					Codex
-				</button>
-				<button
-					className={agentCore === "pi" ? "chip chip--active" : "chip"}
-					type="button"
-					onClick={() => onCoreChange("pi")}
-				>
-					Pi
-				</button>
-			</fieldset>
-			<label className="field">
-				Harness
-				<select
-					value={agentHarness}
-					onChange={(event) => setAgentHarness(event.target.value)}
-				>
-					{harnessOptions.map((option) => (
-						<option key={option.value} value={option.value}>
-							{option.label}
-						</option>
-					))}
-				</select>
-			</label>
-			<label className="field">
-				Model
-				<select name="model" defaultValue={modelOptions[0]}>
-					{modelOptions.map((model) => (
-						<option key={model} value={model}>
-							{model}
-						</option>
-					))}
-				</select>
-				{agentCore === "pi" ? (
-					<p className="muted">
-						Pi models use <code>provider/model</code> or{" "}
-						<code>provider/model:thinking</code> (e.g.{" "}
-						<code>openai-codex/gpt-5.5:low</code>).
-					</p>
-				) : null}
-			</label>
-			{agentCore === "codex" ? (
-				<label className="field">
-					Reasoning effort
-					<select name="reasoningEffort" defaultValue={effortOptions[0].value}>
-						{effortOptions.map((option) => (
-							<option key={option.value} value={option.value}>
-								{option.label}
-							</option>
-						))}
-					</select>
-				</label>
-			) : null}
-			{agentCore === "codex" ? (
-				<label className="field">
-					Auth mode
-					<select name="authMode" defaultValue="auto">
-						<option value="auto">Auto (subscription, then API key)</option>
-						<option value="subscription">Subscription</option>
-						<option value="api-key">API key</option>
-					</select>
-				</label>
-			) : null}
 			<fieldset className="goal-chips" aria-label="Campaign goals">
 				{presets.map((preset) => (
 					<button
@@ -223,7 +124,7 @@ export function VariantForm({ productId }: { productId: string }) {
 				disabled={isPending}
 				type="submit"
 			>
-				{isPending ? `Starting ${agentLabel}...` : "Create Variant"}
+				{isPending ? "Creating variant…" : "Create Variant"}
 			</button>
 		</form>
 	);

@@ -57,7 +57,6 @@ export interface AgentSelection {
 export interface ExecuteVariantRunOptions {
 	processRunner?: VariantProcessRunner;
 	codexSdkRunner?: VariantSdkRunner;
-	piSdkRunner?: VariantSdkRunner;
 }
 
 /** Maps harness to the legacy codexRuntime column for receipts and filters. */

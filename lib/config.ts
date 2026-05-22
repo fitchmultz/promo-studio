@@ -125,7 +125,7 @@ export function resolveAgentHarness(
 		return env.CODEX_RUNTIME;
 	}
 	if (raw === "sdk" || raw === "json") return raw;
-	return "sdk";
+	return "json";
 }
 
 export function normalizePiModel(
@@ -209,7 +209,9 @@ export function agentTimeoutMs(core: AgentCore): number {
 	return core === "pi" ? env.PI_TIMEOUT_MS : env.CODEX_TIMEOUT_MS;
 }
 
-export function piThinkingLevel(thinking: CodexReasoningEffort | ""): PiThinkingLevel {
+export function piThinkingLevel(
+	thinking: CodexReasoningEffort | "",
+): PiThinkingLevel {
 	if (!thinking) return "low";
 	const parsed = PiThinkingLevelSchema.safeParse(thinking);
 	return parsed.success ? parsed.data : "low";

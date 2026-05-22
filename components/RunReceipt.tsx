@@ -1,21 +1,15 @@
 import type { VariantRun } from "@prisma/client";
 import { runtimeLabel } from "@/lib/agent/invocation";
-import {
-	parseStoredAgentCore,
-	receiptHarness,
-} from "@/lib/agent/stored-run";
+import { parseStoredAgentCore, receiptHarness } from "@/lib/agent/stored-run";
 
 function harnessHelp(run: VariantRun) {
 	if (run.agentCore === "pi") {
-		if (run.agentHarness === "json" || run.codexRuntime === "json") {
-			return (
-				<>
-					This is the Pi JSON CLI command for this run. The prompt was sent
-					through stdin via the trailing <code>-p -</code> arguments.
-				</>
-			);
-		}
-		return "This is the Pi SDK invocation descriptor for this run. The prompt was sent through createAgentSession streaming events.";
+		return (
+			<>
+				This is the Pi JSON CLI command for this run. The campaign prompt was
+				sent on stdin (same as <code>pi --mode json</code> with a piped prompt).
+			</>
+		);
 	}
 	if (run.codexRuntime === "exec" || run.agentHarness === "exec") {
 		return (
