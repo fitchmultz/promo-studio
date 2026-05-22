@@ -11,20 +11,6 @@ interface EventItem {
 	parsed: Record<string, unknown>;
 }
 
-const PI_ACTIVITY_TYPES = new Set([
-	"session",
-	"agent_start",
-	"agent_end",
-	"turn_start",
-	"turn_end",
-	"tool_execution_start",
-	"tool_execution_update",
-	"tool_execution_end",
-	"message_start",
-	"message_update",
-	"message_end",
-]);
-
 function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -60,6 +46,14 @@ function labelForCodex(event: EventItem) {
 	return event.type;
 }
 
+function piMessageUpdateKind(event: EventItem): "text" | "thinking" | "other" {
+	const assistantEvent = event.parsed.assistantMessageEvent;
+	if (!isJsonObject(assistantEvent)) return "other";
+	if (assistantEvent.type === "text_delta") return "text";
+	if (assistantEvent.type === "thinking_delta") return "thinking";
+	return "other";
+}
+
 function labelForPi(event: EventItem) {
 	if (event.type === "merged_assistant_text") return "Assistant";
 	if (event.type === "session") return "Pi session";
@@ -71,7 +65,12 @@ function labelForPi(event: EventItem) {
 	if (event.type === "tool_execution_update") return "Tool progress";
 	if (event.type === "tool_execution_end") return "Tool finished";
 	if (event.type === "message_start") return "Message started";
-	if (event.type === "message_update") return "Message update";
+	if (event.type === "message_update") {
+		const kind = piMessageUpdateKind(event);
+		if (kind === "thinking") return "Thinking";
+		if (kind === "text") return "Message update (text)";
+		return "Message update";
+	}
 	if (event.type === "message_end") return "Message finished";
 	return event.type;
 }
@@ -80,42 +79,26 @@ function labelFor(agentCore: string, event: EventItem) {
 	return agentCore === "pi" ? labelForPi(event) : labelForCodex(event);
 }
 
-/** Only user-visible text deltas; skip thinking/reasoning JSON from the stream. */
-function piTextDeltaFromEvent(event: EventItem): string {
-	const assistantEvent = event.parsed.assistantMessageEvent;
-	if (!isJsonObject(assistantEvent)) return "";
-	if (assistantEvent.type !== "text_delta") return "";
-	return typeof assistantEvent.delta === "string" ? assistantEvent.delta : "";
-}
-
-function shouldShowPiEvent(event: EventItem): boolean {
-	if (!PI_ACTIVITY_TYPES.has(event.type)) return false;
-	if (event.type === "message_update") {
-		return piTextDeltaFromEvent(event).length > 0;
-	}
-	if (event.raw.trim().startsWith("{")) return false;
-	return true;
-}
-
-/** Merge Pi message_update text into one assistant block; drop thinking noise. */
-function normalizePiActivityEvents(events: EventItem[]): EventItem[] {
+/** Merge consecutive Pi text_delta message_update lines into one Assistant row. */
+function mergePiTextDeltas(events: EventItem[]): EventItem[] {
 	const out: EventItem[] = [];
 	let textBuffer = "";
 	const flushText = () => {
-		const trimmed = textBuffer.trim();
-		if (!trimmed) return;
+		if (!textBuffer) return;
 		out.push({
 			id: `merged-assistant-${out.length}`,
 			type: "merged_assistant_text",
-			raw: trimmed,
-			parsed: { type: "merged_assistant_text", text: trimmed },
+			raw: textBuffer,
+			parsed: { type: "merged_assistant_text", text: textBuffer },
 		});
 		textBuffer = "";
 	};
 	for (const event of events) {
-		if (!shouldShowPiEvent(event)) continue;
-		if (event.type === "message_update") {
-			textBuffer += piTextDeltaFromEvent(event);
+		if (event.type === "message_update" && piMessageUpdateKind(event) === "text") {
+			const assistantEvent = event.parsed.assistantMessageEvent;
+			if (isJsonObject(assistantEvent) && typeof assistantEvent.delta === "string") {
+				textBuffer += assistantEvent.delta;
+			}
 			continue;
 		}
 		flushText();
@@ -161,6 +144,7 @@ function eventText(
 					: "tool";
 			return toolName;
 		}
+		if (event.raw.trim()) return event.raw.trim().slice(0, maxChars);
 	}
 	if (
 		event.type === "thread.started" &&
@@ -186,7 +170,7 @@ function eventText(
 	if (typeof item?.text === "string") return item.text;
 	if (typeof item?.name === "string") return item.name;
 	if (typeof event.parsed.message === "string") return event.parsed.message;
-	return labelFor(agentCore, event);
+	return event.raw.trim().slice(0, maxChars) || labelFor(agentCore, event);
 }
 
 export function ActivityStream({
@@ -232,13 +216,12 @@ export function ActivityStream({
 
 	const displayEvents = useMemo(() => {
 		if (agentCore === "pi") {
-			return normalizePiActivityEvents(events);
+			return mergePiTextDeltas(events);
 		}
 		return events;
 	}, [agentCore, events]);
 
-	const maxVisibleEvents =
-		status === "running" ? 120 : agentCore === "pi" ? 80 : 250;
+	const maxVisibleEvents = status === "running" ? 200 : 400;
 	const visibleEvents = useMemo(
 		() =>
 			displayEvents.length > maxVisibleEvents
@@ -246,7 +229,7 @@ export function ActivityStream({
 				: displayEvents,
 		[displayEvents, maxVisibleEvents],
 	);
-	const textLimit = status === "running" ? 1200 : 6000;
+	const textLimit = status === "running" ? 4000 : 12000;
 	const hiddenEventCount = Math.max(0, displayEvents.length - visibleEvents.length);
 
 	useEffect(() => {
@@ -272,7 +255,7 @@ export function ActivityStream({
 					{hiddenEventCount > 0 ? (
 						<p className="muted activity-list-meta">
 							Showing last {visibleEvents.length} of {displayEvents.length}{" "}
-							stream events ({events.length} raw).
+							events ({events.length} raw lines in transcript).
 						</p>
 					) : null}
 					<ol className="activity-list" ref={activityListRef}>
