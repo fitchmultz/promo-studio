@@ -49,8 +49,8 @@ describe("piEventsToActivityRows", () => {
 			4000,
 			{ demoLive: true },
 		);
-		expect(rows[0]?.label).toBe("Shell command started");
-		expect(rows[0]?.body).toBe("$ npm test");
+		expect(rows[0]?.label).toBe("Running tests");
+		expect(rows[0]?.body).toContain("npm test");
 	});
 
 	it("extracts read/edit lines from thinking_start partials (cursor-sdk)", () => {
@@ -95,8 +95,11 @@ describe("piEventsToActivityRows", () => {
 
 describe("formatPiBashCall", () => {
 	it("includes timeout suffix when present", () => {
-		expect(formatPiBashCall({ command: "npm run build", timeout: 120 })).toBe(
-			"$ npm run build (timeout 120s)",
-		);
+		const formatted = formatPiBashCall({
+			command: "npm run build",
+			timeout: 120,
+		});
+		expect(formatted).toContain("npm run build");
+		expect(formatted).toContain("(timeout 120s)");
 	});
 });

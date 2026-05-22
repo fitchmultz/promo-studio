@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RunPhaseStepper } from "@/components/RunPhaseStepper";
-import { agentDisplayName } from "@/lib/agent-display";
+import {
+	agentDisplayName,
+	formatShellCommandForDisplay,
+} from "@/lib/agent-display";
 import { isJsonObject } from "@/lib/json";
 import { piEventsToActivityRows } from "@/lib/pi-activity-view";
 import { inferRunPhase } from "@/lib/run-phase";
@@ -75,7 +78,9 @@ function codexEventText(event: EventItem, maxChars: number) {
 	if (item?.type === "command_execution") {
 		const command =
 			typeof item.command === "string"
-				? item.command.replace(/^\/bin\/zsh -lc /, "")
+				? formatShellCommandForDisplay(
+						item.command.replace(/^\/bin\/zsh -lc /, ""),
+					)
 				: "shell command";
 		const rawOutput =
 			typeof item.aggregated_output === "string"

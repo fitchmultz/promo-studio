@@ -73,6 +73,13 @@ button {
 	font-weight: 700;
 }
 
+.cart-feedback {
+	font-size: 0.92rem;
+	font-weight: 600;
+	margin: 0.5rem 0 0;
+	min-height: 1.25rem;
+}
+
 .purchase button {
 	width: 100%;
 	min-height: 44px;

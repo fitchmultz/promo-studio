@@ -17,8 +17,9 @@ public/generated-scenes/
 *.mov
 .DS_Store
 
+agent-workspaces/*
+!agent-workspaces/.gitkeep
 codex-workspaces/*
-!codex-workspaces/.gitkeep
 
 # private local notes and scratch files
 .private/

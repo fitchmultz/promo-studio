@@ -30,7 +30,7 @@ describe("variant workspace isolation", () => {
 			path.join(workspace, "src", "product.ts"),
 			"utf8",
 		);
-		expect(workspace).toContain("codex-workspaces");
+		expect(workspace).toContain("agent-workspaces");
 		expect(productSource).toContain("RMT-001");
 	});
 

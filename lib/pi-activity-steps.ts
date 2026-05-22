@@ -1,3 +1,5 @@
+import { formatShellCommandForDisplay } from "@/lib/agent-display";
+
 /** Commerce copy that appears when Pi thinking embeds read file output — not real stream steps. */
 const PRODUCT_NOISE_PATTERNS = [
 	/^100% organic cotton/i,
@@ -26,54 +28,90 @@ function shortenPath(path: string): string {
 	return path.split("/").pop() ?? path;
 }
 
+export interface PiThinkingAction {
+	action: string;
+	kind: "read" | "edit" | "write" | "shell" | "other";
+}
+
 /** One actionable line extracted from Pi thinking partials (cursor-sdk style). */
-export function classifyThinkingActionLine(line: string): string | null {
+export function classifyThinkingActionLine(line: string): PiThinkingAction | null {
 	const trimmed = line.trim();
 	if (!trimmed || isProductNoiseLine(trimmed)) return null;
 	if (/^read\s+\S/i.test(trimmed)) {
 		const path = trimmed.replace(/^read\s+/i, "").trim();
-		return `read ${shortenPath(path)}`;
+		return { action: `read ${shortenPath(path)}`, kind: "read" };
 	}
 	if (/^edit\s+\S/i.test(trimmed)) {
 		const path = trimmed.replace(/^edit\s+/i, "").trim();
-		return `edit ${shortenPath(path)}`;
+		return { action: `edit ${shortenPath(path)}`, kind: "edit" };
 	}
 	if (/^write\s+\S/i.test(trimmed)) {
 		const path = trimmed.replace(/^write\s+/i, "").trim();
-		return `write ${shortenPath(path)}`;
+		return { action: `write ${shortenPath(path)}`, kind: "write" };
 	}
-	if (trimmed.startsWith("$ ")) return trimmed;
-	if (/^(npm test|npm run build|npm run dev)\b/.test(trimmed)) return `$ ${trimmed}`;
-	if (/^\$\s/.test(trimmed)) return trimmed.replace(/^\$\s*/, "$ ");
-	if (/^glob\s+/i.test(trimmed)) return `$ ${trimmed}`;
+	if (trimmed.startsWith("$ ")) {
+		return {
+			action: formatShellCommandForDisplay(trimmed),
+			kind: "shell",
+		};
+	}
+	if (/^(npm test|npm run build|npm run dev)\b/.test(trimmed)) {
+		return {
+			action: formatShellCommandForDisplay(`$ ${trimmed}`),
+			kind: "shell",
+		};
+	}
+	if (/^\$\s/.test(trimmed)) {
+		return {
+			action: formatShellCommandForDisplay(trimmed.replace(/^\$\s*/, "$ ")),
+			kind: "shell",
+		};
+	}
+	if (/^glob\s+/i.test(trimmed)) {
+		return {
+			action: formatShellCommandForDisplay(`$ ${trimmed}`),
+			kind: "shell",
+		};
+	}
 	return null;
 }
 
-export function extractThinkingActions(text: string): string[] {
+export function extractThinkingActions(text: string): PiThinkingAction[] {
 	const seen = new Set<string>();
-	const out: string[] = [];
+	const out: PiThinkingAction[] = [];
 	for (const line of text.split(/\r?\n/)) {
-		const action = classifyThinkingActionLine(line);
-		if (!action || seen.has(action)) continue;
-		seen.add(action);
-		out.push(action);
+		const classified = classifyThinkingActionLine(line);
+		if (!classified || seen.has(classified.action)) continue;
+		seen.add(classified.action);
+		out.push(classified);
 	}
 	return out;
 }
 
 /** Codex-parity labels for demo activity stream. */
-export function labelForPiAction(action: string): string {
-	const lower = action.toLowerCase();
+export function labelForPiActionStart(action: PiThinkingAction): string {
+	const lower = action.action.toLowerCase();
 	if (lower.startsWith("read ")) return "Read file";
 	if (lower.startsWith("edit ")) return "File edit started";
 	if (lower.startsWith("write ")) return "Write file";
-	if (lower.includes("npm test")) return "Shell command started";
-	if (lower.includes("npm run build")) return "Shell command started";
+	if (lower.includes("npm test")) return "Running tests";
+	if (lower.includes("npm run build")) return "Building preview";
 	if (lower.startsWith("$")) return "Shell command started";
 	return "Tool";
 }
 
-export function summarizeAssistantProse(text: string, maxLen = 140): string {
+export function labelForPiActionEnd(action: PiThinkingAction): string {
+	const lower = action.action.toLowerCase();
+	if (lower.startsWith("read ")) return "Read file completed";
+	if (lower.startsWith("edit ")) return "File edit completed";
+	if (lower.startsWith("write ")) return "Write file completed";
+	if (lower.includes("npm test")) return "Tests completed";
+	if (lower.includes("npm run build")) return "Build completed";
+	if (lower.startsWith("$")) return "Shell command completed";
+	return "Tool finished";
+}
+
+export function summarizeAssistantProse(text: string, maxLen = 120): string {
 	const trimmed = text.trim().replace(/\s+/g, " ");
 	if (!trimmed) return "";
 	const first = trimmed.split(/(?<=[.!?])\s+/)[0] ?? trimmed;

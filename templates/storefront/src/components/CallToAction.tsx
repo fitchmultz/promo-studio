@@ -11,17 +11,18 @@ export function CallToAction() {
 			<p className="muted">{product.inventory} left in stock</p>
 			<button
 				type="button"
+				className="cta-button"
 				disabled={disabled}
 				onClick={() => {
 					const line = addToCart(1);
 					setMessage(
-						`${line.quantity} ${line.sku} added at $${line.unitPrice.toFixed(2)}.`,
+						`Added ${line.quantity} × ${line.sku} to cart ($${line.unitPrice.toFixed(2)} each).`,
 					);
 				}}
 			>
 				Add to cart
 			</button>
-			<p aria-live="polite" className="muted">
+			<p aria-live="polite" className="cart-feedback" role="status">
 				{message}
 			</p>
 		</section>

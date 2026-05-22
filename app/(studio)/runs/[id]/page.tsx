@@ -3,7 +3,9 @@ import { ActivityStream } from "@/components/ActivityStream";
 import { BeforeAfter } from "@/components/BeforeAfter";
 import { DiffViewer } from "@/components/DiffViewer";
 import { RunDetailTabs } from "@/components/RunDetailTabs";
+import { RunFailureBanner } from "@/components/RunFailureBanner";
 import { RunReceipt } from "@/components/RunReceipt";
+import { TranscriptViewer } from "@/components/TranscriptViewer";
 import { requireUser } from "@/lib/auth";
 import { parseCodexEvents } from "@/lib/codex-runner";
 import { prisma } from "@/lib/db";
@@ -12,7 +14,11 @@ import {
 	resolveFullTranscript,
 	runTranscriptFileByteLength,
 } from "@/lib/agent/transcript-store";
-import { agentDisplayName } from "@/lib/agent-display";
+import {
+	agentDisplayName,
+	formatRunDuration,
+	workspacePathForDisplay,
+} from "@/lib/agent-display";
 import { parseStringArrayJson } from "@/lib/json";
 
 export const dynamic = "force-dynamic";
@@ -91,8 +97,9 @@ export default async function RunDetailPage({
 					<>
 						<h2>Transcript</h2>
 						<p className="muted">
-							Raw JSONL from the agent (one JSON object per line). The live
-							activity panel above is a readable, TUI-style view of the same run.
+							Raw JSONL from {agentDisplayName(run.agentCore)} (one JSON object
+							per line). The live activity panel above is the readable,
+							TUI-style view of the same run.
 						</p>
 						{legacyMarkerTruncated ? (
 							<p className="muted">
@@ -107,19 +114,18 @@ export default async function RunDetailPage({
 								capture the full trace.
 							</p>
 						) : null}
-						<p className="muted transcript-meta">
-							{fullTranscript
-								? `${fullTranscript.length.toLocaleString()} characters · ${events.length.toLocaleString()} JSONL lines${fileBytes ? " · full trace on disk" : ""}`
-								: "Agent transcript is still streaming."}
-						</p>
-						<pre className="transcript">
-							{fullTranscript || "Agent transcript is still streaming."}
-						</pre>
+						<TranscriptViewer
+							runId={run.id}
+							agentCore={run.agentCore}
+							invocation={run.codexCommand}
+						/>
 					</>
 				),
 			}}
 		/>
 	);
+	const duration = formatRunDuration(run.startedAt, run.completedAt);
+
 	return (
 		<main className="studio-page" id="main-content">
 			<section className="studio-hero studio-hero--compact">
@@ -130,12 +136,20 @@ export default async function RunDetailPage({
 						</p>
 						<h1>{run.campaignGoal}</h1>
 						<p>{run.campaignBrief}</p>
+						<p className="muted run-meta">
+							{workspacePathForDisplay(run.agentCore, run.workspacePath)} ·{" "}
+							{duration}
+							{run.status === "running" ? " elapsed" : ""}
+						</p>
 					</div>
 					<span className={`status-pill status-pill--${run.status}`}>
 						{run.status}
 					</span>
 				</div>
 			</section>
+			{run.status === "failed" ? (
+				<RunFailureBanner error={run.error} runId={run.id} />
+			) : null}
 			{activity}
 			{tabs}
 		</main>

@@ -3,10 +3,13 @@
  * Raw JSONL stays on the Transcript tab only.
  */
 
+import { formatShellCommandForDisplay } from "@/lib/agent-display";
 import { isJsonObject } from "@/lib/json";
 import {
 	extractThinkingActions,
-	labelForPiAction,
+	labelForPiActionEnd,
+	labelForPiActionStart,
+	type PiThinkingAction,
 	summarizeAssistantProse,
 } from "@/lib/pi-activity-steps";
 
@@ -123,14 +126,14 @@ function strArg(args: unknown, key: string): string | undefined {
 	return typeof value === "string" ? value : undefined;
 }
 
-/** Mirrors pi TUI `formatBashCall`: bold `$ command`. */
+/** Mirrors pi TUI `formatBashCall`: `$ command` with agent-workspaces paths. */
 export function formatPiBashCall(args: unknown): string {
 	const command = strArg(args, "command");
 	if (!command?.trim()) return "$ …";
 	const timeout = isJsonObject(args) ? args.timeout : undefined;
 	const suffix =
 		typeof timeout === "number" ? ` (timeout ${timeout}s)` : "";
-	return `$ ${command.trim()}${suffix}`;
+	return `${formatShellCommandForDisplay(command)}${suffix}`;
 }
 
 function formatPiToolCall(toolName: string, args: unknown): string {
@@ -162,12 +165,26 @@ function formatPiToolCall(toolName: string, args: unknown): string {
 	}
 }
 
+function shellMilestoneLabel(command: string, phase: "start" | "end"): string | null {
+	const lower = command.toLowerCase();
+	if (lower.includes("npm test")) {
+		return phase === "start" ? "Running tests" : "Tests completed";
+	}
+	if (lower.includes("npm run build")) {
+		return phase === "start" ? "Building preview" : "Build completed";
+	}
+	return null;
+}
+
 function codexStyleToolLabel(
 	toolName: string,
 	phase: "start" | "end",
 	isError?: boolean,
+	command?: string,
 ): string {
-	if (toolName === "bash") {
+	if (toolName === "bash" && command) {
+		const milestone = shellMilestoneLabel(command, phase);
+		if (milestone) return milestone;
 		return phase === "start"
 			? "Shell command started"
 			: isError
@@ -206,6 +223,33 @@ const SKIP_TYPES = new Set([
 	"tool_execution_update",
 ]);
 
+function emitThinkingStepPair(
+	out: PiActivityRow[],
+	action: PiThinkingAction,
+	seen: Set<string>,
+	serial: number,
+) {
+	const key = `${action.kind}:${action.action}`;
+	if (seen.has(key)) return;
+	seen.add(key);
+	out.push({
+		id: `pi-step-start-${serial}-${seen.size}`,
+		kind: "tool",
+		label: labelForPiActionStart(action),
+		body: action.action,
+		variant: "tool",
+	});
+	if (action.kind === "edit" || action.kind === "write" || action.kind === "shell") {
+		out.push({
+			id: `pi-step-end-${serial}-${seen.size}`,
+			kind: "tool",
+			label: labelForPiActionEnd(action),
+			body: action.action,
+			variant: "tool",
+		});
+	}
+}
+
 function emitThinkingAsSteps(
 	out: PiActivityRow[],
 	buffer: string,
@@ -213,15 +257,7 @@ function emitThinkingAsSteps(
 	serial: number,
 ) {
 	for (const action of extractThinkingActions(buffer)) {
-		if (seen.has(action)) continue;
-		seen.add(action);
-		out.push({
-			id: `pi-step-${serial}-${seen.size}`,
-			kind: "tool",
-			label: labelForPiAction(action),
-			body: action,
-			variant: "tool",
-		});
+		emitThinkingStepPair(out, action, seen, serial);
 	}
 }
 
@@ -255,19 +291,14 @@ export function piEventsToActivityRows(
 	let thinkingBuffer = "";
 	let mergeSerial = 0;
 	const seenActions = new Set<string>();
+	let assistantSummary = "";
 
 	const flushText = () => {
 		if (!textBuffer) return;
 		if (demoLive) {
 			const summary = summarizeAssistantProse(textBuffer);
-			if (summary) {
-				out.push({
-					id: `assistant-summary-${mergeSerial++}`,
-					kind: "assistant",
-					label: "Agent message",
-					body: summary,
-					variant: "muted",
-				});
+			if (summary && summary !== assistantSummary) {
+				assistantSummary = summary;
 			}
 		} else {
 			pushMergedProse(out, "assistant", textBuffer, mergeSerial++);
@@ -313,13 +344,15 @@ export function piEventsToActivityRows(
 				typeof event.parsed.toolName === "string"
 					? event.parsed.toolName
 					: "tool";
+			const command = strArg(event.parsed.args, "command");
 			const body = formatPiToolCall(toolName, event.parsed.args);
-			if (demoLive && seenActions.has(body)) continue;
-			seenActions.add(body);
+			const dedupeKey = `${toolName}:${body}`;
+			if (demoLive && seenActions.has(dedupeKey)) continue;
+			seenActions.add(dedupeKey);
 			out.push({
 				id: event.id,
 				kind: "tool",
-				label: codexStyleToolLabel(toolName, "start"),
+				label: codexStyleToolLabel(toolName, "start", false, command),
 				body,
 				variant: "tool",
 			});
@@ -331,14 +364,18 @@ export function piEventsToActivityRows(
 				typeof event.parsed.toolName === "string"
 					? event.parsed.toolName
 					: "tool";
+			const command = strArg(event.parsed.args, "command");
 			const callLine = formatPiToolCall(toolName, event.parsed.args);
 			const output = toolResultText(event.parsed.result, 400);
 			const isError = event.parsed.isError === true;
 			const body = output ? `${callLine}\n${output}` : callLine;
+			const dedupeKey = `end:${toolName}:${callLine}`;
+			if (demoLive && seenActions.has(dedupeKey)) continue;
+			seenActions.add(dedupeKey);
 			out.push({
 				id: event.id,
 				kind: "tool",
-				label: codexStyleToolLabel(toolName, "end", isError),
+				label: codexStyleToolLabel(toolName, "end", isError, command),
 				body: body.slice(0, maxBodyChars),
 				variant: "tool",
 			});
@@ -399,5 +436,14 @@ export function piEventsToActivityRows(
 	}
 
 	flushAll();
+	if (demoLive && assistantSummary) {
+		out.push({
+			id: "assistant-summary-final",
+			kind: "assistant",
+			label: "Agent message",
+			body: assistantSummary,
+			variant: "muted",
+		});
+	}
 	return out;
 }

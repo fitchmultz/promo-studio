@@ -10,7 +10,7 @@ Promo Studio Pi is a commerce demo fork: the host Next.js app creates isolated s
 - `components/` — Campaign form with agent core/harness picker, activity stream, previews, diffs, receipts.
 - `lib/agent/` — Harness-agnostic runner, Codex/Pi adapters, transcript parsing, invocation descriptors.
 - `lib/codex-runner.ts` — Re-exports from `lib/agent/runner.ts` for backward compatibility.
-- `lib/workspace.ts` — copies `templates/storefront` into `codex-workspaces/run-<id>/storefront`.
+- `lib/workspace.ts` — copies `templates/storefront` into `agent-workspaces/run-<id>/storefront` (legacy DB rows may still say `codex-workspaces`; UI normalizes display).
 - `templates/storefront/` — Vite storefront template the agent modifies.
 - `tests/` — Vitest coverage including Codex and Pi harness selection.
 

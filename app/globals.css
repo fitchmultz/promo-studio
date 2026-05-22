@@ -371,6 +371,26 @@ code {
 	font-size: 0.78rem;
 	margin-top: 0.2rem;
 }
+.run-meta {
+	font-size: 0.88rem;
+	margin: 0.35rem 0 0;
+}
+.run-failure-banner {
+	background: #fef2f2;
+	border: 1px solid #fecaca;
+	border-radius: 12px;
+	margin-bottom: 1rem;
+	padding: 1rem 1.1rem;
+}
+.run-failure-banner strong {
+	color: var(--red);
+}
+.run-failure-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1rem;
+	margin-top: 0.75rem;
+}
 .sr-only {
 	border: 0;
 	clip: rect(0, 0, 0, 0);

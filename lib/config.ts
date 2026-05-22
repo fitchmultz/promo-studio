@@ -96,7 +96,7 @@ export const paths = {
 	projectRoot,
 	artifacts: path.join(projectRoot, "artifacts"),
 	templateStorefront: path.join(projectRoot, "templates", "storefront"),
-	workspaces: path.join(projectRoot, "codex-workspaces"),
+	workspaces: path.join(projectRoot, "agent-workspaces"),
 };
 
 export function resolveRequestedMode(

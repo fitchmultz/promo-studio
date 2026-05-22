@@ -45,7 +45,7 @@ export function RunDetailTabs({
 					key={tab.id}
 					role="tabpanel"
 				>
-					{panels[tab.id]}
+					{active === tab.id ? panels[tab.id] : null}
 				</div>
 			))}
 		</section>

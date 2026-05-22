@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RunReceipt } from "@/components/RunReceipt";
-import { agentDisplayName } from "@/lib/agent-display";
+import { TranscriptViewer } from "@/components/TranscriptViewer";
+import { agentDisplayName, workspacePathForDisplay } from "@/lib/agent-display";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -40,15 +41,15 @@ export default async function ProofPage() {
 					<RunReceipt run={latestRun} />
 					<details className="proof-details" open>
 						<summary>Full transcript</summary>
-						<pre>
-							{latestRun.transcript ||
-								latestRun.stdout ||
-								"No transcript captured."}
-						</pre>
+						<TranscriptViewer
+							runId={latestRun.id}
+							agentCore={latestRun.agentCore}
+							invocation={latestRun.codexCommand}
+						/>
 					</details>
 					<details className="proof-details">
 						<summary>Workspace path and changed files</summary>
-						<pre>{`${latestRun.workspacePath}\n${latestRun.changedFiles}`}</pre>
+						<pre>{`${workspacePathForDisplay(latestRun.agentCore, latestRun.workspacePath)}\n${latestRun.changedFiles}`}</pre>
 					</details>
 					<Link
 						className="button secondary-button"

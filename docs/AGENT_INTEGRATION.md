@@ -6,7 +6,7 @@ Promo Studio Pi runs storefront variants through a swappable agent core. The hos
 
 1. `POST /api/variant-runs` checks auth and same-origin form submission.
 2. `resolveAgentFromForm()` picks core, harness, model, and effort/thinking.
-3. `lib/workspace.ts` copies `templates/storefront` into `codex-workspaces/run-<id>/storefront`.
+3. `lib/workspace.ts` copies `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
 4. `lib/agent/runner.ts` invokes the selected adapter:
    - **Codex SDK** — `@openai/codex-sdk` streamed JSONL
    - **Codex exec** — `codex exec --json` subprocess

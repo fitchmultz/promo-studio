@@ -72,7 +72,7 @@ export function AgentSettingsFields({
 					/>
 					<p className="muted field-note">
 						Pi runs <code>pi --mode json</code> in the isolated storefront; the
-						campaign prompt is sent on stdin. Extension models (e.g.{" "}
+						campaign prompt is sent on stdin. Extension models (for example{" "}
 						<code>cursor/composer-2.5</code>) are passed via{" "}
 						<code>--model</code>.
 					</p>
