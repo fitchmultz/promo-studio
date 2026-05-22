@@ -56,6 +56,7 @@ function piMessageUpdateKind(event: EventItem): "text" | "thinking" | "other" {
 
 function labelForPi(event: EventItem) {
 	if (event.type === "merged_assistant_text") return "Assistant";
+	if (event.type === "merged_thinking_text") return "Thinking";
 	if (event.type === "session") return "Pi session";
 	if (event.type === "agent_start") return "Pi agent started";
 	if (event.type === "agent_end") return "Pi agent finished";
@@ -79,10 +80,19 @@ function labelFor(agentCore: string, event: EventItem) {
 	return agentCore === "pi" ? labelForPi(event) : labelForCodex(event);
 }
 
-/** Merge consecutive Pi text_delta message_update lines into one Assistant row. */
-function mergePiTextDeltas(events: EventItem[]): EventItem[] {
+function piDeltaFromEvent(event: EventItem): string {
+	const assistantEvent = event.parsed.assistantMessageEvent;
+	if (!isJsonObject(assistantEvent) || typeof assistantEvent.delta !== "string") {
+		return "";
+	}
+	return assistantEvent.delta;
+}
+
+/** Merge consecutive Pi text_delta / thinking_delta message_update lines. */
+function mergePiMessageUpdateDeltas(events: EventItem[]): EventItem[] {
 	const out: EventItem[] = [];
 	let textBuffer = "";
+	let thinkingBuffer = "";
 	const flushText = () => {
 		if (!textBuffer) return;
 		out.push({
@@ -93,18 +103,38 @@ function mergePiTextDeltas(events: EventItem[]): EventItem[] {
 		});
 		textBuffer = "";
 	};
-	for (const event of events) {
-		if (event.type === "message_update" && piMessageUpdateKind(event) === "text") {
-			const assistantEvent = event.parsed.assistantMessageEvent;
-			if (isJsonObject(assistantEvent) && typeof assistantEvent.delta === "string") {
-				textBuffer += assistantEvent.delta;
-			}
-			continue;
-		}
+	const flushThinking = () => {
+		if (!thinkingBuffer) return;
+		out.push({
+			id: `merged-thinking-${out.length}`,
+			type: "merged_thinking_text",
+			raw: thinkingBuffer,
+			parsed: { type: "merged_thinking_text", text: thinkingBuffer },
+		});
+		thinkingBuffer = "";
+	};
+	const flushAll = () => {
 		flushText();
+		flushThinking();
+	};
+	for (const event of events) {
+		if (event.type === "message_update") {
+			const kind = piMessageUpdateKind(event);
+			if (kind === "text") {
+				flushThinking();
+				textBuffer += piDeltaFromEvent(event);
+				continue;
+			}
+			if (kind === "thinking") {
+				flushText();
+				thinkingBuffer += piDeltaFromEvent(event);
+				continue;
+			}
+		}
+		flushAll();
 		out.push(event);
 	}
-	flushText();
+	flushAll();
 	return out;
 }
 
@@ -127,7 +157,10 @@ function eventText(
 	event: EventItem,
 	maxChars: number,
 ) {
-	if (event.type === "merged_assistant_text") {
+	if (
+		event.type === "merged_assistant_text" ||
+		event.type === "merged_thinking_text"
+	) {
 		const text =
 			typeof event.parsed.text === "string" ? event.parsed.text : "";
 		return text.trim().slice(0, maxChars);
@@ -216,7 +249,7 @@ export function ActivityStream({
 
 	const displayEvents = useMemo(() => {
 		if (agentCore === "pi") {
-			return mergePiTextDeltas(events);
+			return mergePiMessageUpdateDeltas(events);
 		}
 		return events;
 	}, [agentCore, events]);
@@ -263,7 +296,8 @@ export function ActivityStream({
 							<li
 								key={event.id}
 								className={
-									event.type === "merged_assistant_text"
+									event.type === "merged_assistant_text" ||
+									event.type === "merged_thinking_text"
 										? "activity-item--prose"
 										: undefined
 								}
