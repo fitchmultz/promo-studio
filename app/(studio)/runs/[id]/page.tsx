@@ -103,9 +103,9 @@ export default async function RunDetailPage({
 					<>
 						<h2>Transcript</h2>
 						<p className="muted">
-							Raw JSONL from {runLabel} (one JSON object
-							per line). The live activity panel above is the readable,
-							TUI-style view of the same run.
+							Raw JSONL from {runLabel} (one JSON object per line). The live
+							activity panel above is the readable, TUI-style view of the same
+							run.
 						</p>
 						{legacyMarkerTruncated ? (
 							<p className="muted">
@@ -136,9 +136,7 @@ export default async function RunDetailPage({
 			<section className="studio-hero studio-hero--compact">
 				<div className="split-heading">
 					<div>
-						<p className="section-kicker">
-							Run detail · {runLabel}
-						</p>
+						<p className="section-kicker">Run detail · {runLabel}</p>
 						<h1>{run.campaignGoal}</h1>
 						<p>{run.campaignBrief}</p>
 						<p className="muted run-meta">

@@ -65,7 +65,7 @@ describe("piEventsToActivityRows", () => {
 								{
 									type: "thinking",
 									thinking:
-										"read package.json\n\n{\n  \"name\": \"demo\"\n}\n100% organic cotton canvas",
+										'read package.json\n\n{\n  "name": "demo"\n}\n100% organic cotton canvas',
 								},
 							],
 						},
@@ -82,10 +82,7 @@ describe("piEventsToActivityRows", () => {
 
 	it("skips raw JSON lifecycle noise in demo mode", () => {
 		const rows = piEventsToActivityRows(
-			[
-				ev("turn_start", { turn: 1 }),
-				ev("agent_start", {}),
-			],
+			[ev("turn_start", { turn: 1 }), ev("agent_start", {})],
 			4000,
 			{ demoLive: true },
 		);
@@ -93,11 +90,10 @@ describe("piEventsToActivityRows", () => {
 	});
 
 	it("uses agentLabel for lifecycle rows in demo mode", () => {
-		const rows = piEventsToActivityRows(
-			[ev("agent_start", {})],
-			4000,
-			{ demoLive: true, agentLabel: "Composer 2.5" },
-		);
+		const rows = piEventsToActivityRows([ev("agent_start", {})], 4000, {
+			demoLive: true,
+			agentLabel: "Composer 2.5",
+		});
 		expect(rows.map((r) => r.label)).toEqual(["Composer 2.5 agent started"]);
 	});
 });

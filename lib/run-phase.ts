@@ -58,14 +58,16 @@ function inferFromActivityText(text: string): RunPhaseId {
 	if (lower.includes("npm run build")) return "building";
 	if (lower.includes("npm test")) return "testing";
 	if (/\bedit\s+\S/.test(lower) || /\bwrite\s+\S/.test(lower)) return "editing";
-	if (/\bread\s+\S/.test(lower) || /\$ glob/.test(lower) || /\bls\b/.test(lower))
+	if (
+		/\bread\s+\S/.test(lower) ||
+		/\$ glob/.test(lower) ||
+		/\bls\b/.test(lower)
+	)
 		return "discovering";
 	return "starting";
 }
 
-function piToolCommand(event: {
-	parsed: Record<string, unknown>;
-}): string {
+function piToolCommand(event: { parsed: Record<string, unknown> }): string {
 	const args = event.parsed.args;
 	if (!isJsonObject(args)) return "";
 	if (typeof args.command === "string") return args.command;
@@ -78,7 +80,11 @@ function piToolCommand(event: {
 }
 
 function piPhaseActivityText(
-	events: Array<{ type: string; parsed: Record<string, unknown>; raw?: string }>,
+	events: Array<{
+		type: string;
+		parsed: Record<string, unknown>;
+		raw?: string;
+	}>,
 ): string {
 	const parts: string[] = [];
 	for (const event of events) {
@@ -129,7 +135,11 @@ export function inferRunPhase(params: {
 	status: string;
 	agentCore: string;
 	hasPreview: boolean;
-	events: Array<{ type: string; parsed: Record<string, unknown>; raw?: string }>;
+	events: Array<{
+		type: string;
+		parsed: Record<string, unknown>;
+		raw?: string;
+	}>;
 }): RunPhaseState {
 	if (params.status === "failed") {
 		return {

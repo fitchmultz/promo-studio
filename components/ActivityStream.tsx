@@ -177,7 +177,13 @@ export function ActivityStream({
 		? Math.max(0, piRows.length - visiblePiRows.length)
 		: Math.max(0, events.length - visibleCodexEvents.length);
 
-	const hasContent = isPi ? visiblePiRows.length > 0 : visibleCodexEvents.length > 0;
+	const hasContent = isPi
+		? visiblePiRows.length > 0
+		: visibleCodexEvents.length > 0;
+
+	const scrollAnchor = isPi
+		? `${visiblePiRows.at(-1)?.id ?? ""}:${visiblePiRows.at(-1)?.body.length ?? 0}`
+		: `${visibleCodexEvents.at(-1)?.id ?? ""}:${visibleCodexEvents.at(-1)?.raw.length ?? 0}`;
 
 	const runPhase = useMemo(
 		() =>
@@ -192,9 +198,9 @@ export function ActivityStream({
 
 	useEffect(() => {
 		const activityList = activityListRef.current;
-		if (!activityList) return;
+		if (!activityList || !scrollAnchor) return;
 		activityList.scrollTop = activityList.scrollHeight;
-	}, [hasContent, status, visibleCodexEvents.length, visiblePiRows.length]);
+	}, [scrollAnchor]);
 
 	return (
 		<section
@@ -217,12 +223,7 @@ export function ActivityStream({
 							{isPi ? visiblePiRows.length : visibleCodexEvents.length} of{" "}
 							{isPi ? piRows.length : events.length}{" "}
 							{isPi ? "activity steps" : "events"}.
-							{isPi ? (
-								<>
-									{" "}
-									Full raw JSONL is on the Transcript tab.
-								</>
-							) : null}
+							{isPi ? <> Full raw JSONL is on the Transcript tab.</> : null}
 						</p>
 					) : null}
 					<ol className="activity-list" ref={activityListRef}>

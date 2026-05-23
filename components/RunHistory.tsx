@@ -29,10 +29,7 @@ export function RunHistory({
 									</span>
 									<small>{run.outputSummary || run.campaignBrief}</small>
 									<small className="history-workspace">
-										{workspacePathForDisplay(
-											run.agentCore,
-											run.workspacePath,
-										)}
+										{workspacePathForDisplay(run.agentCore, run.workspacePath)}
 									</small>
 								</div>
 								<span className={`status-pill status-pill--${run.status}`}>

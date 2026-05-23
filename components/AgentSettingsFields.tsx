@@ -54,9 +54,7 @@ export function AgentSettingsFields({
 				<button
 					className={settings.agentCore === "pi" ? "chip chip--active" : "chip"}
 					type="button"
-					onClick={() =>
-						onChange({ agentCore: "pi", agentHarness: "json" })
-					}
+					onClick={() => onChange({ agentCore: "pi", agentHarness: "json" })}
 				>
 					Pi
 				</button>
@@ -77,9 +75,7 @@ export function AgentSettingsFields({
 					Harness
 					<select
 						value={settings.agentHarness}
-						onChange={(event) =>
-							onChange({ agentHarness: event.target.value })
-						}
+						onChange={(event) => onChange({ agentHarness: event.target.value })}
 					>
 						{harnessOptions.map((option) => (
 							<option key={option.value} value={option.value}>

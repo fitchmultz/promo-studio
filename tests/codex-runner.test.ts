@@ -54,7 +54,11 @@ async function writeVariantArtifacts(workspace: string) {
 
 function expectValidatedVariant(
 	completed: Awaited<ReturnType<typeof waitForRun>>,
-	expected?: { model?: string; effort?: string; invocationIncludesWorkspace?: boolean },
+	expected?: {
+		model?: string;
+		effort?: string;
+		invocationIncludesWorkspace?: boolean;
+	},
 ) {
 	expect(completed.status).toBe("succeeded");
 	const model = expected?.model ?? "gpt-5.5-mini";

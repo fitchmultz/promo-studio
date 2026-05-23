@@ -34,7 +34,9 @@ export interface PiThinkingAction {
 }
 
 /** One actionable line extracted from Pi thinking partials (cursor-sdk style). */
-export function classifyThinkingActionLine(line: string): PiThinkingAction | null {
+export function classifyThinkingActionLine(
+	line: string,
+): PiThinkingAction | null {
 	const trimmed = line.trim();
 	if (!trimmed || isProductNoiseLine(trimmed)) return null;
 	if (/^read\s+\S/i.test(trimmed)) {

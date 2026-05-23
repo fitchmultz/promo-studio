@@ -49,8 +49,6 @@ describe("pi-activity-steps", () => {
 		const summary = summarizeAssistantProse(
 			"The user wants a holiday variant. I will read files first. Then I will edit components.",
 		);
-		expect(summary).toBe(
-			"The user wants a holiday variant.",
-		);
+		expect(summary).toBe("The user wants a holiday variant.");
 	});
 });

@@ -30,41 +30,44 @@ export function TranscriptViewer({
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
 
-	const load = useCallback(async (lines: number, activeRef: { current: boolean }) => {
-		setLoading(true);
-		setError("");
-		try {
-			const response = await fetch(
-				`/api/variant-runs/${runId}/transcript?tail=${lines}`,
-				{ cache: "no-store" },
-			);
-			if (!response.ok) {
+	const load = useCallback(
+		async (lines: number, activeRef: { current: boolean }) => {
+			setLoading(true);
+			setError("");
+			try {
+				const response = await fetch(
+					`/api/variant-runs/${runId}/transcript?tail=${lines}`,
+					{ cache: "no-store" },
+				);
+				if (!response.ok) {
+					if (activeRef.current) setError("Could not load transcript.");
+					return;
+				}
+				const payload: unknown = await response.json();
+				if (
+					!activeRef.current ||
+					typeof payload !== "object" ||
+					payload === null
+				) {
+					return;
+				}
+				const record = payload as Record<string, unknown>;
+				setText(typeof record.text === "string" ? record.text : "");
+				setMeta({
+					totalLines:
+						typeof record.totalLines === "number" ? record.totalLines : 0,
+					shownLines:
+						typeof record.shownLines === "number" ? record.shownLines : 0,
+					truncated: record.truncated === true,
+				});
+			} catch {
 				if (activeRef.current) setError("Could not load transcript.");
-				return;
+			} finally {
+				if (activeRef.current) setLoading(false);
 			}
-			const payload: unknown = await response.json();
-			if (
-				!activeRef.current ||
-				typeof payload !== "object" ||
-				payload === null
-			) {
-				return;
-			}
-			const record = payload as Record<string, unknown>;
-			setText(typeof record.text === "string" ? record.text : "");
-			setMeta({
-				totalLines:
-					typeof record.totalLines === "number" ? record.totalLines : 0,
-				shownLines:
-					typeof record.shownLines === "number" ? record.shownLines : 0,
-				truncated: record.truncated === true,
-			});
-		} catch {
-			if (activeRef.current) setError("Could not load transcript.");
-		} finally {
-			if (activeRef.current) setLoading(false);
-		}
-	}, [runId]);
+		},
+		[runId],
+	);
 
 	useEffect(() => {
 		const activeRef = { current: true };

@@ -17,9 +17,14 @@ export function VirtualizedTranscript({
 	const [viewportHeight, setViewportHeight] = useState(480);
 	const [scrollTop, setScrollTop] = useState(0);
 
-	const totalHeight = lines.length * LINE_HEIGHT_PX;
-	const firstVisible = Math.max(0, Math.floor(scrollTop / LINE_HEIGHT_PX) - OVERSCAN);
-	const visibleCount = Math.ceil(viewportHeight / LINE_HEIGHT_PX) + OVERSCAN * 2;
+	const lineCount = lines.length;
+	const totalHeight = lineCount * LINE_HEIGHT_PX;
+	const firstVisible = Math.max(
+		0,
+		Math.floor(scrollTop / LINE_HEIGHT_PX) - OVERSCAN,
+	);
+	const visibleCount =
+		Math.ceil(viewportHeight / LINE_HEIGHT_PX) + OVERSCAN * 2;
 	const lastVisible = Math.min(lines.length, firstVisible + visibleCount);
 	const offsetY = firstVisible * LINE_HEIGHT_PX;
 
@@ -35,10 +40,10 @@ export function VirtualizedTranscript({
 		updateViewport();
 		const observer = new ResizeObserver(updateViewport);
 		observer.observe(el);
-		el.scrollTop = el.scrollHeight;
+		el.scrollTop = lineCount > 0 ? el.scrollHeight : 0;
 		setScrollTop(el.scrollTop);
 		return () => observer.disconnect();
-	}, [text]);
+	}, [lineCount]);
 
 	return (
 		<div

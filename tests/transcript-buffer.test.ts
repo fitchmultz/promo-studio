@@ -37,7 +37,8 @@ describe("transcript capture buffers", () => {
 	it("transcriptBodyForDb tails large traces silently", () => {
 		const lines = Array.from(
 			{ length: 80_000 },
-			(_, index) => `{"type":"message_update","payload":"${"x".repeat(60)}","n":${index}}`,
+			(_, index) =>
+				`{"type":"message_update","payload":"${"x".repeat(60)}","n":${index}}`,
 		);
 		const huge = `${lines.join("\n")}\n`;
 		expect(huge.length).toBeGreaterThan(MAX_DB_TRANSCRIPT_CHARS);

@@ -41,12 +41,15 @@ describe("agent-display", () => {
 				selectedModel: "pi-default",
 			}),
 		).toBe("Pi");
-		expect(
-			builtVariantHeading("pi", "cursor/composer-2.5"),
-		).toBe("After: Composer 2.5-built campaign variant");
-		expect(runAgentDisplayLabel({ agentCore: "codex", selectedModel: "gpt-5.5-mini" })).toBe(
-			"GPT-5.5 mini",
+		expect(builtVariantHeading("pi", "cursor/composer-2.5")).toBe(
+			"After: Composer 2.5-built campaign variant",
 		);
+		expect(
+			runAgentDisplayLabel({
+				agentCore: "codex",
+				selectedModel: "gpt-5.5-mini",
+			}),
+		).toBe("GPT-5.5 mini");
 	});
 
 	it("builds studio intro copy from agent core", () => {

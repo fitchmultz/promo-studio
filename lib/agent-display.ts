@@ -5,7 +5,9 @@ export type AgentCoreId = "codex" | "pi";
 const LEGACY_WORKSPACE_DIR = "codex-workspaces";
 const CANONICAL_WORKSPACE_DIR = "agent-workspaces";
 
-export function parseAgentCoreId(value: string | null | undefined): AgentCoreId {
+export function parseAgentCoreId(
+	value: string | null | undefined,
+): AgentCoreId {
 	return value === "pi" ? "pi" : "codex";
 }
 
@@ -76,7 +78,10 @@ export function studioAgentIntroSentence(
 
 /** Normalize legacy on-disk dir name for all UI surfaces (receipts, shell output, lists). */
 export function formatWorkspacePathForDisplay(workspacePath: string): string {
-	return workspacePath.replaceAll(LEGACY_WORKSPACE_DIR, CANONICAL_WORKSPACE_DIR);
+	return workspacePath.replaceAll(
+		LEGACY_WORKSPACE_DIR,
+		CANONICAL_WORKSPACE_DIR,
+	);
 }
 
 export function workspacePathForDisplay(
@@ -94,10 +99,7 @@ export function formatShellCommandForDisplay(command: string): string {
 	if (index >= 0) {
 		normalized = normalized.slice(index);
 	}
-	normalized = normalized.replace(
-		/\s+&&\s+/g,
-		"\n  && ",
-	);
+	normalized = normalized.replace(/\s+&&\s+/g, "\n  && ");
 	return normalized;
 }
 

@@ -88,20 +88,29 @@ function piPartialProseFromEvent(event: PiActivityInputEvent): string {
 
 function piDeltaFromEvent(event: PiActivityInputEvent): string {
 	const assistantEvent = event.parsed.assistantMessageEvent;
-	if (!isJsonObject(assistantEvent) || typeof assistantEvent.delta !== "string") {
+	if (
+		!isJsonObject(assistantEvent) ||
+		typeof assistantEvent.delta !== "string"
+	) {
 		return "";
 	}
 	return assistantEvent.delta;
 }
 
-function appendPiThinkingBuffer(buffer: string, event: PiActivityInputEvent): string {
+function appendPiThinkingBuffer(
+	buffer: string,
+	event: PiActivityInputEvent,
+): string {
 	const snapshot = piPartialProseFromEvent(event);
 	if (snapshot && snapshot.length >= buffer.length) return snapshot;
 	const delta = piDeltaFromEvent(event);
 	return delta ? buffer + delta : buffer;
 }
 
-function appendPiTextBuffer(buffer: string, event: PiActivityInputEvent): string {
+function appendPiTextBuffer(
+	buffer: string,
+	event: PiActivityInputEvent,
+): string {
 	const snapshot = piPartialProseFromEvent(event);
 	if (snapshot && snapshot.length >= buffer.length) return snapshot;
 	const delta = piDeltaFromEvent(event);
@@ -133,8 +142,7 @@ export function formatPiBashCall(args: unknown): string {
 	const command = strArg(args, "command");
 	if (!command?.trim()) return "$ …";
 	const timeout = isJsonObject(args) ? args.timeout : undefined;
-	const suffix =
-		typeof timeout === "number" ? ` (timeout ${timeout}s)` : "";
+	const suffix = typeof timeout === "number" ? ` (timeout ${timeout}s)` : "";
 	return `${formatShellCommandForDisplay(command)}${suffix}`;
 }
 
@@ -158,16 +166,17 @@ function formatPiToolCall(toolName: string, args: unknown): string {
 		case "find":
 		case "ls": {
 			const path = strArg(args, "path") ?? strArg(args, "pattern");
-			return path
-				? `${toolName} ${shortenWorkspacePath(path)}`
-				: toolName;
+			return path ? `${toolName} ${shortenWorkspacePath(path)}` : toolName;
 		}
 		default:
 			return toolName;
 	}
 }
 
-function shellMilestoneLabel(command: string, phase: "start" | "end"): string | null {
+function shellMilestoneLabel(
+	command: string,
+	phase: "start" | "end",
+): string | null {
 	const lower = command.toLowerCase();
 	if (lower.includes("npm test")) {
 		return phase === "start" ? "Running tests" : "Tests completed";
@@ -199,7 +208,11 @@ function codexStyleToolLabel(
 	if (toolName === "read") {
 		return phase === "start" ? "Read file" : "Read file completed";
 	}
-	return phase === "start" ? "Tool started" : isError ? "Tool failed" : "Tool finished";
+	return phase === "start"
+		? "Tool started"
+		: isError
+			? "Tool failed"
+			: "Tool finished";
 }
 
 function toolResultText(result: unknown, maxChars: number): string {
@@ -241,7 +254,11 @@ function emitThinkingStepPair(
 		body: action.action,
 		variant: "tool",
 	});
-	if (action.kind === "edit" || action.kind === "write" || action.kind === "shell") {
+	if (
+		action.kind === "edit" ||
+		action.kind === "write" ||
+		action.kind === "shell"
+	) {
 		out.push({
 			id: `pi-step-end-${serial}-${seen.size}`,
 			kind: "tool",

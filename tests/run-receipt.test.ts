@@ -61,7 +61,7 @@ describe("RunReceipt", () => {
 		expect(markup).toContain("Reasoning effort");
 		expect(markup).toContain("Workspace path");
 		expect(markup).toContain("/tmp/workspace/run-1/storefront");
-		expect(markup).toContain("Codex invocation");
+		expect(markup).toContain("GPT-5.5 invocation");
 		expect(markup).toContain('class="receipt-command"');
 		expect(markup).toContain("Codex TypeScript SDK runStreamed");
 		expect(markup).toContain("Prompt sent to Codex.");

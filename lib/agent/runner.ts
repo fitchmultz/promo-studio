@@ -339,9 +339,7 @@ export async function executeVariantRun(
 		const { result, selection } = agentResult;
 		await fileWrite;
 		const fullTranscript = redactSecrets(
-			(
-				await readRunTranscriptFile(runId)
-			)?.trim() ||
+			(await readRunTranscriptFile(runId))?.trim() ||
 				pollTranscript.trim() ||
 				result.stdout.trim(),
 		);

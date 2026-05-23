@@ -58,8 +58,7 @@ function run(status: string) {
 		previewHtml: "",
 		workspacePath: "/tmp/workspace",
 		startedAt: new Date("2026-05-22T12:00:00Z"),
-		completedAt:
-			status === "running" ? null : new Date("2026-05-22T12:02:05Z"),
+		completedAt: status === "running" ? null : new Date("2026-05-22T12:02:05Z"),
 		product: {
 			id: "ribbed-market-tote",
 			name: "Ribbed Market Tote",
