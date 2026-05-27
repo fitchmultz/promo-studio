@@ -9,6 +9,6 @@
 		"build": "vite build --configLoader runner"
 	},
 	"engines": {
-		"node": ">=22.19.0"
+		"node": ">=22.19.0 <27"
 	}
 }

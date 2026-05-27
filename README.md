@@ -39,7 +39,7 @@ Promo Studio treats each campaign request as an isolated code run with visible p
 
 ## Fastest way to see it work
 
-Prerequisites: Node.js `>=22.19.0` and npm. The seeded proof path does not require a `.env` file or live agent credentials.
+Prerequisites: Node.js `>=22.19.0 <27` and npm. The seeded proof path does not require a `.env` file or live agent credentials.
 
 ```bash
 npm install
