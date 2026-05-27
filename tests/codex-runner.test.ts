@@ -260,6 +260,12 @@ describe("Codex runner", () => {
 				"-m",
 				"gpt-5.5-mini",
 				"-c",
+				'approval_policy="never"',
+				"-c",
+				"sandbox_workspace_write.network_access=false",
+				"-c",
+				'web_search="disabled"',
+				"-c",
 				'model_reasoning_effort="medium"',
 			]),
 		);

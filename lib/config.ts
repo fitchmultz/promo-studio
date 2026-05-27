@@ -250,18 +250,51 @@ export function codexReasoningArgs(requestedReasoningEffort: string): string[] {
 		: [];
 }
 
-export function selectCodexMode(requested: CodexAuthMode): {
+export type CodexKeySource = "CODEX_API_KEY" | "OPENAI_API_KEY" | "none";
+export type CodexSubscriptionAuthSource = "CODEX_HOME" | "HOME" | "none";
+export interface CodexSelection {
 	selectedMode: SelectedCodexAuthMode;
-	keySource: "CODEX_API_KEY" | "OPENAI_API_KEY" | "none";
-} {
-	if (requested === "api-key") {
-		if (env.CODEX_API_KEY)
-			return { selectedMode: "api-key", keySource: "CODEX_API_KEY" };
-		if (env.OPENAI_API_KEY)
-			return { selectedMode: "api-key", keySource: "OPENAI_API_KEY" };
-		return { selectedMode: "api-key", keySource: "none" };
-	}
-	return { selectedMode: "subscription", keySource: "none" };
+	keySource: CodexKeySource;
+}
+
+export interface CodexAuthState extends CodexSelection {
+	requestedMode: CodexAuthMode;
+	childEnvKeySource: CodexKeySource;
+	apiKeyFallbackSource: CodexKeySource;
+	subscriptionAuthSource: CodexSubscriptionAuthSource;
+}
+
+function availableCodexApiKeySource(): CodexKeySource {
+	if (env.CODEX_API_KEY) return "CODEX_API_KEY";
+	if (env.OPENAI_API_KEY) return "OPENAI_API_KEY";
+	return "none";
+}
+
+function subscriptionAuthSource(): CodexSubscriptionAuthSource {
+	if (process.env.CODEX_HOME) return "CODEX_HOME";
+	if (process.env.HOME) return "HOME";
+	return "none";
+}
+
+export function resolveCodexAuthState(
+	requested: CodexAuthMode = env.CODEX_AUTH_MODE,
+): CodexAuthState {
+	const apiKeyFallbackSource = availableCodexApiKeySource();
+	const selectedMode = requested === "api-key" ? "api-key" : "subscription";
+	const keySource = selectedMode === "api-key" ? apiKeyFallbackSource : "none";
+	return {
+		requestedMode: requested,
+		selectedMode,
+		keySource,
+		childEnvKeySource: keySource,
+		apiKeyFallbackSource,
+		subscriptionAuthSource: subscriptionAuthSource(),
+	};
+}
+
+export function selectCodexMode(requested: CodexAuthMode): CodexSelection {
+	const { selectedMode, keySource } = resolveCodexAuthState(requested);
+	return { selectedMode, keySource };
 }
 
 function toProcessEnv(
@@ -275,13 +308,12 @@ function toProcessEnv(
 
 export function selectCodexApiKeyFallbackMode(): {
 	selectedMode: "api-key";
-	keySource: "CODEX_API_KEY" | "OPENAI_API_KEY" | "none";
+	keySource: CodexKeySource;
 } {
-	if (env.CODEX_API_KEY)
-		return { selectedMode: "api-key", keySource: "CODEX_API_KEY" };
-	if (env.OPENAI_API_KEY)
-		return { selectedMode: "api-key", keySource: "OPENAI_API_KEY" };
-	return { selectedMode: "api-key", keySource: "none" };
+	return {
+		selectedMode: "api-key",
+		keySource: resolveCodexAuthState("api-key").keySource,
+	};
 }
 
 export function codexChildEnv(

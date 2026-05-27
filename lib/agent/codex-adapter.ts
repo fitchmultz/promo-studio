@@ -1,16 +1,19 @@
-import path from "node:path";
 import {
 	codexChildEnv,
 	codexModelArgs,
 	codexReasoningArgs,
-	paths as appPaths,
 	redactSecrets,
 	selectCodexApiKeyFallbackMode,
 	selectCodexMode,
 	type CodexAuthMode,
 	type CodexReasoningEffort,
 	type CodexRuntime,
+	type CodexSelection,
 } from "@/lib/config";
+import {
+	codexAutomationExecArgs,
+	codexAutomationThreadOptions,
+} from "@/lib/agent/codex-automation-policy";
 import { appendLimited, runProcess } from "@/lib/agent/process";
 import type {
 	ProcessResult,
@@ -18,11 +21,6 @@ import type {
 	VariantProcessRunner,
 	VariantSdkRunner,
 } from "@/lib/agent/types";
-
-interface CodexSelection {
-	selectedMode: "subscription" | "api-key";
-	keySource: "CODEX_API_KEY" | "OPENAI_API_KEY" | "none";
-}
 
 function codexExecArgs(
 	workspace: string,
@@ -32,11 +30,7 @@ function codexExecArgs(
 	return [
 		"exec",
 		"--json",
-		"--sandbox",
-		"workspace-write",
-		"--skip-git-repo-check",
-		"--cd",
-		workspace,
+		...codexAutomationExecArgs(workspace),
 		...codexModelArgs(requestedModel),
 		...codexReasoningArgs(requestedEffort),
 		"-",
@@ -47,17 +41,6 @@ function looksLikeAuthFailure(result: ProcessResult) {
 	const text = `${result.stdout}\n${result.stderr}`;
 	return /(?:\bunauthorized\b|\b401\b|\bcredentials?\b|\bapi[\s_-]*key\b|\blogged\s*in\b|\bnot\s*authenticated\b|\bmust\s*authenticate\b|\bauthentication\s+failed\b|\bnot\s+logged\s+in\b)/i.test(
 		text,
-	);
-}
-
-function codexNpmCliPath() {
-	return path.join(
-		appPaths.projectRoot,
-		"node_modules",
-		"@openai",
-		"codex",
-		"bin",
-		"codex.js",
 	);
 }
 
@@ -95,17 +78,16 @@ export const defaultCodexSdkRunner: VariantSdkRunner = async (options) => {
 	const { Codex } = await import("@openai/codex-sdk");
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+	timeout.unref();
 	let stdout = "";
 	let streamFailure = "";
 	try {
 		const codex = new Codex({
-			codexPathOverride: codexNpmCliPath(),
 			env: toSdkEnv(codexChildEnv(options.keySource)),
 		});
 		const thread = codex.startThread({
+			...codexAutomationThreadOptions(),
 			workingDirectory: options.workspace,
-			skipGitRepoCheck: true,
-			sandboxMode: "workspace-write",
 			model: options.requestedModel || undefined,
 			modelReasoningEffort: options.requestedEffort || undefined,
 		});
