@@ -1,6 +1,6 @@
 # Agent Integration
 
-Promo Studio Pi runs storefront variants through a swappable agent core. The host app, workspace copy, prompt, manifest validation, and receipt UI are harness-agnostic.
+Promo Studio runs storefront variants through a swappable agent core. The host app, workspace copy, prompt, manifest validation, and receipt UI are harness-agnostic.
 
 ## Runtime flow
 
@@ -10,7 +10,7 @@ Promo Studio Pi runs storefront variants through a swappable agent core. The hos
 4. `npm run runs:worker` calls `drainQueuedVariantRunQueue()`, which claims queued rows before invoking the selected adapter:
    - **Codex SDK** — `@openai/codex-sdk` streamed JSONL
    - **Codex exec** — `codex exec --json` subprocess
-   - **Pi** — `pi --mode json --no-session` subprocess (prompt on stdin)
+   - **Pi** — `pi --mode json --session-id <run-id> --session-dir artifacts/pi-sessions` subprocess (prompt on stdin)
 5. Events are persisted as JSONL on `VariantRun.transcript`.
 6. The agent must edit source, run `npm test`, `npm run build`, and write `artifact/manifest.json`.
 7. The queued runner validates the manifest against real detected source changes, inlines the built preview, and finalizes the receipt. Stale `running` rows are failed during queue recovery.

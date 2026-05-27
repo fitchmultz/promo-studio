@@ -1,5 +1,5 @@
 {
-	"name": "promo-studio-pi",
+	"name": "promo-studio",
 	"version": "1.0.0",
 	"description": "Commerce demo with swappable Codex and Pi agent harnesses for isolated storefront variants",
 	"private": true,
@@ -37,7 +37,7 @@
 	"license": "MIT",
 	"type": "module",
 	"dependencies": {
-		"@earendil-works/pi-coding-agent": "^0.75.5",
+		"@earendil-works/pi-coding-agent": "^0.76.0",
 		"@openai/codex-sdk": "^0.133.0",
 		"@prisma/adapter-better-sqlite3": "^7.8.0",
 		"@prisma/client": "^7.8.0",

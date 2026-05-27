@@ -1,6 +1,6 @@
-# Promo Studio Pi — Multi-Harness Commerce Demo
+# Promo Studio — Multi-Harness Commerce Demo
 
-Promo Studio Pi helps commerce teams and evaluators see how **Codex** or **Pi** can turn a campaign brief into a tested, reviewable storefront variant instead of a throwaway text mockup. Switch agent core, harness (SDK vs CLI), and model from the studio form or `.env`.
+Promo Studio helps commerce teams and evaluators see how **Codex** or **Pi** can turn a campaign brief into a tested, reviewable storefront variant instead of a throwaway text mockup. Switch agent core, harness (SDK vs CLI), and model from the studio form or `.env`.
 
 [![Watch the Promo Studio walkthrough](https://img.youtube.com/vi/zPRLtiP8v7w/maxresdefault.jpg)](https://youtu.be/zPRLtiP8v7w)
 
@@ -73,7 +73,7 @@ npm run runs:worker
 The web app creates a queued run receipt; the worker claims queued runs and finalizes them. A live run is designed to:
 
 1. Copy `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
-2. Run Codex through the TypeScript SDK by default, or Pi through `pi --mode json` when selected.
+2. Run Codex through the TypeScript SDK by default, or Pi through `pi --mode json` with an explicit run-scoped session ID when selected.
 3. Stream activity to the run page.
 4. Instruct the agent to run `npm test` and `npm run build` in the storefront workspace.
 5. Validate `artifact/manifest.json` and changed files.
@@ -135,6 +135,7 @@ Key implementation choices:
 - **One receipt per run** — the database stores enough execution context to review the run after the fact.
 - **Validation before trust** — accepted variants must produce a manifest reporting passing tests, build, and commerce-invariant checks, then pass schema and changed-file validation.
 - **SDK default, CLI fallback** — `@openai/codex-sdk` is the default runtime, with a preserved `codex exec` path for environments that need it.
+- **Deterministic Pi sessions** — Pi JSON runs use the variant run ID as `--session-id` and store session files under gitignored `artifacts/pi-sessions/` for automation auditability without polluting storefront diffs.
 
 See `docs/CODEX_INTEGRATION.md` for the runtime contract and required manifest shape.
 

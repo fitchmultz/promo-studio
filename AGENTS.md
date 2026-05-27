@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Promo Studio Pi is a commerce demo fork: the host Next.js app creates isolated storefront workspaces, runs **Codex** (TypeScript SDK or `codex exec`) or **Pi** (SDK or `pi --mode json`), streams activity, validates the generated storefront, and stores an execution receipt.
+Promo Studio is a commerce demo: the host Next.js app creates isolated storefront workspaces, runs **Codex** (TypeScript SDK or `codex exec`) or **Pi** (`pi --mode json`), streams activity, validates the generated storefront, and stores an execution receipt.
 
 ## Repository map
 
@@ -19,7 +19,7 @@ Promo Studio Pi is a commerce demo fork: the host Next.js app creates isolated s
 | Env / form | Values |
 |------------|--------|
 | `AGENT_CORE` / `agentCore` | `codex` (default), `pi` |
-| `AGENT_HARNESS` / `agentHarness` | Codex: `sdk`, `exec` — Pi: `sdk`, `json` |
+| `AGENT_HARNESS` / `agentHarness` | Codex: `sdk`, `exec` — Pi: `json` |
 | Codex model / effort | `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, form `model`, `reasoningEffort` |
 | Pi model | `PI_MODEL`, form `model` — `provider/model` or `provider/model:thinking` |
 
