@@ -106,12 +106,15 @@ export function ActivityStream({
 	selectedModel = "",
 	initialEvents = [],
 	initialStatus = "running",
+	archive = false,
 }: {
 	runId: string;
 	agentCore?: string;
 	selectedModel?: string;
 	initialEvents?: EventItem[];
 	initialStatus?: string;
+	/** Archive tab: no polling; show full event history for review. */
+	archive?: boolean;
 }) {
 	const router = useRouter();
 	const [events, setEvents] = useState(initialEvents);
@@ -122,7 +125,7 @@ export function ActivityStream({
 	const agentName = runAgentDisplayLabel({ agentCore, selectedModel });
 
 	useEffect(() => {
-		if (status !== "running") return undefined;
+		if (archive || status !== "running") return undefined;
 		let active = true;
 		async function poll() {
 			const response = await fetch(`/api/variant-runs/${runId}`, {
@@ -144,20 +147,28 @@ export function ActivityStream({
 			active = false;
 			clearInterval(timer);
 		};
-	}, [router, runId, status]);
+	}, [archive, router, runId, status]);
 
-	const textLimit = status === "running" ? 4000 : 12000;
+	const textLimit = archive ? 12000 : status === "running" ? 4000 : 12000;
 
 	const piRows = useMemo(() => {
 		if (!isPi) return [];
 		return piEventsToActivityRows(events, textLimit, {
-			demoLive: true,
+			demoLive: !archive,
 			agentLabel: agentName,
 		});
-	}, [agentName, events, isPi, textLimit]);
+	}, [agentName, archive, events, isPi, textLimit]);
 
-	const maxVisibleEvents = status === "running" ? 200 : 400;
-	const maxVisiblePiRows = status === "running" ? 120 : 200;
+	const maxVisibleEvents = archive
+		? events.length
+		: status === "running"
+			? 200
+			: 400;
+	const maxVisiblePiRows = archive
+		? piRows.length
+		: status === "running"
+			? 120
+			: 200;
 
 	const visiblePiRows = useMemo(() => {
 		if (!isPi) return [];
@@ -204,17 +215,23 @@ export function ActivityStream({
 
 	return (
 		<section
-			className={`studio-card activity-card activity-card--${status}`}
-			aria-labelledby="activity-title"
+			className={`studio-card activity-card activity-card--${status}${archive ? " activity-card--archive" : ""}`}
+			aria-labelledby={archive ? "activity-archive-title" : "activity-title"}
 		>
 			<div className="split-heading">
 				<div>
-					<p className="section-kicker">Live agent stream</p>
-					<h2 id="activity-title">{agentName} activity</h2>
+					<p className="section-kicker">
+						{archive ? "Activity log" : "Live agent stream"}
+					</p>
+					<h2 id={archive ? "activity-archive-title" : "activity-title"}>
+						{agentName} activity
+					</h2>
 				</div>
 				<span className={`status-pill status-pill--${status}`}>{status}</span>
 			</div>
-			{status === "running" ? <RunPhaseStepper phase={runPhase} /> : null}
+			{!archive && status === "running" ? (
+				<RunPhaseStepper phase={runPhase} />
+			) : null}
 			{hasContent ? (
 				<>
 					{hiddenCount > 0 ? (

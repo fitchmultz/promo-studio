@@ -21,6 +21,12 @@ vi.mock("@/components/BeforeAfter", () => ({
 vi.mock("@/components/DiffViewer", () => ({
 	DiffViewer: () => "DIFF_MARKER",
 }));
+vi.mock("@/components/RunCodeDiffPanel", () => ({
+	RunCodeDiffPanel: () => "CODE_DIFF_PANEL_MARKER",
+}));
+vi.mock("@/components/RunTranscriptPanel", () => ({
+	RunTranscriptPanel: () => "TRANSCRIPT_PANEL_MARKER",
+}));
 vi.mock("@/components/RunDetailTabs", () => ({
 	RunDetailTabs: () => "TABS_MARKER",
 }));

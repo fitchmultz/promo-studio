@@ -15,6 +15,24 @@ export const VariantRunPollSchema = z.object({
 		status: z.string(),
 		hasPreview: z.boolean().optional(),
 	}),
+	changedFiles: z.array(z.string()),
+});
+
+export const DiffLineSchema = z.object({
+	kind: z.enum(["added", "removed", "neutral"]),
+	text: z.string(),
+	key: z.string(),
+});
+
+export const DiffEntrySchema = z.object({
+	file: z.string(),
+	diffLines: z.array(DiffLineSchema),
+});
+
+export const RunDiffResponseSchema = z.object({
+	status: z.string(),
+	changedFiles: z.array(z.string()),
+	diffs: z.array(DiffEntrySchema),
 });
 
 export const CreateVariantRunResponseSchema = z.object({

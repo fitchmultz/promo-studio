@@ -2,11 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { ActivityStream } from "@/components/ActivityStream";
 import { BeforeAfter } from "@/components/BeforeAfter";
 import { DiffViewer } from "@/components/DiffViewer";
+import { RunCodeDiffPanel } from "@/components/RunCodeDiffPanel";
 import { RunDetailTabs } from "@/components/RunDetailTabs";
 import { RunElapsed } from "@/components/RunElapsed";
 import { RunFailureBanner } from "@/components/RunFailureBanner";
 import { RunReceipt } from "@/components/RunReceipt";
-import { TranscriptViewer } from "@/components/TranscriptViewer";
+import { RunTranscriptPanel } from "@/components/RunTranscriptPanel";
 import { requireUser } from "@/lib/auth";
 import { parseCodexEvents } from "@/lib/codex-runner";
 import { prisma } from "@/lib/db";
@@ -81,16 +82,19 @@ export default async function RunDetailPage({
 				code: (
 					<>
 						<h2>Code diff</h2>
-						{changedFiles.length ? (
-							<DiffViewer
-								workspacePath={run.workspacePath}
-								changedFiles={changedFiles}
-							/>
-						) : (
-							<p className="muted">
-								Code changes will appear when the agent finishes.
-							</p>
-						)}
+						<RunCodeDiffPanel
+							runId={run.id}
+							initialStatus={run.status}
+							initialChangedFiles={changedFiles}
+							completedDiff={
+								run.status !== "running" && changedFiles.length ? (
+									<DiffViewer
+										workspacePath={run.workspacePath}
+										changedFiles={changedFiles}
+									/>
+								) : undefined
+							}
+						/>
 					</>
 				),
 				validation: (
@@ -102,11 +106,6 @@ export default async function RunDetailPage({
 				transcript: (
 					<>
 						<h2>Transcript</h2>
-						<p className="muted">
-							Raw JSONL from {runLabel} (one JSON object per line). The live
-							activity panel above is the readable, TUI-style view of the same
-							run.
-						</p>
 						{legacyMarkerTruncated ? (
 							<p className="muted">
 								This run used an older transcript cap that injected a truncation
@@ -120,11 +119,13 @@ export default async function RunDetailPage({
 								capture the full trace.
 							</p>
 						) : null}
-						<TranscriptViewer
+						<RunTranscriptPanel
 							runId={run.id}
 							agentCore={run.agentCore}
 							selectedModel={run.selectedModel}
 							invocation={run.codexCommand}
+							initialEvents={events}
+							initialStatus={run.status}
 						/>
 					</>
 				),
