@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import React, { act } from "react";
+import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RunCodeDiffPanel } from "@/components/RunCodeDiffPanel";
@@ -41,10 +41,7 @@ describe("RunCodeDiffPanel", () => {
 		container = document.createElement("div");
 		document.body.append(container);
 		root = createRoot(container);
-		vi.stubGlobal(
-			"fetch",
-			vi.fn().mockResolvedValue(diffPollResponse()),
-		);
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(diffPollResponse()));
 		vi.spyOn(globalThis, "setInterval").mockReturnValue(
 			0 as unknown as ReturnType<typeof setInterval>,
 		);

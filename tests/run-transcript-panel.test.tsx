@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 
-import React, { act } from "react";
+import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RunTranscriptPanel } from "@/components/RunTranscriptPanel";
 
-vi.mock("@/components/ActivityStream", () => ({
-	ActivityStream: () => <div>ACTIVITY_ARCHIVE</div>,
+vi.mock("@/components/ActivityLog", () => ({
+	ActivityArchive: () => <div>ACTIVITY_ARCHIVE</div>,
 }));
 vi.mock("@/components/TranscriptViewer", () => ({
 	TranscriptViewer: () => <div>RAW_TRANSCRIPT</div>,

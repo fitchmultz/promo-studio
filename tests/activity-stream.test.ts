@@ -70,6 +70,7 @@ describe("ActivityStream", () => {
 			json: async () => ({
 				events: [event("1", "completed")],
 				run: { status: "succeeded" },
+				changedFiles: [],
 			}),
 		}));
 		vi.stubGlobal("fetch", fetchMock);

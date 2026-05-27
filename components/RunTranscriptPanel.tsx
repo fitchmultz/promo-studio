@@ -1,6 +1,6 @@
 "use client";
 
-import { ActivityStream } from "@/components/ActivityStream";
+import { ActivityArchive } from "@/components/ActivityLog";
 import { TranscriptViewer } from "@/components/TranscriptViewer";
 
 interface EventItem {
@@ -35,13 +35,11 @@ export function RunTranscriptPanel({
 					: "Human-readable activity from this run."}
 			</p>
 			{isRunning ? null : (
-				<ActivityStream
-					runId={runId}
+				<ActivityArchive
 					agentCore={agentCore}
 					selectedModel={selectedModel}
 					initialEvents={initialEvents}
 					initialStatus={initialStatus}
-					archive
 				/>
 			)}
 			<div className="transcript-export">

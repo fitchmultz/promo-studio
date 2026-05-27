@@ -6,6 +6,11 @@ import { prisma } from "@/lib/db";
 const DEFAULT_TAIL_LINES = 120;
 const MAX_TAIL_LINES = 2000;
 
+function transcriptDownloadFilename(runId: string) {
+	const safeRunId = runId.replace(/[^a-zA-Z0-9._-]/g, "_") || "run";
+	return `variant-run-${safeRunId}-transcript.jsonl`;
+}
+
 export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
@@ -26,6 +31,15 @@ export async function GET(
 		: DEFAULT_TAIL_LINES;
 
 	const full = await resolveFullTranscript(run.id, run.transcript);
+	if (url.searchParams.get("download") === "1") {
+		return new NextResponse(full, {
+			headers: {
+				"Content-Disposition": `attachment; filename="${transcriptDownloadFilename(run.id)}"`,
+				"Content-Type": "text/plain; charset=utf-8",
+			},
+		});
+	}
+
 	const lines = full.split(/\r?\n/).filter((line) => line.trim().length > 0);
 	const tail = lines.slice(-tailLines).join("\n");
 
