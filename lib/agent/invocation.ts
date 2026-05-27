@@ -1,4 +1,4 @@
-import { codexModelArgs, codexReasoningArgs } from "@/lib/config";
+import { codexModelArgs, codexReasoningArgs, paths } from "@/lib/config";
 import type { AgentCore, AgentHarness } from "@/lib/agent/types";
 
 function buildCodexExecInvocation(
@@ -36,8 +36,16 @@ function buildCodexSdkInvocation(params: {
 	].join(" ");
 }
 
-function buildPiJsonInvocation(_workspace: string, requestedModel: string) {
-	const parts = ["pi", "--mode", "json", "--no-session"];
+function buildPiJsonInvocation(requestedModel: string, runId: string) {
+	const parts = [
+		"pi",
+		"--mode",
+		"json",
+		"--session-id",
+		runId,
+		"--session-dir",
+		paths.piSessions,
+	];
 	if (requestedModel) parts.push("--model", requestedModel);
 	return parts.join(" ");
 }
@@ -45,6 +53,7 @@ function buildPiJsonInvocation(_workspace: string, requestedModel: string) {
 export function buildInvocationDescriptor(params: {
 	core: AgentCore;
 	harness: AgentHarness;
+	runId: string;
 	workspace: string;
 	requestedModel: string;
 	requestedEffort: string;
@@ -52,7 +61,7 @@ export function buildInvocationDescriptor(params: {
 	selectedEffort: string;
 }): string {
 	if (params.core === "pi") {
-		return buildPiJsonInvocation(params.workspace, params.requestedModel);
+		return buildPiJsonInvocation(params.requestedModel, params.runId);
 	}
 	if (params.harness === "exec") {
 		return buildCodexExecInvocation(

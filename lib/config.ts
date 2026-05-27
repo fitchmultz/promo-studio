@@ -95,6 +95,7 @@ export const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
 export const paths = {
 	projectRoot,
 	artifacts: path.join(projectRoot, "artifacts"),
+	piSessions: path.join(projectRoot, "artifacts", "pi-sessions"),
 	templateStorefront: path.join(projectRoot, "templates", "storefront"),
 	workspaces: path.join(projectRoot, "agent-workspaces"),
 };

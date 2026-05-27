@@ -10,6 +10,7 @@ import {
 	type VariantProcessRunner,
 	type VariantSdkRunner,
 } from "@/lib/codex-runner";
+import { paths } from "@/lib/config";
 import { prisma } from "@/lib/db";
 
 async function waitForRun(id: string) {
@@ -360,14 +361,17 @@ describe("Codex runner", () => {
 		expect(piArgs).toEqual([
 			"--mode",
 			"json",
-			"--no-session",
+			"--session-id",
+			started.id,
+			"--session-dir",
+			paths.piSessions,
 			"--model",
 			"cursor/composer-2.5",
 		]);
 		expect(completed.agentCore).toBe("pi");
 		expect(completed.agentHarness).toBe("json");
 		expect(completed.codexCommand).toContain("pi --mode json");
-		expect(completed.codexCommand).not.toContain("-p");
+		expect(completed.codexCommand).not.toMatch(/(^|\s)-p(\s|$)/);
 		expect(completed.transcript).toContain("agent_start");
 		expectValidatedVariant(completed, {
 			model: "cursor/composer-2.5",

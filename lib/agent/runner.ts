@@ -247,6 +247,7 @@ export async function createVariantRun(params: {
 	const invocation = buildInvocationDescriptor({
 		core: runtimeSpec.core,
 		harness: runtimeSpec.harness,
+		runId,
 		workspace,
 		requestedModel: runtimeSpec.requestedModel,
 		requestedEffort: runtimeSpec.requestedEffort,
@@ -320,6 +321,7 @@ export async function executeVariantRun(
 						input: runRecord.inputPrompt,
 						processRunner,
 						requestedModel: runtimeSpec.requestedModel,
+						runId,
 						workspace: runRecord.workspacePath,
 						timeoutMs,
 						onStdoutLine,

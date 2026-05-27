@@ -6,11 +6,11 @@ Promo Studio runs storefront variants by spawning **`pi --mode json`** in the is
 
 ```bash
 cd <workspace>
-pi --mode json --no-session --model cursor/composer-2.5
+pi --mode json --session-id <run-id> --session-dir <repo>/artifacts/pi-sessions --model cursor/composer-2.5
 # prompt on stdin
 ```
 
-Extension-only models (e.g. **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) work here. Do **not** use `-p`; that flag is for print mode, not JSON mode.
+Pi v0.76.0 added explicit automation session IDs. Promo Studio uses the variant run ID as `--session-id` and stores Pi session files under gitignored `artifacts/pi-sessions/`, keeping session history deterministic and outside the storefront diff surface. Extension-only models (e.g. **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) work here. Do **not** use `-p`; that flag is for print mode, not JSON mode.
 
 Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full JSONL, no in-stream truncation markers). The database keeps a **recent tail** for live polling only; the run detail page and poll API read the on-disk file when present. Subprocess in-memory buffers stay at **120KB** and are not used as the final transcript source.
 
@@ -29,3 +29,5 @@ Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full 
 ```bash
 npm run pi:doctor
 ```
+
+The doctor requires a Pi CLI version with `--session-id` support (v0.76.0 or newer).
