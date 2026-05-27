@@ -68,7 +68,7 @@ describe("agent-display", () => {
 
 	it("rewrites shell cd paths to agent-workspaces", () => {
 		const cmd =
-			"$ cd /Users/demo/promo-studio-pi/codex-workspaces/run-9caaa7c5-e1f0-4e45-b875-1c13915a33a5/storefront && npm test";
+			"$ cd /Users/demo/promo-studio/codex-workspaces/run-9caaa7c5-e1f0-4e45-b875-1c13915a33a5/storefront && npm test";
 		const shown = formatShellCommandForDisplay(cmd);
 		expect(shown).toContain("agent-workspaces");
 		expect(shown).not.toContain("codex-workspaces");

@@ -8,7 +8,7 @@ export interface AgentSettings {
 	authMode: string;
 }
 
-/** Demo-friendly defaults for Promo Studio Pi (overridable via server-stored prefs). */
+/** Demo-friendly defaults for Promo Studio (overridable via server-stored prefs). */
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
 	agentCore: "pi",
 	agentHarness: "json",

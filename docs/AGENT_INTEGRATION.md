@@ -1,6 +1,6 @@
 # Agent Integration
 
-Promo Studio Pi runs storefront variants through a swappable agent core. The host app, workspace copy, prompt, manifest validation, and receipt UI are harness-agnostic.
+Promo Studio runs storefront variants through a swappable agent core. The host app, workspace copy, prompt, manifest validation, and receipt UI are harness-agnostic.
 
 ## Runtime flow
 

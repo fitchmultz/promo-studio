@@ -1,5 +1,5 @@
 {
-	"name": "promo-studio-pi",
+	"name": "promo-studio",
 	"version": "1.0.0",
 	"description": "Commerce demo with swappable Codex and Pi agent harnesses for isolated storefront variants",
 	"private": true,

@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 const MIN_PI_VERSION = "0.76.0";
 
 function help() {
-	console.log(`Promo Studio Pi doctor
+	console.log(`Promo Studio agent doctor (Pi CLI)
 
 Usage: npm run pi:doctor
 

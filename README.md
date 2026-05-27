@@ -1,6 +1,6 @@
-# Promo Studio Pi — Multi-Harness Commerce Demo
+# Promo Studio — Multi-Harness Commerce Demo
 
-Promo Studio Pi helps commerce teams and evaluators see how **Codex** or **Pi** can turn a campaign brief into a tested, reviewable storefront variant instead of a throwaway text mockup. Switch agent core, harness (SDK vs CLI), and model from the studio form or `.env`.
+Promo Studio helps commerce teams and evaluators see how **Codex** or **Pi** can turn a campaign brief into a tested, reviewable storefront variant instead of a throwaway text mockup. Switch agent core, harness (SDK vs CLI), and model from the studio form or `.env`.
 
 [![Watch the Promo Studio walkthrough](https://img.youtube.com/vi/zPRLtiP8v7w/maxresdefault.jpg)](https://youtu.be/zPRLtiP8v7w)
 
