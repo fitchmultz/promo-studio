@@ -4,6 +4,7 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActivityStream } from "@/components/ActivityStream";
+import { RunLiveProvider } from "@/components/RunLiveProvider";
 
 const refreshMock = vi.hoisted(() => vi.fn());
 
@@ -64,24 +65,32 @@ describe("ActivityStream", () => {
 		);
 	});
 
-	it("refreshes the server-rendered run detail when a running job completes", async () => {
+	it("refreshes the server-rendered run detail when live polling observes completion", async () => {
 		const fetchMock = vi.fn(async () => ({
 			ok: true,
 			json: async () => ({
 				events: [event("1", "completed")],
 				run: { status: "succeeded" },
-				changedFiles: [],
 			}),
 		}));
 		vi.stubGlobal("fetch", fetchMock);
 
 		await act(async () => {
 			root.render(
-				React.createElement(ActivityStream, {
-					runId: "run-1",
-					initialStatus: "running",
-					initialEvents: [],
-				}),
+				React.createElement(
+					RunLiveProvider,
+					{
+						runId: "run-1",
+						initialStatus: "running",
+						initialEvents: [],
+						initialHasPreview: false,
+					},
+					React.createElement(ActivityStream, {
+						runId: "run-1",
+						initialStatus: "running",
+						initialEvents: [],
+					}),
+				),
 			);
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		});

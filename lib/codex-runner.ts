@@ -2,6 +2,8 @@ export {
 	createVariantRun,
 	executeVariantRun,
 	defaultSdkRunner,
+	drainQueuedVariantRunQueue,
+	recoverStaleVariantRuns,
 	resolveAgentFromForm,
 	type VariantProcessRunner,
 	type VariantSdkRunner,

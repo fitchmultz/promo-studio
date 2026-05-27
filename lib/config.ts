@@ -107,27 +107,6 @@ export function resolveRequestedMode(
 	return env.CODEX_AUTH_MODE;
 }
 
-export function resolveAgentCore(
-	input: FormData | URLSearchParams | null,
-): AgentCore {
-	const raw = String(input?.get("agentCore") ?? "").trim();
-	if (raw === "codex" || raw === "pi") return raw;
-	return env.AGENT_CORE;
-}
-
-export function resolveAgentHarness(
-	input: FormData | URLSearchParams | null,
-	core: AgentCore,
-): AgentHarness {
-	const raw = String(input?.get("agentHarness") ?? env.AGENT_HARNESS).trim();
-	if (core === "codex") {
-		if (raw === "sdk" || raw === "exec") return raw;
-		return env.CODEX_RUNTIME;
-	}
-	if (raw === "sdk" || raw === "json") return raw;
-	return "json";
-}
-
 export function normalizePiModel(
 	raw: FormDataEntryValue | string | null | undefined,
 ): string {

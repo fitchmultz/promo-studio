@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChangedFilesList, DiffList } from "@/components/DiffList";
+import {
+	isLiveRunStatus,
+	useOptionalRunLiveState,
+} from "@/components/RunLiveProvider";
 import type { DiffEntry } from "@/lib/diff";
 import { RunDiffResponseSchema } from "@/lib/variant-run-api";
 
@@ -18,17 +22,17 @@ export function RunCodeDiffPanel({
 	completedDiff?: ReactNode;
 }) {
 	const router = useRouter();
-	const [status, setStatus] = useState(initialStatus);
+	const liveState = useOptionalRunLiveState();
+	const status = liveState?.status ?? initialStatus;
 	const [changedFiles, setChangedFiles] = useState(initialChangedFiles);
 	const [liveDiffs, setLiveDiffs] = useState<DiffEntry[]>([]);
 
 	useEffect(() => {
-		setStatus(initialStatus);
 		setChangedFiles(initialChangedFiles);
-	}, [initialChangedFiles, initialStatus]);
+	}, [initialChangedFiles]);
 
 	useEffect(() => {
-		if (status !== "running") return undefined;
+		if (!isLiveRunStatus(status)) return undefined;
 		let active = true;
 
 		async function pollDiff() {
@@ -39,10 +43,9 @@ export function RunCodeDiffPanel({
 			const parsed = RunDiffResponseSchema.safeParse(await response.json());
 			if (!parsed.success) return;
 			const payload = parsed.data;
-			setStatus(payload.status);
 			setChangedFiles(payload.changedFiles);
 			setLiveDiffs(payload.diffs);
-			if (payload.status !== "running") router.refresh();
+			if (!isLiveRunStatus(payload.status)) router.refresh();
 		}
 
 		void pollDiff();
@@ -53,15 +56,15 @@ export function RunCodeDiffPanel({
 		};
 	}, [router, runId, status]);
 
-	if (status !== "running" && completedDiff) {
+	if (!isLiveRunStatus(status) && completedDiff) {
 		return completedDiff;
 	}
 
-	if (status !== "running" && !changedFiles.length) {
+	if (!isLiveRunStatus(status) && !changedFiles.length) {
 		return <p className="muted">No code changes were detected for this run.</p>;
 	}
 
-	if (status === "running" && !changedFiles.length) {
+	if (isLiveRunStatus(status) && !changedFiles.length) {
 		return (
 			<p className="muted">
 				Watching the workspace for file changes. Edits will appear here as the
@@ -73,7 +76,7 @@ export function RunCodeDiffPanel({
 	return (
 		<>
 			<ChangedFilesList files={changedFiles} />
-			{status === "running" ? (
+			{isLiveRunStatus(status) ? (
 				liveDiffs.length ? (
 					<DiffList diffs={liveDiffs} />
 				) : (

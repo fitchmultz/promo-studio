@@ -34,6 +34,24 @@ describe("variant workspace isolation", () => {
 		expect(productSource).toContain("RMT-001");
 	});
 
+	it("keeps storefront tooling owned by the repository root package", async () => {
+		const [rootPackageJson, templatePackageJson] = await Promise.all([
+			readFile(path.join(paths.projectRoot, "package.json"), "utf8"),
+			readFile(path.join(paths.templateStorefront, "package.json"), "utf8"),
+		]);
+		const rootPackage = JSON.parse(rootPackageJson);
+		const templatePackage = JSON.parse(templatePackageJson);
+		expect(templatePackage.dependencies).toBeUndefined();
+		expect(templatePackage.devDependencies).toBeUndefined();
+		for (const packageName of ["@vitejs/plugin-react", "vite", "vitest"]) {
+			expect(rootPackage.devDependencies[packageName]).toEqual(
+				expect.any(String),
+			);
+		}
+		expect(rootPackage.dependencies.react).toEqual(expect.any(String));
+		expect(rootPackage.dependencies["react-dom"]).toEqual(expect.any(String));
+	});
+
 	it("resolves template build tooling from root dependencies available to isolated workspaces", async () => {
 		const workspace = await createTestWorkspace("test-workspace-tooling");
 		const workspaceRequire = createRequire(

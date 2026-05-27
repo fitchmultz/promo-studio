@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,6 +28,9 @@ vi.mock("@/components/RunCodeDiffPanel", () => ({
 vi.mock("@/components/RunTranscriptPanel", () => ({
 	RunTranscriptPanel: () => "TRANSCRIPT_PANEL_MARKER",
 }));
+vi.mock("@/components/RunLiveProvider", () => ({
+	RunLiveProvider: ({ children }: { children: ReactNode }) => children,
+}));
 vi.mock("@/components/RunDetailTabs", () => ({
 	RunDetailTabs: () => "TABS_MARKER",
 }));
@@ -42,6 +46,9 @@ vi.mock("@/lib/codex-runner", () => ({
 vi.mock("@/lib/agent/transcript-store", () => ({
 	resolveFullTranscript: async (_id: string, db: string) => db,
 	runTranscriptFileByteLength: async () => null,
+}));
+vi.mock("@/lib/storefront-baseline", () => ({
+	renderStorefrontBaselineHtml: async () => "<html>baseline</html>",
 }));
 vi.mock("@/lib/db", () => ({
 	prisma: {

@@ -5,14 +5,14 @@ Promo Studio uses Codex as an autonomous code agent, not as a text completion AP
 ## Runtime flow
 
 1. `POST /api/variant-runs` checks auth and same-origin form submission.
-2. `lib/workspace.ts` copies `templates/storefront` into `codex-workspaces/run-<id>/storefront`.
+2. `lib/workspace.ts` copies `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
 3. `lib/variant-prompt.ts` builds a campaign-specific software task.
-4. `lib/codex-runner.ts` runs Codex through the configured runtime:
+4. `npm run runs:worker` claims queued runs and `lib/codex-runner.ts` runs Codex through the configured runtime:
    - Default: official TypeScript SDK via `CODEX_RUNTIME=sdk`.
    - Fallback: direct CLI execution via `CODEX_RUNTIME=exec`.
 5. Runtime events are normalized into JSONL transcript lines and stored on the `VariantRun` row while Codex runs.
 6. Codex must edit source files, run `npm test`, run `npm run build`, and write `artifact/manifest.json`.
-7. The runner validates the manifest, detects changed files, inlines the built preview, and updates the run status.
+7. The runner validates the manifest against detected workspace changes, inlines the built preview, and finalizes the run status.
 8. `/runs/<id>` and `/proof` render the persisted receipt.
 
 ## Runtime contracts
@@ -34,7 +34,7 @@ Both runtimes use the same prompt, workspace, auth selection, timeout, transcrip
 
 ## Sandbox and isolation
 
-Codex always runs in `workspace-write` with its working directory set to the isolated storefront copy. The host Next.js app and template source remain outside the writable workspace.
+Codex always runs in `workspace-write` with its working directory set to the isolated storefront copy. The host Next.js app and template source remain outside the writable workspace. Workspaces copy the template files except ignored generated/dependency artifacts (`node_modules`, `dist`, `.DS_Store`) and resolve template tooling from the repository root `node_modules`.
 
 ## Required receipt
 

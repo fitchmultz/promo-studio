@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { resolveFullTranscript } from "@/lib/agent/transcript-store";
 import { prisma } from "@/lib/db";
+import { variantRunTranscriptSelect } from "@/lib/variant-run-dto";
 
 const DEFAULT_TAIL_LINES = 120;
 const MAX_TAIL_LINES = 2000;
@@ -17,7 +18,10 @@ export async function GET(
 ) {
 	const user = await requireUser();
 	const { id } = await params;
-	const run = await prisma.variantRun.findUnique({ where: { id } });
+	const run = await prisma.variantRun.findUnique({
+		where: { id },
+		select: variantRunTranscriptSelect,
+	});
 	if (!run)
 		return NextResponse.json({ error: "Run not found." }, { status: 404 });
 	if (user.role !== "admin" && run.userId !== user.id) {

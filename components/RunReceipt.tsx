@@ -4,7 +4,7 @@ import {
 	workspacePathForDisplay,
 } from "@/lib/agent-display";
 import { runtimeLabel } from "@/lib/agent/invocation";
-import { parseStoredAgentCore, receiptHarness } from "@/lib/agent/stored-run";
+import { agentRuntimeSpecFromStoredRun } from "@/lib/agent/runtime-spec";
 
 function harnessHelp(run: VariantRun) {
 	if (run.agentCore === "pi") {
@@ -34,8 +34,9 @@ export function RunReceipt({
 	/** When false, collapses large pre blocks (proof page perf). */
 	detailsOpen?: boolean;
 }) {
-	const core = parseStoredAgentCore(run.agentCore);
-	const harness = receiptHarness(run);
+	const runtimeSpec = agentRuntimeSpecFromStoredRun(run);
+	const core = runtimeSpec.core;
+	const harness = runtimeSpec.harness;
 	const invocation = run.codexCommand.replace(
 		"<isolated-workspace>",
 		run.workspacePath,

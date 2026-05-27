@@ -28,14 +28,14 @@ npm test
 npm run build
 ```
 
-Use `npm install` only when dependencies are missing. Do not add dependencies unless the user explicitly asks and the variant cannot be built with existing React/Vite code.
+Dependencies resolve from the host repository root `node_modules`; do not run `npm install` inside the workspace. Do not add dependencies unless the user explicitly asks and the variant cannot be built with existing React/Vite code.
 
 ## Coding conventions
 
 - Keep React components simple, typed, and local to `src/`.
 - Preserve accessible headings, alt text, button text, and readable contrast.
 - Preserve the full product photo. Do not crop, stretch, filter, replace, or cover the tote image; keep `.product-image img` using `max-width: 100%`, `max-height: 100%`, `min-width: 0`, `min-height: 0`, and `object-fit: contain`.
-- Add or update tests when changing behavior that existing tests do not cover.
+- Do not edit tests for normal campaign variants; the host validates only source changes plus the generated manifest.
 - Do not edit `dist/`, `node_modules/`, or lockfiles for normal campaign variants.
 
 ## Validation and done criteria
@@ -61,7 +61,7 @@ MUST NOT change:
 
 - `src/product.ts` commerce facts.
 - `src/cart.ts` cart API behavior.
-- `package.json` or `package-lock.json`.
+- `package.json` or lockfiles.
 - Files outside the current workspace.
 
 NEVER call external APIs or services from the storefront variant.

@@ -1,9 +1,37 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { parseCodexEvents } from "@/lib/codex-runner";
-import { resolveFullTranscript } from "@/lib/agent/transcript-store";
 import { prisma } from "@/lib/db";
-import { parseStringArrayJson } from "@/lib/json";
+import {
+	serializeVariantRunLive,
+	variantRunLiveSelect,
+} from "@/lib/variant-run-dto";
+
+const LIVE_TRANSCRIPT_TAIL_CHARS = 120_000;
+
+interface TranscriptTailRow {
+	transcriptTail: string | null;
+	transcriptLength: number | bigint | null;
+}
+
+function completeJsonlTail(row: TranscriptTailRow | undefined) {
+	const tail = row?.transcriptTail ?? "";
+	const transcriptLength = Number(row?.transcriptLength ?? 0);
+	if (transcriptLength <= LIVE_TRANSCRIPT_TAIL_CHARS) return tail;
+	const firstBreak = tail.search(/\r?\n/);
+	return firstBreak >= 0 ? tail.slice(firstBreak + 1) : "";
+}
+
+async function readLiveTranscriptTail(runId: string) {
+	const rows = await prisma.$queryRaw<TranscriptTailRow[]>`
+		SELECT substr("transcript", -${LIVE_TRANSCRIPT_TAIL_CHARS}) AS "transcriptTail",
+		       length("transcript") AS "transcriptLength"
+		FROM "VariantRun"
+		WHERE "id" = ${runId}
+		LIMIT 1
+	`;
+	return completeJsonlTail(rows[0]);
+}
 
 export async function GET(
 	_request: Request,
@@ -13,26 +41,16 @@ export async function GET(
 	const { id } = await params;
 	const run = await prisma.variantRun.findUnique({
 		where: { id },
-		include: { product: true, user: true },
+		select: variantRunLiveSelect,
 	});
 	if (!run)
 		return NextResponse.json({ error: "Run not found." }, { status: 404 });
 	if (user.role !== "admin" && run.userId !== user.id) {
 		return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 	}
-	// Live activity poll: recent JSONL tail in SQLite (no truncation markers).
-	// Transcript tab loads the full on-disk JSONL via server render when the run finishes.
-	const pollTranscript =
-		run.status === "running"
-			? run.transcript
-			: await resolveFullTranscript(run.id, run.transcript);
+	const pollTranscript = await readLiveTranscriptTail(run.id);
 	return NextResponse.json({
-		run: {
-			...run,
-			transcript: pollTranscript,
-			hasPreview: Boolean(run.previewHtml?.trim()),
-		},
+		run: serializeVariantRunLive(run),
 		events: parseCodexEvents(pollTranscript),
-		changedFiles: parseStringArrayJson(run.changedFiles),
 	});
 }

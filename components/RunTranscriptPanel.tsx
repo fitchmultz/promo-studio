@@ -25,7 +25,7 @@ export function RunTranscriptPanel({
 	initialEvents: EventItem[];
 	initialStatus: string;
 }) {
-	const isRunning = initialStatus === "running";
+	const isRunning = initialStatus === "queued" || initialStatus === "running";
 
 	return (
 		<>

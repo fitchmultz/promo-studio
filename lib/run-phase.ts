@@ -157,12 +157,20 @@ export function inferRunPhase(params: {
 			total: PHASE_ORDER.length,
 		};
 	}
-	if (params.status !== "running") {
+	if (params.status !== "running" && params.status !== "queued") {
 		return {
 			id: "preview",
 			label: "Run finished",
 			step: PHASE_ORDER.length - 1,
 			total: PHASE_ORDER.length,
+		};
+	}
+	if (params.status === "queued") {
+		return {
+			id: "starting",
+			label: "Waiting for runner",
+			step: 1,
+			total: PHASE_ORDER.length - 1,
 		};
 	}
 

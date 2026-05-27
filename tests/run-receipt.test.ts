@@ -7,6 +7,7 @@ import { RunReceipt } from "@/components/RunReceipt";
 function runWithInvocation(
 	codexCommand: string,
 	codexRuntime = "sdk",
+	agentHarness = codexRuntime === "exec" ? "exec" : "sdk",
 ): VariantRun {
 	return {
 		id: "run-1",
@@ -23,7 +24,7 @@ function runWithInvocation(
 		requestedEffort: "low",
 		selectedEffort: "low",
 		agentCore: "codex",
-		agentHarness: codexRuntime === "exec" ? "exec" : "sdk",
+		agentHarness,
 		codexRuntime,
 		codexCommand,
 		inputPrompt: "Prompt sent to Codex.",
@@ -69,6 +70,20 @@ describe("RunReceipt", () => {
 		expect(markup).toContain("<summary>Input prompt</summary>");
 		expect(markup).toContain('<details class="proof-details" open="">');
 		expect(markup).not.toContain("&lt;isolated-workspace&gt;");
+	});
+
+	it("renders legacy exec rows from codexRuntime fallback", () => {
+		const command =
+			'codex exec --json --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -m gpt-5.5 -c model_reasoning_effort="low" -';
+		const markup = renderToStaticMarkup(
+			React.createElement(RunReceipt, {
+				run: runWithInvocation(command, "exec", "sdk"),
+			}),
+		);
+
+		expect(markup).toContain("codex exec");
+		expect(markup).toContain("codex exec --json");
+		expect(markup).toContain("trailing <code>-</code> argument");
 	});
 
 	it("renders the exec fallback command accurately", () => {

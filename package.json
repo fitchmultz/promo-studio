@@ -28,6 +28,7 @@
 		"db:push": "tsx scripts/ensure-sqlite-database.ts dev.db && DATABASE_URL=file:./dev.db prisma db push --force-reset --accept-data-loss && DATABASE_URL=file:./dev.db prisma generate",
 		"validate": "npm run db:push && npm run seed && npm run typecheck && npm run format:check && npm run lint && npm run test && npm run build",
 		"reset:workspaces": "tsx scripts/reset-workspaces.ts",
+		"runs:worker": "tsx scripts/run-variant-worker.ts",
 		"demo:zip": "tsx scripts/package-demo.ts",
 		"postinstall": "prisma generate"
 	},
@@ -57,6 +58,7 @@
 		"jsdom": "^29.1.1",
 		"tsx": "^4.22.3",
 		"typescript": "^6.0.3",
+		"vite": "^8.0.10",
 		"vitest": "^4.1.7"
 	},
 	"overrides": {

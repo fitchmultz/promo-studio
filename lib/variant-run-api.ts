@@ -15,7 +15,6 @@ export const VariantRunPollSchema = z.object({
 		status: z.string(),
 		hasPreview: z.boolean().optional(),
 	}),
-	changedFiles: z.array(z.string()),
 });
 
 export const DiffLineSchema = z.object({

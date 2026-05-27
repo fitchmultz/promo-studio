@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	createVariantRun,
+	drainQueuedVariantRunQueue,
 	parseCodexEvents,
+	recoverStaleVariantRuns,
 	type VariantProcessRunner,
 	type VariantSdkRunner,
 } from "@/lib/codex-runner";
@@ -12,7 +15,7 @@ import { prisma } from "@/lib/db";
 async function waitForRun(id: string) {
 	for (let index = 0; index < 40; index += 1) {
 		const run = await prisma.variantRun.findUnique({ where: { id } });
-		if (run && run.status !== "running") return run;
+		if (run && run.status !== "queued" && run.status !== "running") return run;
 		await new Promise((resolve) => setTimeout(resolve, 50));
 	}
 	throw new Error("Run did not finish during the test.");
@@ -83,6 +86,55 @@ function expectValidatedVariant(
 }
 
 describe("Codex runner", () => {
+	it("recovers stale running runs without failing fresh running runs", async () => {
+		const user = await prisma.user.findUniqueOrThrow({
+			where: { email: "demo@promostudio.test" },
+		});
+		const product = await prisma.product.findUniqueOrThrow({
+			where: { id: "ribbed-market-tote" },
+		});
+		const now = new Date("2026-05-26T12:00:00Z");
+		const base = {
+			productId: product.id,
+			userId: user.id,
+			status: "running",
+			campaignBrief: "Make the tote compelling for commuters.",
+			campaignGoal: "Holiday gift push",
+			workspacePath: "/tmp/workspace",
+			inputPrompt: "Prompt",
+		};
+		const staleId = `stale-running-${randomUUID()}`;
+		const freshId = `fresh-running-${randomUUID()}`;
+		await prisma.variantRun.create({
+			data: {
+				...base,
+				id: staleId,
+				startedAt: new Date("2026-05-26T11:00:00Z"),
+			},
+		});
+		await prisma.variantRun.create({
+			data: {
+				...base,
+				id: freshId,
+				startedAt: new Date("2026-05-26T11:59:00Z"),
+			},
+		});
+
+		await recoverStaleVariantRuns(now);
+
+		const stale = await prisma.variantRun.findUniqueOrThrow({
+			where: { id: staleId },
+		});
+		const fresh = await prisma.variantRun.findUniqueOrThrow({
+			where: { id: freshId },
+		});
+		expect(stale.status).toBe("failed");
+		expect(stale.error).toContain("Run worker stopped");
+		expect(stale.completedAt?.toISOString()).toBe(now.toISOString());
+		expect(fresh.status).toBe("running");
+		expect(fresh.completedAt).toBeNull();
+	});
+
 	it("uses the SDK runtime by default and persists validated preview evidence", async () => {
 		const user = await prisma.user.findUniqueOrThrow({
 			where: { email: "demo@promostudio.test" },
@@ -128,8 +180,9 @@ describe("Codex runner", () => {
 			requestedAuthMode: "auto",
 			requestedModel: "gpt-5.5-mini",
 			requestedEffort: "medium",
-			sdkRunner,
 		});
+		expect(started.status).toBe("queued");
+		await drainQueuedVariantRunQueue({ codexSdkRunner: sdkRunner });
 		const completed = await waitForRun(started.id);
 
 		expect(sdkCalls).toEqual([
@@ -197,8 +250,8 @@ describe("Codex runner", () => {
 			requestedModel: "gpt-5.5-mini",
 			requestedEffort: "medium",
 			runtime: "exec",
-			runner,
 		});
+		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);
 
 		expect(codexArgs).toEqual(
@@ -241,8 +294,8 @@ describe("Codex runner", () => {
 				requestedAuthMode: "auto",
 				requestedModel: "gpt-5.5-mini",
 				requestedEffort: "medium",
-				sdkRunner,
 			});
+			await drainQueuedVariantRunQueue({ codexSdkRunner: sdkRunner });
 			const completed = await waitForRun(started.id);
 
 			expect(completed.status).toBe("failed");
@@ -300,8 +353,8 @@ describe("Codex runner", () => {
 			agentCore: "pi",
 			agentHarness: "json",
 			requestedModel: "cursor/composer-2.5",
-			runner,
 		});
+		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);
 
 		expect(piArgs).toEqual([

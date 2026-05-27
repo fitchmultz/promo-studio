@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import {
 	type AgentSettings,
-	DEFAULT_AGENT_SETTINGS,
+	parseAgentSettingsPayload,
 	parseStoredAgentSettings,
 	serializeAgentSettings,
-} from "@/lib/agent-settings-storage";
+} from "@/lib/agent-settings-runtime";
 import { prisma } from "@/lib/db";
-
-const PutAgentSettingsSchema = z.object({
-	agentCore: z.enum(["codex", "pi"]),
-	agentHarness: z.string(),
-	model: z.string(),
-	reasoningEffort: z.string(),
-	authMode: z.string(),
-});
 
 export async function GET() {
 	const user = await requireUser();
@@ -35,18 +26,20 @@ export async function PUT(request: Request) {
 	} catch {
 		return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
 	}
-	const parsed = PutAgentSettingsSchema.safeParse(body);
-	if (!parsed.success) {
+	let settings: AgentSettings;
+	try {
+		settings = parseAgentSettingsPayload(body);
+	} catch (error) {
 		return NextResponse.json(
-			{ error: "Invalid agent settings payload." },
+			{
+				error:
+					error instanceof Error
+						? error.message
+						: "Invalid agent settings payload.",
+			},
 			{ status: 400 },
 		);
 	}
-	const settings: AgentSettings = {
-		...parsed.data,
-		agentHarness:
-			parsed.data.agentCore === "pi" ? "json" : parsed.data.agentHarness,
-	};
 	await prisma.user.update({
 		where: { id: user.id },
 		data: { agentPreferences: serializeAgentSettings(settings) },

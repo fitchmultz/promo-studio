@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireUserMock = vi.fn();
 const createVariantRunMock = vi.fn();
-const findManyMock = vi.fn();
+const recoverStaleVariantRunsMock = vi.fn();
+const productFindManyMock = vi.fn();
+const variantRunFindManyMock = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ requireUser: requireUserMock }));
 vi.mock("@/lib/codex-runner", async (importOriginal) => {
@@ -11,14 +13,54 @@ vi.mock("@/lib/codex-runner", async (importOriginal) => {
 		...actual,
 		createVariantRun: createVariantRunMock,
 		parseCodexEvents: () => [],
+		recoverStaleVariantRuns: recoverStaleVariantRunsMock,
 	};
 });
 vi.mock("@/lib/db", () => ({
 	prisma: {
-		product: { findMany: findManyMock },
-		variantRun: { findMany: vi.fn() },
+		product: { findMany: productFindManyMock },
+		variantRun: { findMany: variantRunFindManyMock },
 	},
 }));
+
+function listedRun(overrides: Record<string, unknown> = {}) {
+	return {
+		id: "run-1",
+		status: "succeeded",
+		campaignBrief: "Create a vivid commuter gift campaign.",
+		campaignGoal: "Holiday gift push",
+		workspacePath: "/tmp/agent-workspaces/run-1/storefront",
+		requestedAuthMode: "auto",
+		selectedAuthMode: "subscription",
+		requestedModel: "gpt-5.5",
+		selectedModel: "gpt-5.5",
+		requestedEffort: "low",
+		selectedEffort: "low",
+		agentCore: "codex",
+		agentHarness: "sdk",
+		codexRuntime: "sdk",
+		codexCommand: "Codex TypeScript SDK runStreamed",
+		testsPassed: true,
+		buildPassed: true,
+		commerceInvariantsOk: true,
+		changedFiles: "[]",
+		validationResult: "Validation: passed",
+		error: null,
+		outputSummary: "Created variant.",
+		startedAt: new Date("2026-05-26T12:00:00Z"),
+		completedAt: new Date("2026-05-26T12:02:00Z"),
+		product: {
+			id: "ribbed-market-tote",
+			slug: "ribbed-market-tote",
+			name: "Ribbed Market Tote",
+			price: "$42.00",
+			imageSrc: "/products/ribbed-market-tote.webp",
+		},
+		user: { passwordHash: "must-not-leak" },
+		passwordHash: "must-not-leak",
+		...overrides,
+	};
+}
 
 describe("variant run API", () => {
 	beforeEach(() => {
@@ -27,14 +69,36 @@ describe("variant run API", () => {
 			.mockResolvedValue({ id: "user-1", role: "admin" });
 		createVariantRunMock
 			.mockReset()
-			.mockResolvedValue({ id: "run-1", status: "running", transcript: "" });
-		findManyMock.mockReset().mockResolvedValue([
+			.mockResolvedValue({ id: "run-1", status: "queued", transcript: "" });
+		recoverStaleVariantRunsMock.mockReset().mockResolvedValue(undefined);
+		productFindManyMock.mockReset().mockResolvedValue([
 			{
 				id: "ribbed-market-tote",
 				name: "Ribbed Market Tote",
 				features: "[]",
 			},
 		]);
+		variantRunFindManyMock.mockReset().mockResolvedValue([]);
+	});
+
+	it("lists explicit run DTOs without user secrets", async () => {
+		variantRunFindManyMock.mockResolvedValue([listedRun()]);
+		const { GET } = await import("@/app/api/variant-runs/route");
+
+		const response = await GET();
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(JSON.stringify(payload)).not.toContain("passwordHash");
+		expect(JSON.stringify(payload)).not.toContain("must-not-leak");
+		expect(payload.runs[0]).toMatchObject({
+			id: "run-1",
+			startedAt: "2026-05-26T12:00:00.000Z",
+			product: { name: "Ribbed Market Tote" },
+		});
+		expect(variantRunFindManyMock).toHaveBeenCalledWith(
+			expect.objectContaining({ select: expect.any(Object) }),
+		);
 	});
 
 	it("creates an authenticated variant run", async () => {
@@ -53,16 +117,18 @@ describe("variant run API", () => {
 		expect(response.status).toBe(202);
 		await expect(response.json()).resolves.toMatchObject({
 			id: "run-1",
-			status: "running",
+			status: "queued",
 		});
 		expect(createVariantRunMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				campaignGoal: "Holiday gift push",
-				agentCore: "codex",
-				agentHarness: "sdk",
-				requestedAuthMode: "auto",
-				requestedModel: "gpt-5.5",
-				requestedEffort: "low",
+				runtimeSpec: expect.objectContaining({
+					core: "codex",
+					harness: "sdk",
+					requestedAuthMode: "auto",
+					requestedModel: "gpt-5.5",
+					requestedEffort: "low",
+				}),
 			}),
 		);
 	});
@@ -86,8 +152,10 @@ describe("variant run API", () => {
 		expect(response.status).toBe(202);
 		expect(createVariantRunMock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				requestedModel: "gpt-5.5-mini",
-				requestedEffort: "medium",
+				runtimeSpec: expect.objectContaining({
+					requestedModel: "gpt-5.5-mini",
+					requestedEffort: "medium",
+				}),
 			}),
 		);
 	});

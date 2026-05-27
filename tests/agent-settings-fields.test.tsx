@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { AgentSettingsFields } from "@/components/AgentSettingsFields";
-import type { AgentSettings } from "@/lib/agent-settings-storage";
+import type { AgentSettings } from "@/lib/agent-settings-shared";
 
 vi.mock("@/components/PiModelField", () => ({
 	PiModelField: () => "<pi-model />",

@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import bcrypt from "bcryptjs";
-import { serializeAgentSettings } from "../lib/agent-settings-storage";
+import { serializeAgentSettings } from "../lib/agent-settings-runtime";
 import { prisma } from "../lib/db";
 import { createVariantWorkspace } from "../lib/workspace";
 

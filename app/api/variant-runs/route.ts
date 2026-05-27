@@ -7,17 +7,21 @@ import {
 } from "@/lib/codex-runner";
 import { prisma } from "@/lib/db";
 import { primaryPromoProduct } from "@/lib/products";
+import {
+	serializeVariantRunListItem,
+	variantRunListSelect,
+} from "@/lib/variant-run-dto";
 import { isSameOriginPost, sameOriginResponseBaseUrl } from "@/lib/same-origin";
 
 export async function GET() {
 	const user = await requireUser();
 	const runs = await prisma.variantRun.findMany({
 		where: user.role === "admin" ? undefined : { userId: user.id },
-		include: { product: true, user: true },
+		select: variantRunListSelect,
 		orderBy: { startedAt: "desc" },
 		take: 30,
 	});
-	return NextResponse.json({ runs });
+	return NextResponse.json({ runs: runs.map(serializeVariantRunListItem) });
 }
 
 export async function POST(request: Request) {
@@ -47,17 +51,26 @@ export async function POST(request: Request) {
 			{ error: "No product is seeded." },
 			{ status: 500 },
 		);
-	const agent = resolveAgentFromForm(form);
+	let agent: ReturnType<typeof resolveAgentFromForm>;
+	try {
+		agent = resolveAgentFromForm(form);
+	} catch (error) {
+		return NextResponse.json(
+			{
+				error:
+					error instanceof Error
+						? error.message
+						: "Invalid agent runtime settings.",
+			},
+			{ status: 400 },
+		);
+	}
 	const run = await createVariantRun({
 		user,
 		product,
 		campaignBrief,
 		campaignGoal,
-		agentCore: agent.core,
-		agentHarness: agent.harness,
-		requestedAuthMode: agent.requestedAuthMode,
-		requestedModel: agent.requestedModel,
-		requestedEffort: agent.requestedEffort,
+		runtimeSpec: agent,
 	});
 	const acceptsHtml =
 		request.headers.get("accept")?.includes("text/html") ?? false;

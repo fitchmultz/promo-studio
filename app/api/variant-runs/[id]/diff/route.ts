@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { buildDiffEntries } from "@/lib/diff";
 import { prisma } from "@/lib/db";
 import { parseStringArrayJson } from "@/lib/json";
+import { variantRunDiffSelect } from "@/lib/variant-run-dto";
 import { detectChangedFiles } from "@/lib/workspace";
 
 export async function GET(
@@ -11,7 +12,10 @@ export async function GET(
 ) {
 	const user = await requireUser();
 	const { id } = await params;
-	const run = await prisma.variantRun.findUnique({ where: { id } });
+	const run = await prisma.variantRun.findUnique({
+		where: { id },
+		select: variantRunDiffSelect,
+	});
 	if (!run)
 		return NextResponse.json({ error: "Run not found." }, { status: 404 });
 	if (user.role !== "admin" && run.userId !== user.id) {
@@ -20,7 +24,7 @@ export async function GET(
 
 	const persistedChangedFiles = parseStringArrayJson(run.changedFiles);
 	const changedFiles =
-		run.status === "running"
+		run.status === "queued" || run.status === "running"
 			? await detectChangedFiles(run.workspacePath)
 			: persistedChangedFiles;
 	const diffs = changedFiles.length

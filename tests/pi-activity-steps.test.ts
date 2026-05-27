@@ -31,9 +31,11 @@ describe("pi-activity-steps", () => {
 	it("maps npm test to running tests milestone", () => {
 		const testAction = classifyThinkingActionLine("npm test");
 		const buildAction = classifyThinkingActionLine("npm run build");
-		expect(testAction?.kind).toBe("shell");
-		expect(labelForPiActionStart(testAction!)).toBe("Running tests");
-		expect(labelForPiActionStart(buildAction!)).toBe("Building preview");
+		expect(testAction).toMatchObject({ kind: "shell" });
+		expect(buildAction).toMatchObject({ kind: "shell" });
+		if (!testAction || !buildAction) throw new Error("Expected shell actions.");
+		expect(labelForPiActionStart(testAction)).toBe("Running tests");
+		expect(labelForPiActionStart(buildAction)).toBe("Building preview");
 	});
 
 	it("provides start and end labels for edit actions", () => {

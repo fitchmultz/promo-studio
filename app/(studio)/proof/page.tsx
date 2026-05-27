@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function ProofPage() {
 	await requireAdmin();
 	const latestRun = await prisma.variantRun.findFirst({
-		include: { product: true, user: true },
+		include: { product: true },
 		orderBy: { startedAt: "desc" },
 	});
 	return (

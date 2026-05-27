@@ -1,43 +1,44 @@
 import type { VariantRun } from "@prisma/client";
+import type { AgentCore, AgentHarness } from "@/lib/config";
 import {
-	env,
-	type AgentCore,
-	type AgentHarness,
-	type CodexAuthMode,
-} from "@/lib/config";
+	agentRuntimeSpecFromStoredRun,
+	parseAgentCoreValue,
+} from "@/lib/agent/runtime-spec";
 
-function isAgentHarness(value: string): value is AgentHarness {
-	return value === "sdk" || value === "exec" || value === "json";
-}
-
-function isCodexAuthMode(value: string): value is CodexAuthMode {
-	return value === "auto" || value === "subscription" || value === "api-key";
-}
-
+/** @deprecated Use agentRuntimeSpecFromStoredRun for stored run parsing. */
 export function parseStoredAgentCore(value: string): AgentCore {
-	return value === "pi" ? "pi" : "codex";
+	return parseAgentCoreValue(value, "codex");
 }
 
+/** @deprecated Use agentRuntimeSpecFromStoredRun for stored run parsing. */
 export function parseStoredAgentHarness(
 	value: string,
 	core: AgentCore,
 ): AgentHarness {
-	if (isAgentHarness(value)) return value;
-	return core === "pi" ? "sdk" : env.CODEX_RUNTIME;
-}
-
-export function parseStoredCodexAuthMode(value: string): CodexAuthMode {
-	if (isCodexAuthMode(value)) return value;
-	return env.CODEX_AUTH_MODE;
+	return agentRuntimeSpecFromStoredRun({
+		agentCore: core,
+		agentHarness: value,
+		requestedAuthMode: "auto",
+		requestedModel: "codex-default",
+		requestedEffort: "codex-default",
+		selectedModel: "codex-default",
+		selectedEffort: "codex-default",
+	}).harness;
 }
 
 /** Harness label input for receipts (legacy codexRuntime column included). */
 export function receiptHarness(
-	run: Pick<VariantRun, "agentCore" | "agentHarness" | "codexRuntime">,
+	run: Pick<
+		VariantRun,
+		| "agentCore"
+		| "agentHarness"
+		| "codexRuntime"
+		| "requestedAuthMode"
+		| "requestedModel"
+		| "requestedEffort"
+		| "selectedModel"
+		| "selectedEffort"
+	>,
 ): AgentHarness {
-	if (isAgentHarness(run.agentHarness)) return run.agentHarness;
-	if (run.codexRuntime === "exec" || run.codexRuntime === "json") {
-		return run.codexRuntime;
-	}
-	return "sdk";
+	return agentRuntimeSpecFromStoredRun(run).harness;
 }

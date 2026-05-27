@@ -13,9 +13,8 @@ import {
 import {
 	type AgentSettings,
 	DEFAULT_AGENT_SETTINGS,
-	readAgentSettings,
-	writeAgentSettings,
-} from "@/lib/agent-settings-storage";
+	normalizeAgentSettings,
+} from "@/lib/agent-settings-shared";
 
 interface AgentSettingsContextValue {
 	settings: AgentSettings;
@@ -29,79 +28,56 @@ const AgentSettingsContext = createContext<AgentSettingsContextValue | null>(
 	null,
 );
 
-export function AgentSettingsProvider({ children }: { children: ReactNode }) {
-	const [settings, setSettings] = useState(DEFAULT_AGENT_SETTINGS);
+export function AgentSettingsProvider({
+	children,
+	initialSettings = DEFAULT_AGENT_SETTINGS,
+}: {
+	children: ReactNode;
+	initialSettings?: AgentSettings;
+}) {
+	const [settings, setSettings] = useState(() =>
+		normalizeAgentSettings(initialSettings),
+	);
 	const [dialogOpen, setDialogOpen] = useState(false);
-	const [hydrated, setHydrated] = useState(false);
 	const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	useEffect(() => {
-		let active = true;
-		async function hydrate() {
-			const local = readAgentSettings();
-			try {
-				const response = await fetch("/api/agent/settings", {
-					cache: "no-store",
-				});
-				if (active && response.ok) {
-					const payload: unknown = await response.json();
-					if (
-						typeof payload === "object" &&
-						payload !== null &&
-						"settings" in payload &&
-						typeof payload.settings === "object" &&
-						payload.settings !== null
-					) {
-						setSettings({
-							...DEFAULT_AGENT_SETTINGS,
-							...(payload.settings as AgentSettings),
-						});
-						writeAgentSettings(payload.settings as AgentSettings);
-						setHydrated(true);
-						return;
-					}
-				}
-			} catch {
-				// Offline or logged-out edge case — localStorage still applies.
-			}
-			if (active) {
-				setSettings(local);
-				setHydrated(true);
-			}
-		}
-		void hydrate();
-		return () => {
-			active = false;
-		};
-	}, []);
+		setSettings(normalizeAgentSettings(initialSettings));
+	}, [initialSettings]);
 
-	useEffect(() => {
-		if (!hydrated) return;
-		writeAgentSettings(settings);
+	useEffect(
+		() => () => {
+			if (persistTimer.current) clearTimeout(persistTimer.current);
+		},
+		[],
+	);
+
+	const persistExplicitUpdate = useCallback((next: AgentSettings) => {
 		if (persistTimer.current) clearTimeout(persistTimer.current);
 		persistTimer.current = setTimeout(() => {
 			void fetch("/api/agent/settings", {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(settings),
+				body: JSON.stringify(next),
 			});
 		}, 400);
-		return () => {
-			if (persistTimer.current) clearTimeout(persistTimer.current);
-		};
-	}, [hydrated, settings]);
-
-	const updateSettings = useCallback((patch: Partial<AgentSettings>) => {
-		setSettings((current) => {
-			const next = { ...current, ...patch };
-			if (patch.agentCore && patch.agentCore !== current.agentCore) {
-				next.agentHarness = patch.agentCore === "pi" ? "json" : "sdk";
-				next.model =
-					patch.agentCore === "pi" ? "cursor/composer-2.5" : "codex-default";
-			}
-			return next;
-		});
 	}, []);
+
+	const updateSettings = useCallback(
+		(patch: Partial<AgentSettings>) => {
+			setSettings((current) => {
+				const next = normalizeAgentSettings({ ...current, ...patch });
+				if (patch.agentCore && patch.agentCore !== current.agentCore) {
+					next.agentHarness = patch.agentCore === "pi" ? "json" : "sdk";
+					next.model =
+						patch.agentCore === "pi" ? "cursor/composer-2.5" : "codex-default";
+				}
+				persistExplicitUpdate(next);
+				return next;
+			});
+		},
+		[persistExplicitUpdate],
+	);
 
 	const value = useMemo(
 		() => ({

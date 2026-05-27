@@ -5,7 +5,9 @@ import type {
 } from "@/lib/config";
 
 export type AgentCore = "codex" | "pi";
-export type AgentHarness = "sdk" | "exec" | "json";
+export type CodexAgentHarness = "sdk" | "exec";
+export type PiAgentHarness = "json";
+export type AgentHarness = CodexAgentHarness | PiAgentHarness;
 
 export interface ProcessResult {
 	code: number | null;
@@ -44,15 +46,31 @@ export type VariantSdkRunner = (
 	options: RuntimeOptions,
 ) => Promise<ProcessResult>;
 
-export interface AgentSelection {
-	core: AgentCore;
-	harness: AgentHarness;
+export interface CodexAgentRuntimeSpec {
+	core: "codex";
+	harness: CodexAgentHarness;
 	requestedAuthMode: CodexAuthMode;
 	requestedModel: string;
 	requestedEffort: CodexReasoningEffort | "";
 	selectedModel: string;
 	selectedEffort: string;
+	legacyRuntime: CodexRuntime;
 }
+
+export interface PiAgentRuntimeSpec {
+	core: "pi";
+	harness: PiAgentHarness;
+	requestedAuthMode: CodexAuthMode;
+	requestedModel: string;
+	requestedEffort: "";
+	selectedModel: string;
+	selectedEffort: string;
+	legacyRuntime: "json";
+}
+
+export type AgentRuntimeSpec = CodexAgentRuntimeSpec | PiAgentRuntimeSpec;
+
+export type AgentSelection = AgentRuntimeSpec;
 
 export interface ExecuteVariantRunOptions {
 	processRunner?: VariantProcessRunner;

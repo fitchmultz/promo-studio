@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { PiModelField } from "@/components/PiModelField";
-import type { AgentSettings } from "@/lib/agent-settings-storage";
+import type { AgentSettings } from "@/lib/agent-settings-shared";
 
 const codexModels = [
 	"codex-default",
@@ -38,7 +38,7 @@ export function AgentSettingsFields({
 	return (
 		<div className="agent-settings-fields">
 			<p className="muted">
-				Agent and model used when you create a variant. Saved in this browser.
+				Agent and model used when you create a variant. Saved to your account.
 				Pi runs via <code>pi --mode json</code> (stdin prompt).
 			</p>
 			<fieldset className="goal-chips" aria-label="Agent core">

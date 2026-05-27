@@ -4,6 +4,7 @@ import { AgentSettingsDialog } from "@/components/AgentSettingsDialog";
 import { AgentSettingsNavButton } from "@/components/AgentSettingsNavButton";
 import { AgentSettingsProvider } from "@/components/AgentSettingsProvider";
 import { currentUser } from "@/lib/auth";
+import { parseStoredAgentSettings } from "@/lib/agent-settings-runtime";
 
 export default async function StudioLayout({
 	children,
@@ -11,8 +12,9 @@ export default async function StudioLayout({
 	children: ReactNode;
 }) {
 	const user = await currentUser();
+	const initialSettings = parseStoredAgentSettings(user?.agentPreferences);
 	return (
-		<AgentSettingsProvider>
+		<AgentSettingsProvider initialSettings={initialSettings}>
 			<header className="studio-nav">
 				<Link className="brand" href="/studio" aria-label="Promo Studio home">
 					<span aria-hidden="true">PS</span>

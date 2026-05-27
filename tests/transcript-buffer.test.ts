@@ -3,7 +3,6 @@ import { transcriptBodyForDb } from "@/lib/agent/transcript-store";
 import {
 	appendLimited,
 	MAX_DB_TRANSCRIPT_CHARS,
-	MAX_POLL_TRANSCRIPT_CHARS,
 	MAX_PROCESS_OUTPUT_CHARS,
 	tailJsonlForPoll,
 } from "@/lib/agent/process";

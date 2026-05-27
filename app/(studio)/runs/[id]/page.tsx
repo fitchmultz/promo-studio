@@ -7,6 +7,7 @@ import { RunDetailTabs } from "@/components/RunDetailTabs";
 import { RunElapsed } from "@/components/RunElapsed";
 import { RunFailureBanner } from "@/components/RunFailureBanner";
 import { RunReceipt } from "@/components/RunReceipt";
+import { RunLiveProvider } from "@/components/RunLiveProvider";
 import { RunTranscriptPanel } from "@/components/RunTranscriptPanel";
 import { requireUser } from "@/lib/auth";
 import { parseCodexEvents } from "@/lib/codex-runner";
@@ -21,6 +22,7 @@ import {
 	workspacePathForDisplay,
 } from "@/lib/agent-display";
 import { parseStringArrayJson } from "@/lib/json";
+import { renderStorefrontBaselineHtml } from "@/lib/storefront-baseline";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,7 @@ export default async function RunDetailPage({
 	const { id } = await params;
 	const run = await prisma.variantRun.findUnique({
 		where: { id },
-		include: { product: true, user: true },
+		include: { product: true },
 	});
 	if (!run) notFound();
 	if (user.role !== "admin" && run.userId !== user.id) redirect("/forbidden");
@@ -41,7 +43,9 @@ export default async function RunDetailPage({
 	const fullTranscript = await resolveFullTranscript(run.id, run.transcript);
 	const fileBytes = await runTranscriptFileByteLength(run.id);
 	const pollTranscript =
-		run.status === "running" ? run.transcript : fullTranscript;
+		run.status === "queued" || run.status === "running"
+			? run.transcript
+			: fullTranscript;
 	const events = parseCodexEvents(pollTranscript);
 	const legacyMarkerTruncated = fullTranscript.includes(
 		LEGACY_TRANSCRIPT_TRUNCATED_MARKER,
@@ -50,6 +54,7 @@ export default async function RunDetailPage({
 		!fileBytes &&
 		run.transcript.length >= 119_000 &&
 		!run.transcript.trimStart().startsWith("{");
+	const beforePreviewHtml = await renderStorefrontBaselineHtml();
 	const runLabel = runAgentDisplayLabel({
 		agentCore: run.agentCore,
 		selectedModel: run.selectedModel,
@@ -70,12 +75,11 @@ export default async function RunDetailPage({
 					<>
 						<h2>Before and after preview</h2>
 						<BeforeAfter
-							product={run.product}
+							beforePreviewHtml={beforePreviewHtml}
 							previewHtml={run.previewHtml}
 							agentCore={run.agentCore}
 							selectedModel={run.selectedModel}
 							status={run.status}
-							runId={run.id}
 						/>
 					</>
 				),
@@ -87,7 +91,9 @@ export default async function RunDetailPage({
 							initialStatus={run.status}
 							initialChangedFiles={changedFiles}
 							completedDiff={
-								run.status !== "running" && changedFiles.length ? (
+								run.status !== "queued" &&
+								run.status !== "running" &&
+								changedFiles.length ? (
 									<DiffViewer
 										workspacePath={run.workspacePath}
 										changedFiles={changedFiles}
@@ -146,7 +152,9 @@ export default async function RunDetailPage({
 								startedAt={run.startedAt.toISOString()}
 								completedAt={run.completedAt?.toISOString() ?? null}
 								status={run.status}
-								showElapsedSuffix={run.status === "running"}
+								showElapsedSuffix={
+									run.status === "queued" || run.status === "running"
+								}
 							/>
 						</p>
 					</div>
@@ -158,8 +166,15 @@ export default async function RunDetailPage({
 			{run.status === "failed" ? (
 				<RunFailureBanner error={run.error} runId={run.id} />
 			) : null}
-			{activity}
-			{tabs}
+			<RunLiveProvider
+				runId={run.id}
+				initialStatus={run.status}
+				initialEvents={events}
+				initialHasPreview={Boolean(run.previewHtml?.trim())}
+			>
+				{activity}
+				{tabs}
+			</RunLiveProvider>
 		</main>
 	);
 }
