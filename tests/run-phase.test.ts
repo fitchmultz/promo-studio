@@ -84,7 +84,7 @@ describe("inferRunPhase", () => {
 		expect(phase.step).toBe(2);
 	});
 
-	it("infers discovering from pi thinking-style activity rows", () => {
+	it("ignores pi thinking-style prose when no tool activity exists", () => {
 		const phase = inferRunPhase({
 			status: "running",
 			agentCore: "pi",
@@ -102,8 +102,8 @@ describe("inferRunPhase", () => {
 				},
 			],
 		});
-		expect(phase.id).toBe("discovering");
-		expect(phase.step).toBeGreaterThan(1);
+		expect(phase.id).toBe("starting");
+		expect(phase.step).toBe(1);
 	});
 
 	it("keeps editing when codex file_change is followed by discovery shell commands", () => {
@@ -134,6 +134,45 @@ describe("inferRunPhase", () => {
 		});
 		expect(phase.id).toBe("editing");
 		expect(phase.step).toBe(3);
+	});
+
+	it("infers editing phase from Pi edit tool events", () => {
+		const phase = inferRunPhase({
+			status: "running",
+			agentCore: "pi",
+			hasPreview: false,
+			events: [
+				{
+					type: "tool_execution_start",
+					raw: "{}",
+					parsed: {
+						toolName: "edit",
+						args: { path: "src/App.tsx" },
+					},
+				},
+			],
+		});
+		expect(phase.id).toBe("editing");
+	});
+
+	it("infers editing phase from Cursor SDK edit tool events", () => {
+		const phase = inferRunPhase({
+			status: "running",
+			agentCore: "cursor",
+			hasPreview: false,
+			events: [
+				{
+					type: "tool_call",
+					raw: "{}",
+					parsed: {
+						name: "edit",
+						status: "completed",
+						args: { path: "src/App.tsx" },
+					},
+				},
+			],
+		});
+		expect(phase.id).toBe("editing");
 	});
 
 	it("infers testing phase from Cursor SDK tool_call shell events", () => {

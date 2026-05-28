@@ -1,3 +1,13 @@
+import {
+	agentCoreDefinition,
+	defaultHarnessForCore,
+	defaultModelForCore,
+} from "@/lib/agent/definitions";
+import {
+	CODEX_DEFAULT_REASONING_EFFORT,
+	PI_DEFAULT_SETTINGS_MODEL,
+} from "@/lib/agent-defaults";
+
 export type AgentCoreChoice = "codex" | "pi" | "cursor";
 
 export interface AgentSettings {
@@ -12,13 +22,13 @@ export interface AgentSettings {
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
 	agentCore: "pi",
 	agentHarness: "json",
-	model: "cursor/composer-2.5",
-	reasoningEffort: "codex-default",
+	model: PI_DEFAULT_SETTINGS_MODEL,
+	reasoningEffort: CODEX_DEFAULT_REASONING_EFFORT,
 	authMode: "auto",
 };
 
 const CODEX_REASONING_EFFORTS = new Set([
-	"codex-default",
+	CODEX_DEFAULT_REASONING_EFFORT,
 	"minimal",
 	"low",
 	"medium",
@@ -34,34 +44,23 @@ function codexAuthMode(value: string) {
 
 /** Client-side UI normalization only. Server persistence re-validates with AgentRuntimeSpec. */
 export function normalizeAgentSettings(settings: AgentSettings): AgentSettings {
-	if (settings.agentCore === "pi") {
-		return {
-			agentCore: "pi",
-			agentHarness: "json",
-			model: settings.model || "pi-default",
-			reasoningEffort: "codex-default",
-			authMode: codexAuthMode(settings.authMode),
-		};
-	}
-	if (settings.agentCore === "cursor") {
-		return {
-			agentCore: "cursor",
-			agentHarness: "sdk",
-			model: settings.model || "composer-2.5-fast",
-			reasoningEffort: "codex-default",
-			authMode: codexAuthMode(settings.authMode),
-		};
-	}
+	const definition = agentCoreDefinition(settings.agentCore);
+	const harness = definition.harnesses.some(
+		(option) => option.value === settings.agentHarness,
+	)
+		? settings.agentHarness
+		: defaultHarnessForCore(settings.agentCore);
 	return {
-		agentCore: "codex",
-		agentHarness:
-			settings.agentHarness === "exec" || settings.agentHarness === "sdk"
-				? settings.agentHarness
-				: "sdk",
-		model: settings.model || "codex-default",
-		reasoningEffort: CODEX_REASONING_EFFORTS.has(settings.reasoningEffort)
-			? settings.reasoningEffort
-			: "codex-default",
-		authMode: codexAuthMode(settings.authMode),
+		agentCore: settings.agentCore,
+		agentHarness: harness,
+		model: settings.model || defaultModelForCore(settings.agentCore),
+		reasoningEffort:
+			definition.showReasoningEffort &&
+			CODEX_REASONING_EFFORTS.has(settings.reasoningEffort)
+				? settings.reasoningEffort
+				: CODEX_DEFAULT_REASONING_EFFORT,
+		authMode: definition.showAuthMode
+			? codexAuthMode(settings.authMode)
+			: "auto",
 	};
 }

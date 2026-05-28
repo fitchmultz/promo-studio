@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import {
-	normalizePiModel,
+	CODEX_DEFAULT_MODEL,
+	CODEX_DEFAULT_REASONING_EFFORT,
+	CURSOR_DEFAULT_SETTINGS_MODEL,
+} from "@/lib/agent-defaults";
+import {
 	piChildEnv as buildPiChildEnv,
 	piSessionsPath,
 	PI_SECRET_ENV_KEYS,
@@ -23,6 +27,10 @@ export {
 	selectedPiThinkingFromModel,
 } from "@/lib/pi-runtime-config";
 export type { PiModelSpec, PiThinkingLevel } from "@/lib/pi-runtime-config";
+export {
+	CODEX_DEFAULT_MODEL,
+	CODEX_DEFAULT_REASONING_EFFORT,
+} from "@/lib/agent-defaults";
 export {
 	CURSOR_DEFAULT_MODEL,
 	CURSOR_FAST_MODEL_ID,
@@ -67,7 +75,7 @@ const EnvSchema = z.object({
 	CODEX_MODEL: z.string().default("gpt-5.5"),
 	CODEX_REASONING_EFFORT: z.string().default("low"),
 	PI_MODEL: z.string().default(""),
-	CURSOR_MODEL: z.string().default("composer-2.5-fast"),
+	CURSOR_MODEL: z.string().default(CURSOR_DEFAULT_SETTINGS_MODEL),
 	CURSOR_API_KEY: z.string().optional(),
 	CURSOR_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
 	ANTHROPIC_API_KEY: z.string().optional(),
@@ -90,8 +98,6 @@ export type CodexReasoningEffort =
 	| "medium"
 	| "high"
 	| "xhigh";
-export const CODEX_DEFAULT_MODEL = "codex-default";
-export const CODEX_DEFAULT_REASONING_EFFORT = "codex-default";
 const ReasoningEffortSchema = z.enum([
 	"minimal",
 	"low",

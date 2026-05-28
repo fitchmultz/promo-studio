@@ -61,6 +61,7 @@ describe("variant run auto-execute (Create Variant must run agents)", () => {
 			run.id,
 			expect.any(Function),
 			undefined,
+			undefined,
 		);
 	});
 
@@ -94,17 +95,19 @@ describe("variant run auto-execute (Create Variant must run agents)", () => {
 			typeof import("@/lib/agent/schedule-variant-run")
 		>("@/lib/agent/schedule-variant-run");
 		const execute = vi.fn().mockResolvedValue(null);
-		scheduleVariantRunExecution("run-test", execute, { processRunner: vi.fn() });
+		scheduleVariantRunExecution("run-test", execute, {
+			processRunner: vi.fn(),
+		});
 		await new Promise((resolve) => setImmediate(resolve));
 		expect(execute).toHaveBeenCalledWith("run-test", {
 			processRunner: expect.any(Function),
 		});
 	});
 
-	it("POST /api/variant-runs schedules execution via next/server after()", () => {
+	it("POST /api/variant-runs injects next/server after() as the scheduler", () => {
 		const routeSource = readRepoFile("app/api/variant-runs/route.ts");
-		expect(routeSource).toContain("autoExecute: false");
-		expect(routeSource).toMatch(/after\s*\(\s*\(\)\s*=>\s*executeVariantRun/);
+		expect(routeSource).toContain("scheduler: after");
+		expect(routeSource).not.toContain("autoExecute: false");
 	});
 
 	it("ActivityStream does not tell users to start runs:worker", () => {

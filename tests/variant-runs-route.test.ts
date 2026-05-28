@@ -132,7 +132,7 @@ describe("variant run API", () => {
 		expect(createVariantRunMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				campaignGoal: "Holiday gift push",
-				autoExecute: false,
+				scheduler: afterMock,
 				runtimeSpec: expect.objectContaining({
 					core: "codex",
 					harness: "sdk",
@@ -142,8 +142,7 @@ describe("variant run API", () => {
 				}),
 			}),
 		);
-		expect(afterMock).toHaveBeenCalledTimes(1);
-		expect(executeVariantRunMock).toHaveBeenCalledWith("run-1");
+		expect(afterMock).not.toHaveBeenCalled();
 	});
 
 	it("passes Cursor SDK runtime spec from form fields", async () => {

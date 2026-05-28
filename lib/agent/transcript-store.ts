@@ -63,7 +63,9 @@ async function readDbTranscriptTail(runId: string) {
 }
 
 /** Live poll source: prefer the on-disk JSONL file while the worker is streaming. */
-export async function readLiveTranscriptForPoll(runId: string): Promise<string> {
+export async function readLiveTranscriptForPoll(
+	runId: string,
+): Promise<string> {
 	const [file, dbTail] = await Promise.all([
 		readRunTranscriptFile(runId),
 		readDbTranscriptTail(runId),

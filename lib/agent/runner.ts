@@ -2,29 +2,16 @@ import { randomUUID } from "node:crypto";
 import type { Product, User } from "@prisma/client";
 import {
 	agentTimeoutMs,
-	CODEX_DEFAULT_MODEL,
-	CODEX_DEFAULT_REASONING_EFFORT,
 	type CodexAuthMode,
-	CURSOR_DEFAULT_MODEL,
-	cursorApiKeyConfigured,
-	PI_DEFAULT_MODEL,
 	redactSecrets,
 } from "@/lib/config";
 import { prisma } from "@/lib/db";
-import {
-	defaultCodexSdkRunner,
-	resolveCodexSelection,
-	runCodexWithFallback,
-} from "@/lib/agent/codex-adapter";
+import { agentDisplayName } from "@/lib/agent/definitions";
 import {
 	agentSummary,
 	buildInvocationDescriptor,
 } from "@/lib/agent/invocation";
-import {
-	defaultCursorSdkRunner,
-	runCursorRuntime,
-} from "@/lib/agent/cursor-adapter";
-import { runPiRuntime } from "@/lib/agent/pi-adapter";
+import { agentRuntimeDefinition } from "@/lib/agent/registry";
 import {
 	appendLimited,
 	MAX_POLL_TRANSCRIPT_CHARS,
@@ -45,19 +32,22 @@ import type {
 } from "@/lib/agent/types";
 import type { AgentRuntimeSpec } from "@/lib/agent/types";
 import {
+	agentRuntimePersistenceFields,
 	agentRuntimeSpecFromStoredRun,
 	resolveAgentRuntimeSpec,
 	resolveAgentRuntimeSpecFromForm,
 } from "@/lib/agent/runtime-spec";
 import { inlineBuiltPreview } from "@/lib/storefront-preview";
 import { readVariantManifest, validateVariantReceipt } from "@/lib/validation";
-import { scheduleVariantRunExecution } from "@/lib/agent/schedule-variant-run";
+import {
+	scheduleVariantRunExecution,
+	type VariantRunScheduler,
+} from "@/lib/agent/schedule-variant-run";
 import { buildVariantPrompt } from "@/lib/variant-prompt";
 import {
 	claimVariantRun,
 	drainQueuedVariantRunQueue as drainQueue,
 	finalizeVariantRun,
-	recoverStaleVariantRuns,
 } from "@/lib/variant-run-queue";
 import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
 
@@ -78,12 +68,6 @@ async function persistTranscript(runId: string, transcript: string) {
 		where: { id: runId },
 		data: { transcript },
 	});
-}
-
-function agentDisplayName(core: AgentCore) {
-	if (core === "pi") return "Pi";
-	if (core === "cursor") return "Cursor";
-	return "Codex";
 }
 
 function agentFailureMessage(
@@ -110,23 +94,6 @@ export async function drainQueuedVariantRunQueue(
 	return drainQueue(executeVariantRun, options, limit);
 }
 
-function storedRequestedModel(runtimeSpec: AgentRuntimeSpec) {
-	if (runtimeSpec.core === "pi") {
-		return runtimeSpec.requestedModel || PI_DEFAULT_MODEL;
-	}
-	if (runtimeSpec.core === "cursor") {
-		return runtimeSpec.requestedModel || CURSOR_DEFAULT_MODEL;
-	}
-	return runtimeSpec.requestedModel || CODEX_DEFAULT_MODEL;
-}
-
-function storedRequestedEffort(runtimeSpec: AgentRuntimeSpec) {
-	if (runtimeSpec.core === "pi" || runtimeSpec.core === "cursor") {
-		return runtimeSpec.selectedEffort;
-	}
-	return runtimeSpec.requestedEffort || CODEX_DEFAULT_REASONING_EFFORT;
-}
-
 export async function createVariantRun(params: {
 	user: User;
 	product: Product;
@@ -141,6 +108,7 @@ export async function createVariantRun(params: {
 	/** When true (default), claim and run the agent without blocking the caller. */
 	autoExecute?: boolean;
 	executeOptions?: ExecuteVariantRunOptions;
+	scheduler?: VariantRunScheduler;
 }) {
 	const runtimeSpec =
 		params.runtimeSpec ??
@@ -151,21 +119,8 @@ export async function createVariantRun(params: {
 			model: params.requestedModel,
 			effort: params.requestedEffort,
 		});
-	const selection = resolveCodexSelection(runtimeSpec.requestedAuthMode);
-	if (
-		runtimeSpec.core === "codex" &&
-		selection.selectedMode === "api-key" &&
-		selection.keySource === "none"
-	) {
-		throw new Error(
-			"API-key mode requested, but neither CODEX_API_KEY nor OPENAI_API_KEY is configured.",
-		);
-	}
-	if (runtimeSpec.core === "cursor" && !cursorApiKeyConfigured()) {
-		throw new Error(
-			"CURSOR_API_KEY is required for Cursor SDK storefront variant runs.",
-		);
-	}
+	const runtimeDefinition = agentRuntimeDefinition(runtimeSpec.core);
+	runtimeDefinition.validateBeforeCreate?.(runtimeSpec);
 
 	const runId = randomUUID();
 	const workspace = await createVariantWorkspace(runId);
@@ -186,6 +141,7 @@ export async function createVariantRun(params: {
 		selectedEffort: runtimeSpec.selectedEffort,
 	});
 
+	const persistenceFields = agentRuntimePersistenceFields(runtimeSpec);
 	const runRecord = await prisma.variantRun.create({
 		data: {
 			id: runId,
@@ -195,15 +151,7 @@ export async function createVariantRun(params: {
 			campaignBrief: params.campaignBrief,
 			campaignGoal: params.campaignGoal,
 			workspacePath: workspace,
-			requestedAuthMode: runtimeSpec.requestedAuthMode,
-			selectedAuthMode: selection.selectedMode,
-			requestedModel: storedRequestedModel(runtimeSpec),
-			selectedModel: runtimeSpec.selectedModel,
-			requestedEffort: storedRequestedEffort(runtimeSpec),
-			selectedEffort: runtimeSpec.selectedEffort,
-			agentCore: runtimeSpec.core,
-			agentHarness: runtimeSpec.harness,
-			codexRuntime: runtimeSpec.legacyRuntime,
+			...persistenceFields,
 			codexCommand: invocation,
 			inputPrompt: prompt,
 			outputSummary: agentSummary(runtimeSpec),
@@ -214,6 +162,7 @@ export async function createVariantRun(params: {
 			runRecord.id,
 			executeVariantRun,
 			params.executeOptions,
+			params.scheduler,
 		);
 	}
 	return runRecord;
@@ -231,7 +180,7 @@ export async function executeVariantRun(
 	const workspacePath = runRecord.workspacePath;
 	const runtimeSpec = agentRuntimeSpecFromStoredRun(runRecord);
 	const timeoutMs = agentTimeoutMs(runtimeSpec.core);
-	const initialSelection = resolveCodexSelection(runtimeSpec.requestedAuthMode);
+	const runtimeDefinition = agentRuntimeDefinition(runtimeSpec.core);
 	let pollTranscript = runRecord.transcript;
 	let fileWrite = Promise.resolve();
 	let transcriptWrite = Promise.resolve();
@@ -254,45 +203,18 @@ export async function executeVariantRun(
 			stderrText = appendLimited(stderrText, `${line}\n`);
 		};
 
-		const agentResult =
-			runtimeSpec.core === "pi"
-				? await runPiRuntime({
-						input: runRecord.inputPrompt,
-						processRunner,
-						requestedModel: runtimeSpec.requestedModel,
-						runId,
-						workspace: workspacePath,
-						timeoutMs,
-						onStdoutLine,
-						onStderrLine,
-					})
-				: runtimeSpec.core === "cursor"
-					? await runCursorRuntime({
-							input: runRecord.inputPrompt,
-							cursorSdkRunner:
-								executeOptions.cursorSdkRunner ?? defaultCursorSdkRunner,
-							requestedModel: runtimeSpec.requestedModel,
-							workspace: workspacePath,
-							timeoutMs,
-							onStdoutLine,
-							onStderrLine,
-						})
-					: await runCodexWithFallback({
-							runtime: runtimeSpec.harness,
-							input: runRecord.inputPrompt,
-							processRunner,
-							sdkRunner: executeOptions.codexSdkRunner ?? defaultCodexSdkRunner,
-							requestedAuthMode: runtimeSpec.requestedAuthMode,
-							requestedModel: runtimeSpec.requestedModel,
-							requestedEffort: runtimeSpec.requestedEffort,
-							selection: initialSelection,
-							workspace: workspacePath,
-							timeoutMs,
-							onStdoutLine,
-							onStderrLine,
-						});
+		const agentResult = await runtimeDefinition.execute(runtimeSpec, {
+			input: runRecord.inputPrompt,
+			processRunner,
+			runId,
+			workspace: workspacePath,
+			timeoutMs,
+			onStdoutLine,
+			onStderrLine,
+			executeOptions,
+		});
 
-		const { result, selection } = agentResult;
+		const { result } = agentResult;
 		await fileWrite;
 		const fullTranscript = redactSecrets(
 			(await readRunTranscriptFile(runId))?.trim() ||
@@ -326,7 +248,10 @@ export async function executeVariantRun(
 		);
 		return finalizeVariantRun(runId, {
 			status: "succeeded",
-			selectedAuthMode: selection.selectedMode,
+			...agentRuntimePersistenceFields(
+				runtimeSpec,
+				agentResult.codexAuthSelection,
+			),
 			manifest: JSON.stringify(manifest, null, 2),
 			transcript: dbTranscript,
 			stdout: dbTranscript,
@@ -354,6 +279,7 @@ export async function executeVariantRun(
 		const dbTranscript = transcriptBodyForDb(fullTranscript);
 		return finalizeVariantRun(runId, {
 			status: "failed",
+			...agentRuntimePersistenceFields(runtimeSpec),
 			transcript: dbTranscript,
 			stdout: dbTranscript,
 			stderr: stderrText,

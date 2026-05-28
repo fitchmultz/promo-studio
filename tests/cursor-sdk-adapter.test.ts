@@ -11,10 +11,7 @@ function mockCursorSdk(
 	const sendInputs: unknown[] = [];
 
 	vi.doMock("@/lib/cursor-model-resolve", () => ({
-		resolveCursorModelSelection: async (
-			_key: string,
-			requested: string,
-		) => {
+		resolveCursorModelSelection: async (_key: string, requested: string) => {
 			const { parseCursorModelSelection } = await import(
 				"@/lib/cursor-runtime-config"
 			);
@@ -23,11 +20,11 @@ function mockCursorSdk(
 	}));
 	vi.doMock("@cursor/sdk", () => ({
 		CursorAgentError: class CursorAgentError extends Error {},
-		Agent: class {
-			static async create(options: unknown) {
+		Agent: {
+			async create(options: unknown) {
 				createOptions.push(options);
 				return new MockAgent(messages, waitStatus, sendInputs);
-			}
+			},
 		},
 	}));
 

@@ -1,3 +1,4 @@
+import { CODEX_DEFAULT_MODEL, PI_DEFAULT_MODEL } from "@/lib/agent-defaults";
 import { WORKSPACE_DIR_NAME } from "@/lib/workspace-constants";
 
 /** User-facing strings keyed by agent core (codex | pi | cursor). */
@@ -19,7 +20,7 @@ export function agentDisplayName(core: AgentCoreId | string): string {
 	return "Codex";
 }
 
-const PLACEHOLDER_MODELS = new Set(["", "codex-default", "pi-default"]);
+const PLACEHOLDER_MODELS = new Set(["", CODEX_DEFAULT_MODEL, PI_DEFAULT_MODEL]);
 
 /** Model id segment from stored `selectedModel` (strips provider and :thinking). */
 export function modelIdFromSelected(selectedModel: string): string {

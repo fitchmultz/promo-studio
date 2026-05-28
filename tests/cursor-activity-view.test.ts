@@ -60,7 +60,10 @@ describe("cursorEventsToActivityRows", () => {
 					type: "assistant",
 					raw: "",
 					parsed: {
-						message: { role: "assistant", content: [{ type: "text", text: "I'll" }] },
+						message: {
+							role: "assistant",
+							content: [{ type: "text", text: "I'll" }],
+						},
 					},
 				},
 				{

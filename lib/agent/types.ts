@@ -63,36 +63,35 @@ export type VariantCursorSdkRunner = (
 	options: CursorRuntimeOptions,
 ) => Promise<ProcessResult>;
 
-export interface CodexAgentRuntimeSpec {
+interface BaseAgentRuntimeSpec {
+	core: AgentCore;
+	harness: AgentHarness;
+	requestedModel: string;
+	requestedEffort: string;
+	selectedModel: string;
+	selectedEffort: string;
+	legacyRuntime: CodexRuntime | "json" | "cursor-sdk";
+}
+
+export interface CodexAgentRuntimeSpec extends BaseAgentRuntimeSpec {
 	core: "codex";
 	harness: CodexAgentHarness;
 	requestedAuthMode: CodexAuthMode;
-	requestedModel: string;
 	requestedEffort: CodexReasoningEffort | "";
-	selectedModel: string;
-	selectedEffort: string;
 	legacyRuntime: CodexRuntime;
 }
 
-export interface PiAgentRuntimeSpec {
+export interface PiAgentRuntimeSpec extends BaseAgentRuntimeSpec {
 	core: "pi";
 	harness: PiAgentHarness;
-	requestedAuthMode: CodexAuthMode;
-	requestedModel: string;
 	requestedEffort: "";
-	selectedModel: string;
-	selectedEffort: string;
 	legacyRuntime: "json";
 }
 
-export interface CursorAgentRuntimeSpec {
+export interface CursorAgentRuntimeSpec extends BaseAgentRuntimeSpec {
 	core: "cursor";
 	harness: CursorAgentHarness;
-	requestedAuthMode: CodexAuthMode;
-	requestedModel: string;
 	requestedEffort: "";
-	selectedModel: string;
-	selectedEffort: string;
 	legacyRuntime: "cursor-sdk";
 }
 
@@ -100,6 +99,11 @@ export type AgentRuntimeSpec =
 	| CodexAgentRuntimeSpec
 	| PiAgentRuntimeSpec
 	| CursorAgentRuntimeSpec;
+
+export interface AgentExecutionResult {
+	result: ProcessResult;
+	codexAuthSelection?: { selectedMode: "subscription" | "api-key" };
+}
 
 export interface ExecuteVariantRunOptions {
 	processRunner?: VariantProcessRunner;

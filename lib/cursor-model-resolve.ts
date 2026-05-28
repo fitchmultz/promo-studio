@@ -19,7 +19,7 @@ export async function resolveCursorModelSelection(
 ): Promise<CursorModelSelection> {
 	const selection = parseCursorModelSelection(requestedModel);
 	let models: Awaited<
-		ReturnType<(typeof import("@cursor/sdk"))["Cursor"]["models"]["list"]>
+		ReturnType<typeof import("@cursor/sdk")["Cursor"]["models"]["list"]>
 	>;
 	try {
 		const { Cursor } = await import("@cursor/sdk");

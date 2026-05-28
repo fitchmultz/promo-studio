@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	agentRuntimePersistenceFields,
 	agentRuntimeSpecFromStoredRun,
 	resolveAgentRuntimeSpec,
 	resolveAgentRuntimeSpecFromForm,
@@ -36,7 +37,6 @@ describe("agent runtime spec", () => {
 		).toEqual({
 			core: "cursor",
 			harness: "sdk",
-			requestedAuthMode: "auto",
 			requestedModel: "",
 			requestedEffort: "",
 			selectedModel: "composer-2.5-fast",
@@ -55,12 +55,23 @@ describe("agent runtime spec", () => {
 		).toEqual({
 			core: "pi",
 			harness: "json",
-			requestedAuthMode: "auto",
 			requestedModel: "openai-codex/gpt-5.5:high",
 			requestedEffort: "",
 			selectedModel: "openai-codex/gpt-5.5:high",
 			selectedEffort: "high",
 			legacyRuntime: "json",
+		});
+	});
+
+	it("persists Codex API-key auth selection before execution", () => {
+		const runtimeSpec = resolveAgentRuntimeSpec({
+			core: "codex",
+			authMode: "api-key",
+		});
+
+		expect(agentRuntimePersistenceFields(runtimeSpec)).toMatchObject({
+			requestedAuthMode: "api-key",
+			selectedAuthMode: "api-key",
 		});
 	});
 

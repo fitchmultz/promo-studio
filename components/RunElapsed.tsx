@@ -26,7 +26,7 @@ export function RunElapsed({
 		setTick(new Date());
 		const id = window.setInterval(() => setTick(new Date()), 1000);
 		return () => window.clearInterval(id);
-	}, [isLive, status]);
+	}, [isLive]);
 
 	if (isLive && !tick) {
 		return (

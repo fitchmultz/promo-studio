@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { PI_DEFAULT_MODEL } from "@/lib/agent-defaults";
 import { fetchPiModelSuggestions } from "@/lib/pi-models-client";
 
 interface PiModelFieldProps {
@@ -10,7 +11,7 @@ interface PiModelFieldProps {
 
 export function PiModelField({ value, onChange }: PiModelFieldProps) {
 	const listId = useId();
-	const [options, setOptions] = useState<string[]>(["pi-default"]);
+	const [options, setOptions] = useState<string[]>([PI_DEFAULT_MODEL]);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState("");
 

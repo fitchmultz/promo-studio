@@ -1,3 +1,5 @@
+import { PI_DEFAULT_MODEL } from "@/lib/pi-runtime-config";
+
 export interface PiModelOption {
 	value: string;
 	label: string;
@@ -20,12 +22,12 @@ export async function listAvailablePiModels(): Promise<PiModelsListResult> {
 
 		const models: PiModelOption[] = [
 			{
-				value: "pi-default",
+				value: PI_DEFAULT_MODEL,
 				label: "Default",
 				provider: "",
 			},
 		];
-		const seen = new Set<string>(["pi-default"]);
+		const seen = new Set<string>([PI_DEFAULT_MODEL]);
 
 		for (const model of available) {
 			const value = `${model.provider}/${model.id}`;
@@ -55,7 +57,7 @@ export async function listAvailablePiModels(): Promise<PiModelsListResult> {
 		return {
 			models: [
 				{
-					value: "pi-default",
+					value: PI_DEFAULT_MODEL,
 					label: "Default",
 					provider: "",
 				},

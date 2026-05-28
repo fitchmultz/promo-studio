@@ -40,8 +40,12 @@ async function checkApi() {
 		console.log(`OK Cursor.me apiKeyName=${user.apiKeyName}`);
 		const models = await Cursor.models.list({ apiKey });
 		const composer = models.find((model) => model.id === "composer-2.5");
-		const fastParam = composer?.parameters?.find((param) => param.id === "fast");
-		const fastEnabled = fastParam?.values.some((entry) => entry.value === "true");
+		const fastParam = composer?.parameters?.find(
+			(param) => param.id === "fast",
+		);
+		const fastEnabled = fastParam?.values.some(
+			(entry) => entry.value === "true",
+		);
 		if (composer && fastEnabled) {
 			console.log(
 				"OK composer-2.5 with fast=true is available (Promo Studio default).",

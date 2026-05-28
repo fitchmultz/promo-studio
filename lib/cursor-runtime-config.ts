@@ -64,7 +64,9 @@ export function parseCursorModelSelection(
 	return { id: normalized };
 }
 
-export function cursorModelDescriptorValue(selection: CursorModelSelection): string {
+export function cursorModelDescriptorValue(
+	selection: CursorModelSelection,
+): string {
 	const fast = selection.params?.find((param) => param.id === "fast")?.value;
 	if (selection.id === CURSOR_BASE_MODEL_ID && fast === "true") {
 		return CURSOR_FAST_MODEL_ID;

@@ -48,13 +48,9 @@ export async function runPiRuntime(params: {
 		},
 	);
 	if (result.code !== 0 && result.stderr.trim()) {
-		const message = redactSecrets(result.stderr.trim());
-		return {
-			result: { ...result, stderr: message },
-			selection: { selectedMode: "subscription" as const },
-		};
+		return { ...result, stderr: redactSecrets(result.stderr.trim()) };
 	}
-	return { result, selection: { selectedMode: "subscription" as const } };
+	return result;
 }
 
 export { runProcess as runPiProcess };

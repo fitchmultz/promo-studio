@@ -1,11 +1,7 @@
 import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import {
-	createVariantRun,
-	executeVariantRun,
-	resolveAgentFromForm,
-} from "@/lib/agent/runner";
+import { createVariantRun, resolveAgentFromForm } from "@/lib/agent/runner";
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { prisma } from "@/lib/db";
 import { primaryPromoProduct } from "@/lib/products";
@@ -75,9 +71,8 @@ export async function POST(request: Request) {
 			campaignBrief,
 			campaignGoal,
 			runtimeSpec: agent,
-			autoExecute: false,
+			scheduler: after,
 		});
-		after(() => executeVariantRun(run.id));
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to create variant run.";

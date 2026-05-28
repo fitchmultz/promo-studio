@@ -16,7 +16,9 @@ export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 ) => {
 	const { Agent, CursorAgentError } = await import("@cursor/sdk");
 	const controller = new AbortController();
-	let activeRun: Awaited<ReturnType<Awaited<ReturnType<typeof Agent.create>>["send"]>> | undefined;
+	let activeRun:
+		| Awaited<ReturnType<Awaited<ReturnType<typeof Agent.create>>["send"]>>
+		| undefined;
 	const timeout = setTimeout(() => {
 		controller.abort();
 		void activeRun?.cancel().catch(() => undefined);
@@ -110,7 +112,7 @@ export async function runCursorRuntime(params: {
 	onStdoutLine?: (line: string) => void;
 	onStderrLine?: (line: string) => void;
 }) {
-	const result = await params.cursorSdkRunner({
+	return params.cursorSdkRunner({
 		input: params.input,
 		requestedModel: params.requestedModel,
 		workspace: params.workspace,
@@ -118,8 +120,4 @@ export async function runCursorRuntime(params: {
 		onStdoutLine: params.onStdoutLine,
 		onStderrLine: params.onStderrLine,
 	});
-	return {
-		result,
-		selection: { selectedMode: "subscription" as const },
-	};
 }

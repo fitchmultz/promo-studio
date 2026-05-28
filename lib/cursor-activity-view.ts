@@ -5,7 +5,7 @@ import {
 	classifyThinkingActionLine,
 	extractThinkingActions,
 	summarizeAssistantProse,
-} from "@/lib/pi-activity-steps";
+} from "@/lib/agent-activity-steps";
 import { isJsonObject } from "@/lib/json";
 import type { ActivityRow } from "@/lib/activity-view";
 
@@ -31,7 +31,10 @@ function textFromAssistantContent(content: unknown): string {
 }
 
 /** Prefer the longest assistant snapshot; streaming sends fragments then a full line. */
-export function mergeAssistantStreamText(current: string, next: string): string {
+export function mergeAssistantStreamText(
+	current: string,
+	next: string,
+): string {
 	const value = next.trim();
 	if (!value) return current;
 	if (!current) return value;
@@ -79,7 +82,8 @@ function toolCallRow(
 	event: CursorActivityInputEvent,
 	maxBodyChars: number,
 ): ActivityRow | null {
-	const name = typeof event.parsed.name === "string" ? event.parsed.name : "tool";
+	const name =
+		typeof event.parsed.name === "string" ? event.parsed.name : "tool";
 	const phase = event.parsed.status === "completed" ? "end" : "start";
 	const isError = event.parsed.status === "error";
 	const command =
@@ -92,9 +96,7 @@ function toolCallRow(
 	const body = detail ? `${label}\n${detail}`.slice(0, maxBodyChars) : label;
 	if (!body) return null;
 	const callId =
-		typeof event.parsed.call_id === "string"
-			? event.parsed.call_id
-			: event.id;
+		typeof event.parsed.call_id === "string" ? event.parsed.call_id : event.id;
 	return {
 		id: `tool:${callId}`,
 		label,
@@ -103,7 +105,10 @@ function toolCallRow(
 	};
 }
 
-function statusBody(event: CursorActivityInputEvent, maxBodyChars: number): string {
+function statusBody(
+	event: CursorActivityInputEvent,
+	maxBodyChars: number,
+): string {
 	if (typeof event.parsed.message === "string" && event.parsed.message.trim()) {
 		return event.parsed.message.trim().slice(0, maxBodyChars);
 	}
@@ -240,7 +245,10 @@ export function cursorEventsToActivityRows(
 			const body = statusBody(event, maxBodyChars);
 			if (!body) continue;
 			const status = String(event.parsed.status ?? "");
-			if (status === "RUNNING" && rows.some((row) => row.id === "cursor-status-running")) {
+			if (
+				status === "RUNNING" &&
+				rows.some((row) => row.id === "cursor-status-running")
+			) {
 				continue;
 			}
 			rows.push({
@@ -249,7 +257,6 @@ export function cursorEventsToActivityRows(
 				body,
 				variant: "muted",
 			});
-			continue;
 		}
 	}
 
