@@ -1,4 +1,5 @@
 import path from "node:path";
+import { toProcessEnv } from "@/lib/process-env";
 import { z } from "zod";
 
 export type PiThinkingLevel =
@@ -81,15 +82,6 @@ const PiModelOverrideSchema = z
 		/^[a-zA-Z0-9._:/-]+$/,
 		"Model names may contain only letters, numbers, dots, underscores, colons, slashes, and hyphens.",
 	);
-
-function toProcessEnv(
-	record: Record<string, string | undefined>,
-): NodeJS.ProcessEnv {
-	const entries = Object.entries(record).filter(
-		(entry): entry is [string, string] => typeof entry[1] === "string",
-	);
-	return Object.fromEntries(entries) as NodeJS.ProcessEnv;
-}
 
 export function piProjectRoot(
 	env: NodeJS.ProcessEnv = process.env,

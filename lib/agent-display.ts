@@ -1,9 +1,11 @@
+import {
+	CANONICAL_WORKSPACE_DIR,
+	formatWorkspacePathForDisplay,
+} from "@/lib/workspace-paths";
+
 /** User-facing strings keyed by agent core (codex | pi). */
 
 export type AgentCoreId = "codex" | "pi";
-
-const LEGACY_WORKSPACE_DIR = "codex-workspaces";
-const CANONICAL_WORKSPACE_DIR = "agent-workspaces";
 
 export function parseAgentCoreId(
 	value: string | null | undefined,
@@ -77,12 +79,7 @@ export function studioAgentIntroSentence(
 }
 
 /** Normalize legacy on-disk dir name for all UI surfaces (receipts, shell output, lists). */
-export function formatWorkspacePathForDisplay(workspacePath: string): string {
-	return workspacePath.replaceAll(
-		LEGACY_WORKSPACE_DIR,
-		CANONICAL_WORKSPACE_DIR,
-	);
-}
+export { formatWorkspacePathForDisplay } from "@/lib/workspace-paths";
 
 export function workspacePathForDisplay(
 	_core: AgentCoreId | string,

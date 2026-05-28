@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { formatWorkspacePathForDisplay } from "@/lib/agent-display";
 
 export const variantRunListSelect = {
 	id: true,
@@ -115,7 +116,7 @@ export function serializeVariantRunListItem(
 		status: run.status,
 		campaignBrief: run.campaignBrief,
 		campaignGoal: run.campaignGoal,
-		workspacePath: run.workspacePath,
+		workspacePath: formatWorkspacePathForDisplay(run.workspacePath),
 		requestedAuthMode: run.requestedAuthMode,
 		selectedAuthMode: run.selectedAuthMode,
 		requestedModel: run.requestedModel,

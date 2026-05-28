@@ -444,4 +444,45 @@ describe("Codex runner", () => {
 			invocationIncludesWorkspace: false,
 		});
 	});
+
+	it("fails with a clear message when preview assets are missing", async () => {
+		const user = await prisma.user.findUniqueOrThrow({
+			where: { email: "demo@promostudio.test" },
+		});
+		const product = await prisma.product.findUniqueOrThrow({
+			where: { id: "ribbed-market-tote" },
+		});
+		const runner: VariantProcessRunner = async (_command, _args, options) => {
+			await writeFile(
+				path.join(options.cwd, "src", "theme.ts"),
+				"export const theme = { colors: { action: '#123456' } } as const;\n",
+			);
+			await writeFile(
+				path.join(options.cwd, "artifact", "manifest.json"),
+				JSON.stringify({
+					summary: "Created a tested campaign variant.",
+					changedFiles: ["src/theme.ts"],
+					commandsRun: ["npm test", "npm run build"],
+					testsPassed: true,
+					buildPassed: true,
+					commerceInvariantsPreserved: true,
+					previewPath: "dist/index.html",
+				}),
+			);
+			return { code: 0, stdout: "", stderr: "", timedOut: false };
+		};
+		const started = await createVariantRun({
+			user,
+			product,
+			campaignBrief:
+				"Make the tote compelling for commuters who need a practical gift.",
+			campaignGoal: "Holiday gift push",
+			agentHarness: "exec",
+		});
+		await drainQueuedVariantRunQueue({ processRunner: runner });
+		const completed = await waitForRun(started.id);
+
+		expect(completed.status).toBe("failed");
+		expect(completed.error).toMatch(/Built preview is missing or malformed/);
+	});
 });

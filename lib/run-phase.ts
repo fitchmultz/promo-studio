@@ -189,16 +189,3 @@ export function inferRunPhase(params: {
 		total: PHASE_ORDER.length - 1,
 	};
 }
-
-export function inferRunPhaseFromPiEvents(
-	status: string,
-	hasPreview: boolean,
-	events: PiActivityInputEvent[],
-): RunPhaseState {
-	return inferRunPhase({
-		status,
-		agentCore: "pi",
-		hasPreview,
-		events,
-	});
-}

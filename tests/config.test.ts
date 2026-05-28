@@ -6,14 +6,11 @@ import {
 	env,
 	normalizeCodexModel,
 	normalizeCodexReasoningEffort,
+	normalizePiModel,
 	paths,
 	piChildEnv,
 	redactSecrets,
-	resolveRequestedMode,
-	resolveRequestedModel,
-	resolveRequestedReasoningEffort,
 	parsePiModelSpec,
-	resolveRequestedPiModel,
 	selectCodexMode,
 } from "@/lib/config";
 
@@ -60,9 +57,8 @@ describe("Codex auth mode selection", () => {
 		});
 	});
 
-	it("uses the configured default for missing form values", () => {
-		const form = new URLSearchParams();
-		expect(resolveRequestedMode(form)).toBe(env.CODEX_AUTH_MODE);
+	it("uses the configured default auth mode from env", () => {
+		expect(env.CODEX_AUTH_MODE).toBe("auto");
 	});
 
 	it("defaults agent core and Codex runtime, model, and reasoning to configured settings", () => {
@@ -141,15 +137,13 @@ console.log(JSON.stringify({
 		expect(
 			parsePiModelSpec("anthropic/claude-sonnet-4-20250514").cliModel,
 		).toBe("anthropic/claude-sonnet-4-20250514");
-		const form = new URLSearchParams({
-			model: "openai-codex/gpt-5.5:medium",
-		});
-		expect(resolveRequestedPiModel(form)).toBe("openai-codex/gpt-5.5:medium");
+		expect(normalizePiModel("openai-codex/gpt-5.5:medium")).toBe(
+			"openai-codex/gpt-5.5:medium",
+		);
 	});
 
 	it("normalizes Codex model overrides", () => {
-		const form = new URLSearchParams({ model: "gpt-5.4-mini" });
-		expect(resolveRequestedModel(form)).toBe("gpt-5.4-mini");
+		expect(normalizeCodexModel("gpt-5.4-mini")).toBe("gpt-5.4-mini");
 		expect(normalizeCodexModel("codex-default")).toBe("");
 	});
 
@@ -158,8 +152,7 @@ console.log(JSON.stringify({
 	});
 
 	it("normalizes Codex reasoning effort overrides", () => {
-		const form = new URLSearchParams({ reasoningEffort: "high" });
-		expect(resolveRequestedReasoningEffort(form)).toBe("high");
+		expect(normalizeCodexReasoningEffort("high")).toBe("high");
 		expect(normalizeCodexReasoningEffort("codex-default")).toBe("");
 	});
 

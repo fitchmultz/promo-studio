@@ -10,7 +10,10 @@ import { RunReceipt } from "@/components/RunReceipt";
 import { RunLiveProvider } from "@/components/RunLiveProvider";
 import { RunTranscriptPanel } from "@/components/RunTranscriptPanel";
 import { requireUser } from "@/lib/auth";
-import { LEGACY_TRANSCRIPT_TRUNCATED_MARKER } from "@/lib/agent/process";
+import {
+	LEGACY_TAIL_TRUNCATION_THRESHOLD,
+	LEGACY_TRANSCRIPT_TRUNCATED_MARKER,
+} from "@/lib/agent/process";
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { prisma } from "@/lib/db";
 import {
@@ -52,7 +55,7 @@ export default async function RunDetailPage({
 	);
 	const legacyTailTruncated =
 		!fileBytes &&
-		run.transcript.length >= 119_000 &&
+		run.transcript.length >= LEGACY_TAIL_TRUNCATION_THRESHOLD &&
 		!run.transcript.trimStart().startsWith("{");
 	const beforePreviewHtml = await renderStorefrontBaselineHtml();
 	const runLabel = runAgentDisplayLabel({

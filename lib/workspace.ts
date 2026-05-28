@@ -3,6 +3,13 @@ import { cp, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { paths } from "@/lib/config";
 
+export {
+	CANONICAL_WORKSPACE_DIR,
+	formatWorkspacePathForDisplay,
+	LEGACY_WORKSPACE_DIR,
+	resolveWorkspacePathForIo,
+} from "@/lib/workspace-paths";
+
 const IGNORED_WORKSPACE_NAMES = new Set(["node_modules", "dist", ".DS_Store"]);
 
 export function workspaceStorefrontPath(runId: string) {
