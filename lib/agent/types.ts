@@ -70,8 +70,6 @@ export interface PiAgentRuntimeSpec {
 
 export type AgentRuntimeSpec = CodexAgentRuntimeSpec | PiAgentRuntimeSpec;
 
-export type AgentSelection = AgentRuntimeSpec;
-
 export interface ExecuteVariantRunOptions {
 	processRunner?: VariantProcessRunner;
 	codexSdkRunner?: VariantSdkRunner;

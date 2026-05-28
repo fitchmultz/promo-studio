@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { ActivityLog, type ActivityEventItem } from "@/components/ActivityLog";
 import {
 	isLiveRunStatus,
@@ -8,7 +8,7 @@ import {
 } from "@/components/RunLiveProvider";
 import { RunPhaseStepper } from "@/components/RunPhaseStepper";
 import { runAgentDisplayLabel } from "@/lib/agent-display";
-import { inferRunPhase } from "@/lib/run-phase";
+import { useMonotonicRunPhase } from "@/components/useMonotonicRunPhase";
 
 const LIVE_RUNNING_TEXT_LIMIT = 4000;
 const LIVE_COMPLETED_TEXT_LIMIT = 12000;
@@ -16,6 +16,7 @@ const LIVE_RUNNING_ROWS = 200;
 const LIVE_COMPLETED_ROWS = 400;
 
 export function ActivityStream({
+	runId: runIdProp,
 	agentCore = "codex",
 	selectedModel = "",
 	initialEvents = [],
@@ -28,6 +29,7 @@ export function ActivityStream({
 	initialStatus?: string;
 }) {
 	const liveState = useOptionalRunLiveState();
+	const runId = liveState?.runId ?? runIdProp;
 	const events = liveState?.events ?? initialEvents;
 	const status = liveState?.status ?? initialStatus;
 	const hasPreview = liveState?.hasPreview ?? false;
@@ -38,16 +40,13 @@ export function ActivityStream({
 	const textLimit = live ? LIVE_RUNNING_TEXT_LIMIT : LIVE_COMPLETED_TEXT_LIMIT;
 	const maxVisibleRows = live ? LIVE_RUNNING_ROWS : LIVE_COMPLETED_ROWS;
 	const scrollAnchor = `${events.at(-1)?.id ?? ""}:${events.at(-1)?.raw.length ?? 0}`;
-	const runPhase = useMemo(
-		() =>
-			inferRunPhase({
-				status,
-				agentCore,
-				hasPreview,
-				events,
-			}),
-		[status, agentCore, hasPreview, events],
-	);
+	const runPhase = useMonotonicRunPhase({
+		runId,
+		status,
+		agentCore,
+		hasPreview,
+		events,
+	});
 
 	useEffect(() => {
 		const activityList = activityListRef.current;

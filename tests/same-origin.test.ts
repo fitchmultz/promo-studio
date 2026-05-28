@@ -2,11 +2,27 @@ import { describe, expect, it } from "vitest";
 import { isSameOriginPost, sameOriginResponseBaseUrl } from "@/lib/same-origin";
 
 describe("same-origin POST guard", () => {
-	it("rejects requests without an Origin header", () => {
+	it("rejects requests without origin signals", () => {
 		const request = new Request("http://localhost:3000/api/login", {
 			method: "POST",
 		});
 		expect(isSameOriginPost(request)).toBe(false);
+	});
+
+	it("accepts HTML form POSTs via Sec-Fetch-Site when Origin is omitted", () => {
+		const request = new Request("http://localhost:3000/api/login", {
+			method: "POST",
+			headers: { "sec-fetch-site": "same-origin" },
+		});
+		expect(isSameOriginPost(request)).toBe(true);
+	});
+
+	it("accepts same-origin Referer when Origin is omitted", () => {
+		const request = new Request("http://localhost:3000/api/login", {
+			method: "POST",
+			headers: { referer: "http://127.0.0.1:3000/login" },
+		});
+		expect(isSameOriginPost(request)).toBe(true);
 	});
 
 	it("accepts equivalent loopback hosts on the same protocol and port", () => {

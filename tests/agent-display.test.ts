@@ -11,19 +11,9 @@ import {
 } from "@/lib/agent-display";
 
 describe("agent-display", () => {
-	it("rewrites codex-workspaces to agent-workspaces in display paths", () => {
-		expect(
-			workspacePathForDisplay(
-				"pi",
-				"/repo/codex-workspaces/run-abc/storefront",
-			),
-		).toContain("agent-workspaces/run-abc");
-		expect(
-			workspacePathForDisplay(
-				"pi",
-				"/repo/codex-workspaces/run-abc/storefront",
-			),
-		).not.toContain("codex-workspaces");
+	it("returns workspace paths unchanged for display", () => {
+		const path = "/repo/agent-workspaces/run-abc/storefront";
+		expect(workspacePathForDisplay("pi", path)).toBe(path);
 	});
 
 	it("humanizes Pi and Codex model ids for run-facing labels", () => {
@@ -66,12 +56,11 @@ describe("agent-display", () => {
 		expect(formatRunDuration(start, null, now)).toBe("1m 5s");
 	});
 
-	it("rewrites shell cd paths to agent-workspaces", () => {
+	it("shortens shell cd paths under agent-workspaces", () => {
 		const cmd =
-			"$ cd /Users/demo/promo-studio/codex-workspaces/run-9caaa7c5-e1f0-4e45-b875-1c13915a33a5/storefront && npm test";
+			"$ cd /Users/demo/promo-studio/agent-workspaces/run-9caaa7c5-e1f0-4e45-b875-1c13915a33a5/storefront && npm test";
 		const shown = formatShellCommandForDisplay(cmd);
-		expect(shown).toContain("agent-workspaces");
-		expect(shown).not.toContain("codex-workspaces");
+		expect(shown).toContain("agent-workspaces/run-");
 		expect(shown).toContain("npm test");
 	});
 });

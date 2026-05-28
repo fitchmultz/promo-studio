@@ -1,5 +1,8 @@
 import { isJsonObject } from "@/lib/json";
-import type { PiActivityInputEvent } from "@/lib/pi-activity-view";
+import {
+	piEventsToActivityRows,
+	type PiActivityInputEvent,
+} from "@/lib/pi-activity-view";
 
 export type RunPhaseId =
 	| "starting"
@@ -45,6 +48,22 @@ function phaseIndex(id: RunPhaseId): number {
 	return index >= 0 ? index + 1 : 1;
 }
 
+export function maxPhaseId(a: RunPhaseId, b: RunPhaseId): RunPhaseId {
+	return phaseIndex(a) >= phaseIndex(b) ? a : b;
+}
+
+export function runPhaseStateFor(
+	id: RunPhaseId,
+	total = PHASE_ORDER.length - 1,
+): RunPhaseState {
+	return {
+		id,
+		label: PHASE_LABELS[id],
+		step: phaseIndex(id),
+		total,
+	};
+}
+
 /** Activity-only text — excludes prompts that mention artifact/manifest.json. */
 function inferFromActivityText(text: string): RunPhaseId {
 	const lower = text.toLowerCase();
@@ -79,14 +98,50 @@ function piToolCommand(event: { parsed: Record<string, unknown> }): string {
 	return "";
 }
 
-function piPhaseActivityText(
+function phaseForCodexEvent(event: {
+	parsed: Record<string, unknown>;
+}): RunPhaseId {
+	const item = event.parsed.item;
+	const itemType =
+		typeof item === "object" && item !== null && "type" in item
+			? String((item as { type?: unknown }).type)
+			: "";
+	if (itemType === "file_change") return "editing";
+	if (itemType === "command_execution") {
+		const command =
+			typeof item === "object" &&
+			item !== null &&
+			"command" in item &&
+			typeof (item as { command?: unknown }).command === "string"
+				? (item as { command: string }).command
+				: "";
+		if (command.includes("npm run build")) return "building";
+		if (command.includes("npm test")) return "testing";
+		if (/\bmanifest\.json\b/i.test(command)) return "manifest";
+		const inferred = inferFromActivityText(command);
+		return inferred !== "starting" || !command.trim() ? inferred : "discovering";
+	}
+	return "starting";
+}
+
+function inferFromCodexEvents(
+	events: Array<{ type: string; parsed: Record<string, unknown> }>,
+): RunPhaseId {
+	let phase: RunPhaseId = "starting";
+	for (const event of events) {
+		phase = maxPhaseId(phase, phaseForCodexEvent(event));
+	}
+	return phase;
+}
+
+function inferFromPiEvents(
 	events: Array<{
 		type: string;
 		parsed: Record<string, unknown>;
 		raw?: string;
 	}>,
-): string {
-	const parts: string[] = [];
+): RunPhaseId {
+	let phase: RunPhaseId = "starting";
 	for (const event of events) {
 		if (
 			event.type !== "tool_execution_start" &&
@@ -95,38 +150,23 @@ function piPhaseActivityText(
 			continue;
 		}
 		const command = piToolCommand(event);
-		if (command) parts.push(command);
 		const toolName =
 			typeof event.parsed.toolName === "string" ? event.parsed.toolName : "";
-		if (toolName && toolName !== "bash") parts.push(toolName);
+		const text = [command, toolName && toolName !== "bash" ? toolName : ""]
+			.filter(Boolean)
+			.join("\n");
+		if (text) phase = maxPhaseId(phase, inferFromActivityText(text));
 	}
-	return parts.join("\n");
-}
-
-function inferFromCodexEvents(
-	events: Array<{ type: string; parsed: Record<string, unknown> }>,
-): RunPhaseId {
-	let phase: RunPhaseId = "starting";
-	for (const event of events) {
-		const item = event.parsed.item;
-		const itemType =
-			typeof item === "object" && item !== null && "type" in item
-				? String((item as { type?: unknown }).type)
-				: "";
-		if (itemType === "file_change") phase = "editing";
-		if (itemType === "command_execution") {
-			const command =
-				typeof item === "object" &&
-				item !== null &&
-				"command" in item &&
-				typeof (item as { command?: unknown }).command === "string"
-					? (item as { command: string }).command
-					: "";
-			if (command.includes("npm run build")) phase = "building";
-			else if (command.includes("npm test")) phase = "testing";
-			else if (/\bmanifest\.json\b/i.test(command)) phase = "manifest";
-			else phase = inferFromActivityText(command);
-		}
+	const rows = piEventsToActivityRows(
+		events as PiActivityInputEvent[],
+		4000,
+		{ demoLive: true },
+	).filter((row) => row.kind === "tool");
+	for (const row of rows) {
+		phase = maxPhaseId(
+			phase,
+			inferFromActivityText(`${row.label}\n${row.body}`),
+		);
 	}
 	return phase;
 }
@@ -174,31 +214,11 @@ export function inferRunPhase(params: {
 		};
 	}
 
-	let id: RunPhaseId = "starting";
-	if (params.agentCore === "pi") {
-		const activityText = piPhaseActivityText(params.events);
-		id = activityText ? inferFromActivityText(activityText) : "starting";
-	} else {
-		id = inferFromCodexEvents(params.events);
-	}
+	const total = PHASE_ORDER.length - 1;
+	const id =
+		params.agentCore === "pi"
+			? inferFromPiEvents(params.events)
+			: inferFromCodexEvents(params.events);
 
-	return {
-		id,
-		label: PHASE_LABELS[id],
-		step: phaseIndex(id),
-		total: PHASE_ORDER.length - 1,
-	};
-}
-
-export function inferRunPhaseFromPiEvents(
-	status: string,
-	hasPreview: boolean,
-	events: PiActivityInputEvent[],
-): RunPhaseState {
-	return inferRunPhase({
-		status,
-		agentCore: "pi",
-		hasPreview,
-		events,
-	});
+	return runPhaseStateFor(id, total);
 }

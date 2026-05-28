@@ -26,7 +26,6 @@
 			"!**/build",
 			"!**/next-env.d.ts",
 			"!**/package-lock.json",
-			"!**/codex-workspaces",
 			"!**/agent-workspaces",
 			"!**/templates/storefront/dist",
 			"!**/templates/storefront/node_modules"

@@ -1,4 +1,5 @@
 import { formatShellCommandForDisplay } from "@/lib/agent-display";
+import { shortenCodexFileChangePath } from "@/lib/activity-path";
 import { isJsonObject } from "@/lib/json";
 
 export interface CodexActivityInputEvent {
@@ -59,7 +60,7 @@ function formatChanges(changes: unknown) {
 			const entry: FileChangeEntry = isJsonObject(change) ? change : {};
 			const path =
 				typeof entry.path === "string"
-					? (entry.path.split("/storefront/").pop() ?? entry.path)
+					? shortenCodexFileChangePath(entry.path)
 					: "file";
 			return `${entry.kind ?? "change"}: ${path}`;
 		})

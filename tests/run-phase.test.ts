@@ -61,6 +61,77 @@ describe("inferRunPhase", () => {
 		expect(phase.id).toBe("manifest");
 	});
 
+	it("infers discovering from codex shell commands that are not npm test/build", () => {
+		const phase = inferRunPhase({
+			status: "running",
+			agentCore: "codex",
+			hasPreview: false,
+			events: [
+				{
+					type: "item.completed",
+					raw: "{}",
+					parsed: {
+						item: { type: "command_execution", command: "date", status: "completed" },
+					},
+				},
+			],
+		});
+		expect(phase.id).toBe("discovering");
+		expect(phase.step).toBe(2);
+	});
+
+	it("infers discovering from pi thinking-style activity rows", () => {
+		const phase = inferRunPhase({
+			status: "running",
+			agentCore: "pi",
+			hasPreview: false,
+			events: [
+				{
+					type: "message_update",
+					raw: "{}",
+					parsed: {
+						assistantMessageEvent: {
+							type: "thinking_delta",
+							delta: "read AGENTS.md\nread theme.ts\n",
+						},
+					},
+				},
+			],
+		});
+		expect(phase.id).toBe("discovering");
+		expect(phase.step).toBeGreaterThan(1);
+	});
+
+	it("keeps editing when codex file_change is followed by discovery shell commands", () => {
+		const phase = inferRunPhase({
+			status: "running",
+			agentCore: "codex",
+			hasPreview: false,
+			events: [
+				{
+					type: "item.completed",
+					raw: "{}",
+					parsed: {
+						item: { type: "file_change", status: "completed", changes: [] },
+					},
+				},
+				{
+					type: "item.completed",
+					raw: "{}",
+					parsed: {
+						item: {
+							type: "command_execution",
+							command: "sed -n '1,220p' AGENTS.md",
+							status: "completed",
+						},
+					},
+				},
+			],
+		});
+		expect(phase.id).toBe("editing");
+		expect(phase.step).toBe(3);
+	});
+
 	it("infers testing phase from npm test in pi transcript", () => {
 		const phase = inferRunPhase({
 			status: "running",

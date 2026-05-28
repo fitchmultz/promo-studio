@@ -62,13 +62,21 @@ export async function POST(request: Request) {
 			{ status: 400 },
 		);
 	}
-	const run = await createVariantRun({
-		user,
-		product,
-		campaignBrief,
-		campaignGoal,
-		runtimeSpec: agent,
-	});
+	let run: Awaited<ReturnType<typeof createVariantRun>>;
+	try {
+		run = await createVariantRun({
+			user,
+			product,
+			campaignBrief,
+			campaignGoal,
+			runtimeSpec: agent,
+		});
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : "Failed to create variant run.";
+		const status = message.includes("API-key mode requested") ? 400 : 500;
+		return NextResponse.json({ error: message }, { status });
+	}
 	const acceptsHtml =
 		request.headers.get("accept")?.includes("text/html") ?? false;
 	if (acceptsHtml) {

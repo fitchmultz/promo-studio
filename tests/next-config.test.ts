@@ -7,19 +7,13 @@ import nextConfig, {
 
 describe("next config generated artifact exclusions", () => {
 	it("derives tracing and watcher globs from artifact directory names", () => {
-		expect(generatedArtifactDirs).toEqual([
-			"agent-workspaces",
-			"codex-workspaces",
-			"artifacts",
-		]);
+		expect(generatedArtifactDirs).toEqual(["agent-workspaces", "artifacts"]);
 		expect(outputFileTracingExcludes).toEqual([
 			"./agent-workspaces/**/*",
-			"./codex-workspaces/**/*",
 			"./artifacts/**/*",
 		]);
 		expect(webpackWatchIgnores).toEqual([
 			"**/agent-workspaces/**",
-			"**/codex-workspaces/**",
 			"**/artifacts/**",
 		]);
 		expect(nextConfig.outputFileTracingExcludes).toEqual({

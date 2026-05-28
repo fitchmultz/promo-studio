@@ -171,4 +171,51 @@ describe("variant run API", () => {
 		expect(response.status).toBe(400);
 		expect(createVariantRunMock).not.toHaveBeenCalled();
 	});
+
+	it("rejects cross-origin POST requests", async () => {
+		const { POST } = await import("@/app/api/variant-runs/route");
+		const response = await POST(
+			new Request("http://localhost:3000/api/variant-runs", {
+				method: "POST",
+				headers: { origin: "http://evil.example" },
+				body: new URLSearchParams({
+					campaignBrief: "Create a vivid commuter gift campaign.",
+				}),
+			}),
+		);
+		expect(response.status).toBe(403);
+		expect(createVariantRunMock).not.toHaveBeenCalled();
+	});
+
+	it("returns 400 when createVariantRun rejects missing API keys", async () => {
+		createVariantRunMock.mockRejectedValue(
+			new Error(
+				"API-key mode requested, but neither CODEX_API_KEY nor OPENAI_API_KEY is configured.",
+			),
+		);
+		const { POST } = await import("@/app/api/variant-runs/route");
+		const response = await POST(
+			new Request("http://localhost:3000/api/variant-runs", {
+				method: "POST",
+				headers: { origin: "http://localhost:3000" },
+				body: new URLSearchParams({
+					campaignBrief: "Create a vivid commuter gift campaign.",
+					authMode: "api-key",
+				}),
+			}),
+		);
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({
+			error: expect.stringContaining("API-key mode requested"),
+		});
+	});
+
+	it("returns stored workspace paths in list DTOs", async () => {
+		const workspacePath = "/tmp/agent-workspaces/run-1/storefront";
+		variantRunFindManyMock.mockResolvedValue([listedRun({ workspacePath })]);
+		const { GET } = await import("@/app/api/variant-runs/route");
+		const response = await GET();
+		const payload = await response.json();
+		expect(payload.runs[0].workspacePath).toBe(workspacePath);
+	});
 });

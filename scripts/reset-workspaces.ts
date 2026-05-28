@@ -6,7 +6,7 @@ function help() {
 
 Usage: npm run reset:workspaces
 
-Removes local Codex storefront run workspaces and recreates the workspace root.
+Removes local agent storefront run workspaces and recreates the workspace root.
 
 Exit codes:
   0  Workspaces reset or help shown

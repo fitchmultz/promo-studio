@@ -17,7 +17,7 @@ export function RunElapsed({
 	const [now, setNow] = useState(() => new Date());
 
 	useEffect(() => {
-		if (status !== "running") return;
+		if (status !== "running" && status !== "queued") return;
 		const id = window.setInterval(() => setNow(new Date()), 1000);
 		return () => window.clearInterval(id);
 	}, [status]);

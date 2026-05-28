@@ -1,4 +1,6 @@
 import { formatShellCommandForDisplay } from "@/lib/agent-display";
+import { labelForActionEnd, labelForActionStart } from "@/lib/activity-labels";
+import { shortenStorefrontPath } from "@/lib/activity-path";
 
 /** Commerce copy that appears when Pi thinking embeds read file output — not real stream steps. */
 const PRODUCT_NOISE_PATTERNS = [
@@ -21,13 +23,6 @@ function isProductNoiseLine(line: string): boolean {
 	return PRODUCT_NOISE_PATTERNS.some((pattern) => pattern.test(trimmed));
 }
 
-function shortenPath(path: string): string {
-	const marker = "/storefront/";
-	const index = path.indexOf(marker);
-	if (index >= 0) return path.slice(index + marker.length);
-	return path.split("/").pop() ?? path;
-}
-
 export interface PiThinkingAction {
 	action: string;
 	kind: "read" | "edit" | "write" | "shell" | "other";
@@ -41,15 +36,15 @@ export function classifyThinkingActionLine(
 	if (!trimmed || isProductNoiseLine(trimmed)) return null;
 	if (/^read\s+\S/i.test(trimmed)) {
 		const path = trimmed.replace(/^read\s+/i, "").trim();
-		return { action: `read ${shortenPath(path)}`, kind: "read" };
+		return { action: `read ${shortenStorefrontPath(path)}`, kind: "read" };
 	}
 	if (/^edit\s+\S/i.test(trimmed)) {
 		const path = trimmed.replace(/^edit\s+/i, "").trim();
-		return { action: `edit ${shortenPath(path)}`, kind: "edit" };
+		return { action: `edit ${shortenStorefrontPath(path)}`, kind: "edit" };
 	}
 	if (/^write\s+\S/i.test(trimmed)) {
 		const path = trimmed.replace(/^write\s+/i, "").trim();
-		return { action: `write ${shortenPath(path)}`, kind: "write" };
+		return { action: `write ${shortenStorefrontPath(path)}`, kind: "write" };
 	}
 	if (trimmed.startsWith("$ ")) {
 		return {
@@ -92,25 +87,11 @@ export function extractThinkingActions(text: string): PiThinkingAction[] {
 
 /** Codex-parity labels for demo activity stream. */
 export function labelForPiActionStart(action: PiThinkingAction): string {
-	const lower = action.action.toLowerCase();
-	if (lower.startsWith("read ")) return "Read file";
-	if (lower.startsWith("edit ")) return "File edit started";
-	if (lower.startsWith("write ")) return "Write file";
-	if (lower.includes("npm test")) return "Running tests";
-	if (lower.includes("npm run build")) return "Building preview";
-	if (lower.startsWith("$")) return "Shell command started";
-	return "Tool";
+	return labelForActionStart(action.action);
 }
 
 export function labelForPiActionEnd(action: PiThinkingAction): string {
-	const lower = action.action.toLowerCase();
-	if (lower.startsWith("read ")) return "Read file completed";
-	if (lower.startsWith("edit ")) return "File edit completed";
-	if (lower.startsWith("write ")) return "Write file completed";
-	if (lower.includes("npm test")) return "Tests completed";
-	if (lower.includes("npm run build")) return "Build completed";
-	if (lower.startsWith("$")) return "Shell command completed";
-	return "Tool finished";
+	return labelForActionEnd(action.action);
 }
 
 export function summarizeAssistantProse(text: string, maxLen = 120): string {

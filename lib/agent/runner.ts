@@ -1,13 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import type { Prisma, Product, User } from "@prisma/client";
+import type { Product, User } from "@prisma/client";
 import {
 	agentTimeoutMs,
 	CODEX_DEFAULT_MODEL,
 	CODEX_DEFAULT_REASONING_EFFORT,
 	type CodexAuthMode,
-	env,
 	PI_DEFAULT_MODEL,
 	redactSecrets,
 } from "@/lib/config";
@@ -46,62 +43,26 @@ import {
 	resolveAgentRuntimeSpec,
 	resolveAgentRuntimeSpecFromForm,
 } from "@/lib/agent/runtime-spec";
-import {
-	isSafeWorkspaceFile,
-	readVariantManifest,
-	validateVariantReceipt,
-} from "@/lib/validation";
+import { inlineBuiltPreview } from "@/lib/storefront-preview";
+import { readVariantManifest, validateVariantReceipt } from "@/lib/validation";
 import { buildVariantPrompt } from "@/lib/variant-prompt";
+import {
+	claimVariantRun,
+	drainQueuedVariantRunQueue as drainQueue,
+	finalizeVariantRun,
+	recoverStaleVariantRuns,
+} from "@/lib/variant-run-queue";
 import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
 
 export type { VariantProcessRunner, VariantSdkRunner } from "@/lib/agent/types";
 export { defaultCodexSdkRunner as defaultSdkRunner } from "@/lib/agent/codex-adapter";
+export { recoverStaleVariantRuns } from "@/lib/variant-run-queue";
 
 async function persistTranscript(runId: string, transcript: string) {
 	await prisma.variantRun.update({
 		where: { id: runId },
 		data: { transcript },
 	});
-}
-
-function distAssetPath(workspacePath: string, assetPath: string) {
-	const relativePath = assetPath.replace(/^\/+/, "");
-	if (!isSafeWorkspaceFile(relativePath)) {
-		throw new Error(
-			`Built preview referenced an unsafe asset path: ${assetPath}`,
-		);
-	}
-	return path.join(workspacePath, "dist", relativePath);
-}
-
-async function inlineBuiltPreview(workspacePath: string, previewPath: string) {
-	let html = await readFile(path.join(workspacePath, previewPath), "utf8");
-	const stylesheetMatches = [
-		...html.matchAll(/<link rel="stylesheet" crossorigin href="([^"]+)">/g),
-	];
-	for (const match of stylesheetMatches) {
-		const href = match[1];
-		const css = await readFile(distAssetPath(workspacePath, href), "utf8");
-		html = html.replace(
-			match[0],
-			() => `<style>${css.replace(/<\/style/gi, "<\\/style")}</style>`,
-		);
-	}
-	const scriptMatches = [
-		...html.matchAll(
-			/<script type="module" crossorigin src="([^"]+)"><\/script>/g,
-		),
-	];
-	for (const match of scriptMatches) {
-		const src = match[1];
-		const js = await readFile(distAssetPath(workspacePath, src), "utf8");
-		html = html.replace(
-			match[0],
-			() =>
-				`<script type="module">${js.replace(/<\/script/gi, "<\\/script")}</script>`,
-		);
-	}
-	return html;
 }
 
 function agentFailureMessage(
@@ -118,73 +79,11 @@ function agentFailureMessage(
 	return `${name} exited with code ${result.code ?? "unknown"}.`;
 }
 
-function staleRunCutoff(now = new Date()) {
-	const staleAfterMs = Math.max(env.CODEX_TIMEOUT_MS, env.PI_TIMEOUT_MS) * 2;
-	return new Date(now.getTime() - staleAfterMs);
-}
-
-export async function recoverStaleVariantRuns(now = new Date()) {
-	await prisma.variantRun.updateMany({
-		where: {
-			status: "running",
-			startedAt: { lt: staleRunCutoff(now) },
-		},
-		data: {
-			status: "failed",
-			error: "Run worker stopped before finalizing this variant.",
-			validationResult:
-				"Validation: failed\nRun worker stopped before finalizing this variant.",
-			outputSummary:
-				"The agent run did not produce a finalized storefront variant.",
-			completedAt: now,
-		},
-	});
-}
-
-async function claimVariantRun(runId: string) {
-	const claimed = await prisma.variantRun.updateMany({
-		where: { id: runId, status: "queued" },
-		data: { status: "running", startedAt: new Date() },
-	});
-	if (!claimed.count) {
-		const existing = await prisma.variantRun.findUnique({
-			where: { id: runId },
-		});
-		if (!existing) throw new Error(`Variant run ${runId} was not found.`);
-		return null;
-	}
-	return prisma.variantRun.findUniqueOrThrow({ where: { id: runId } });
-}
-
-async function finalizeVariantRun(
-	runId: string,
-	data: Prisma.VariantRunUpdateArgs["data"],
-) {
-	const finalized = await prisma.variantRun.updateMany({
-		where: { id: runId, status: "running" },
-		data,
-	});
-	if (!finalized.count) {
-		throw new Error(`Variant run ${runId} is no longer owned by this runner.`);
-	}
-	return prisma.variantRun.findUniqueOrThrow({ where: { id: runId } });
-}
-
 export async function drainQueuedVariantRunQueue(
 	options: ExecuteVariantRunOptions = {},
 	limit = 5,
 ) {
-	await recoverStaleVariantRuns();
-	const queuedRuns = await prisma.variantRun.findMany({
-		where: { status: "queued" },
-		select: { id: true },
-		orderBy: { startedAt: "asc" },
-		take: limit,
-	});
-	for (const queuedRun of queuedRuns) {
-		await executeVariantRun(queuedRun.id, options);
-	}
-	return queuedRuns.length;
+	return drainQueue(executeVariantRun, options, limit);
 }
 
 function storedRequestedModel(runtimeSpec: AgentRuntimeSpec) {
@@ -285,6 +184,7 @@ export async function executeVariantRun(
 	const processRunner = executeOptions.processRunner ?? runProcess;
 	const runRecord = await claimVariantRun(runId);
 	if (!runRecord) return null;
+	const workspacePath = runRecord.workspacePath;
 	const runtimeSpec = agentRuntimeSpecFromStoredRun(runRecord);
 	const timeoutMs = agentTimeoutMs(runtimeSpec.core);
 	const initialSelection = resolveCodexSelection(runtimeSpec.requestedAuthMode);
@@ -317,7 +217,7 @@ export async function executeVariantRun(
 						processRunner,
 						requestedModel: runtimeSpec.requestedModel,
 						runId,
-						workspace: runRecord.workspacePath,
+						workspace: workspacePath,
 						timeoutMs,
 						onStdoutLine,
 						onStderrLine,
@@ -331,7 +231,7 @@ export async function executeVariantRun(
 						requestedModel: runtimeSpec.requestedModel,
 						requestedEffort: runtimeSpec.requestedEffort,
 						selection: initialSelection,
-						workspace: runRecord.workspacePath,
+						workspace: workspacePath,
 						timeoutMs,
 						onStdoutLine,
 						onStderrLine,
@@ -356,15 +256,15 @@ export async function executeVariantRun(
 		if (result.code !== 0 || result.timedOut) {
 			throw new Error(agentFailureMessage(runtimeSpec.core, result));
 		}
-		const manifest = await readVariantManifest(runRecord.workspacePath);
-		const detectedChanges = await detectChangedFiles(runRecord.workspacePath);
+		const manifest = await readVariantManifest(workspacePath);
+		const detectedChanges = await detectChangedFiles(workspacePath);
 		const validation = validateVariantReceipt(manifest, {
 			detectedChangedFiles: detectedChanges,
 		});
 		const changedFiles = validation.changedFiles;
 		if (!validation.passed) throw new Error(validation.summary);
 		const previewHtml = await inlineBuiltPreview(
-			runRecord.workspacePath,
+			workspacePath,
 			manifest.previewPath,
 		);
 		return finalizeVariantRun(runId, {

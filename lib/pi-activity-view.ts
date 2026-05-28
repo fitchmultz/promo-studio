@@ -4,6 +4,8 @@
  */
 
 import { formatShellCommandForDisplay } from "@/lib/agent-display";
+import { codexStyleToolLabel } from "@/lib/activity-labels";
+import { shortenStorefrontPath } from "@/lib/activity-path";
 import { isJsonObject } from "@/lib/json";
 import {
 	extractThinkingActions,
@@ -117,20 +119,6 @@ function appendPiTextBuffer(
 	return delta ? buffer + delta : buffer;
 }
 
-function shortenWorkspacePath(path: string): string {
-	const marker = "/storefront/";
-	const index = path.indexOf(marker);
-	if (index >= 0) return path.slice(index + marker.length);
-	const runMarker = "/run-";
-	const runIndex = path.indexOf(runMarker);
-	if (runIndex >= 0) {
-		const tail = path.slice(runIndex + 1);
-		const slash = tail.indexOf("/");
-		return slash >= 0 ? tail.slice(slash + 1) : tail;
-	}
-	return path.split("/").pop() ?? path;
-}
-
 function strArg(args: unknown, key: string): string | undefined {
 	if (!isJsonObject(args)) return undefined;
 	const value = args[key];
@@ -152,67 +140,25 @@ function formatPiToolCall(toolName: string, args: unknown): string {
 			return formatPiBashCall(args);
 		case "edit": {
 			const path = strArg(args, "path");
-			return path ? `edit ${shortenWorkspacePath(path)}` : "edit";
+			return path ? `edit ${shortenStorefrontPath(path)}` : "edit";
 		}
 		case "write": {
 			const path = strArg(args, "path");
-			return path ? `write ${shortenWorkspacePath(path)}` : "write";
+			return path ? `write ${shortenStorefrontPath(path)}` : "write";
 		}
 		case "read": {
 			const path = strArg(args, "path");
-			return path ? `read ${shortenWorkspacePath(path)}` : "read";
+			return path ? `read ${shortenStorefrontPath(path)}` : "read";
 		}
 		case "grep":
 		case "find":
 		case "ls": {
 			const path = strArg(args, "path") ?? strArg(args, "pattern");
-			return path ? `${toolName} ${shortenWorkspacePath(path)}` : toolName;
+			return path ? `${toolName} ${shortenStorefrontPath(path)}` : toolName;
 		}
 		default:
 			return toolName;
 	}
-}
-
-function shellMilestoneLabel(
-	command: string,
-	phase: "start" | "end",
-): string | null {
-	const lower = command.toLowerCase();
-	if (lower.includes("npm test")) {
-		return phase === "start" ? "Running tests" : "Tests completed";
-	}
-	if (lower.includes("npm run build")) {
-		return phase === "start" ? "Building preview" : "Build completed";
-	}
-	return null;
-}
-
-function codexStyleToolLabel(
-	toolName: string,
-	phase: "start" | "end",
-	isError?: boolean,
-	command?: string,
-): string {
-	if (toolName === "bash" && command) {
-		const milestone = shellMilestoneLabel(command, phase);
-		if (milestone) return milestone;
-		return phase === "start"
-			? "Shell command started"
-			: isError
-				? "Shell command failed"
-				: "Shell command completed";
-	}
-	if (toolName === "edit" || toolName === "write") {
-		return phase === "start" ? "File edit started" : "File edit completed";
-	}
-	if (toolName === "read") {
-		return phase === "start" ? "Read file" : "Read file completed";
-	}
-	return phase === "start"
-		? "Tool started"
-		: isError
-			? "Tool failed"
-			: "Tool finished";
 }
 
 function toolResultText(result: unknown, maxChars: number): string {
@@ -425,7 +371,7 @@ export function piEventsToActivityRows(
 				id: event.id,
 				kind: "session",
 				label: "Session",
-				body: cwd ? shortenWorkspacePath(cwd) : "",
+				body: cwd ? shortenStorefrontPath(cwd) : "",
 				variant: "muted",
 			});
 			continue;

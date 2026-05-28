@@ -7,6 +7,8 @@ import {
 	PI_SECRET_ENV_KEYS,
 } from "@/lib/pi-runtime-config";
 import { z } from "zod";
+import { toProcessEnv } from "@/lib/process-env";
+import { WORKSPACE_DIR_NAME } from "@/lib/workspace-constants";
 
 export {
 	normalizePiModel,
@@ -52,7 +54,6 @@ const EnvSchema = z.object({
 	DATABASE_URL: z.string().default("file:./dev.db"),
 	SESSION_SECRET: z.string().min(32).default(deriveLocalSecret()),
 	AGENT_CORE: z.enum(["codex", "pi"]).default("codex"),
-	AGENT_HARNESS: z.string().default(""),
 	CODEX_AUTH_MODE: z.enum(["auto", "subscription", "api-key"]).default("auto"),
 	CODEX_RUNTIME: z.enum(["sdk", "exec"]).default("sdk"),
 	CODEX_MODEL: z.string().default("gpt-5.5"),
@@ -111,23 +112,8 @@ export const paths = {
 	artifacts: path.join(projectRoot, "artifacts"),
 	piSessions: piSessionsPath(projectRoot),
 	templateStorefront: path.join(projectRoot, "templates", "storefront"),
-	workspaces: path.join(projectRoot, "agent-workspaces"),
+	workspaces: path.join(projectRoot, WORKSPACE_DIR_NAME),
 };
-
-export function resolveRequestedMode(
-	input: FormData | URLSearchParams | null,
-): CodexAuthMode {
-	const raw = input?.get("authMode");
-	if (raw === "subscription" || raw === "api-key" || raw === "auto") return raw;
-	return env.CODEX_AUTH_MODE;
-}
-
-export function resolveRequestedPiModel(
-	input: FormData | URLSearchParams | null,
-): string {
-	const raw = input?.get("model");
-	return normalizePiModel(raw ?? env.PI_MODEL);
-}
 
 export function agentTimeoutMs(core: AgentCore): number {
 	return core === "pi" ? env.PI_TIMEOUT_MS : env.CODEX_TIMEOUT_MS;
@@ -147,20 +133,6 @@ export function normalizeCodexReasoningEffort(
 	const value = String(raw ?? "").trim();
 	if (!value || value === CODEX_DEFAULT_REASONING_EFFORT) return "";
 	return ReasoningEffortSchema.parse(value);
-}
-
-export function resolveRequestedModel(
-	input: FormData | URLSearchParams | null,
-): string {
-	const raw = input?.get("model");
-	return normalizeCodexModel(raw ?? env.CODEX_MODEL);
-}
-
-export function resolveRequestedReasoningEffort(
-	input: FormData | URLSearchParams | null,
-): CodexReasoningEffort | "" {
-	const raw = input?.get("reasoningEffort");
-	return normalizeCodexReasoningEffort(raw ?? env.CODEX_REASONING_EFFORT);
 }
 
 export function selectedCodexModel(requestedModel: string): string {
@@ -231,15 +203,6 @@ export function resolveCodexAuthState(
 export function selectCodexMode(requested: CodexAuthMode): CodexSelection {
 	const { selectedMode, keySource } = resolveCodexAuthState(requested);
 	return { selectedMode, keySource };
-}
-
-function toProcessEnv(
-	record: Record<string, string | undefined>,
-): NodeJS.ProcessEnv {
-	const entries = Object.entries(record).filter(
-		(entry): entry is [string, string] => typeof entry[1] === "string",
-	);
-	return Object.fromEntries(entries) as NodeJS.ProcessEnv;
 }
 
 export function selectCodexApiKeyFallbackMode(): {

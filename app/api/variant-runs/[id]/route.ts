@@ -7,7 +7,7 @@ import {
 	variantRunLiveSelect,
 } from "@/lib/variant-run-dto";
 
-const LIVE_TRANSCRIPT_TAIL_CHARS = 120_000;
+import { MAX_PROCESS_OUTPUT_CHARS } from "@/lib/agent/process";
 
 interface TranscriptTailRow {
 	transcriptTail: string | null;
@@ -17,14 +17,14 @@ interface TranscriptTailRow {
 function completeJsonlTail(row: TranscriptTailRow | undefined) {
 	const tail = row?.transcriptTail ?? "";
 	const transcriptLength = Number(row?.transcriptLength ?? 0);
-	if (transcriptLength <= LIVE_TRANSCRIPT_TAIL_CHARS) return tail;
+	if (transcriptLength <= MAX_PROCESS_OUTPUT_CHARS) return tail;
 	const firstBreak = tail.search(/\r?\n/);
 	return firstBreak >= 0 ? tail.slice(firstBreak + 1) : "";
 }
 
 async function readLiveTranscriptTail(runId: string) {
 	const rows = await prisma.$queryRaw<TranscriptTailRow[]>`
-		SELECT substr("transcript", -${LIVE_TRANSCRIPT_TAIL_CHARS}) AS "transcriptTail",
+		SELECT substr("transcript", -${MAX_PROCESS_OUTPUT_CHARS}) AS "transcriptTail",
 		       length("transcript") AS "transcriptLength"
 		FROM "VariantRun"
 		WHERE "id" = ${runId}

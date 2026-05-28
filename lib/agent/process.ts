@@ -3,7 +3,11 @@ import { redactSecrets } from "@/lib/config";
 import type { ProcessOptions, ProcessResult } from "@/lib/agent/types";
 
 /** In-memory cap for subprocess stdout/stderr buffers (not the persisted transcript). */
-export const MAX_PROCESS_OUTPUT_CHARS = 120000;
+export const MAX_PROCESS_OUTPUT_CHARS = 120_000;
+
+/** Legacy SQLite tail heuristic: one buffer below {@link MAX_PROCESS_OUTPUT_CHARS}. */
+export const LEGACY_TAIL_TRUNCATION_THRESHOLD =
+	MAX_PROCESS_OUTPUT_CHARS - 1_000;
 
 /** Live poll + DB fallback: recent JSONL lines only (full trace is on disk). */
 export const MAX_POLL_TRANSCRIPT_CHARS = 800_000;

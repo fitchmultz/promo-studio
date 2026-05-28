@@ -1,9 +1,8 @@
+import { WORKSPACE_DIR_NAME } from "@/lib/workspace-constants";
+
 /** User-facing strings keyed by agent core (codex | pi). */
 
 export type AgentCoreId = "codex" | "pi";
-
-const LEGACY_WORKSPACE_DIR = "codex-workspaces";
-const CANONICAL_WORKSPACE_DIR = "agent-workspaces";
 
 export function parseAgentCoreId(
 	value: string | null | undefined,
@@ -76,25 +75,17 @@ export function studioAgentIntroSentence(
 	return `Signed in as ${userName}. ${agent} edits an isolated storefront workspace, streams activity, runs validation, and saves the artifact.`;
 }
 
-/** Normalize legacy on-disk dir name for all UI surfaces (receipts, shell output, lists). */
-export function formatWorkspacePathForDisplay(workspacePath: string): string {
-	return workspacePath.replaceAll(
-		LEGACY_WORKSPACE_DIR,
-		CANONICAL_WORKSPACE_DIR,
-	);
-}
-
 export function workspacePathForDisplay(
 	_core: AgentCoreId | string,
 	workspacePath: string,
 ): string {
-	return formatWorkspacePathForDisplay(workspacePath);
+	return workspacePath;
 }
 
 /** Shorten shell commands for activity stream (agent-workspaces + drop repo prefix). */
 export function formatShellCommandForDisplay(command: string): string {
-	let normalized = formatWorkspacePathForDisplay(command.trim());
-	const marker = `${CANONICAL_WORKSPACE_DIR}/`;
+	let normalized = command.trim();
+	const marker = `${WORKSPACE_DIR_NAME}/`;
 	const index = normalized.indexOf(marker);
 	if (index >= 0) {
 		normalized = normalized.slice(index);

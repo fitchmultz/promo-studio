@@ -5,11 +5,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 // Agent run outputs can contain thousands of generated files. Keep them out of
 // production file tracing and local dev watchers so Next only analyzes source.
-export const generatedArtifactDirs = [
-	"agent-workspaces",
-	"codex-workspaces",
-	"artifacts",
-] as const;
+export const generatedArtifactDirs = ["agent-workspaces", "artifacts"] as const;
 
 export const outputFileTracingExcludes = generatedArtifactDirs.map(
 	(dir) => `./${dir}/**/*`,
