@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { CURSOR_FAST_MODEL_ID } from "@/lib/agent-defaults";
 
 export const CURSOR_DEFAULT_MODEL = "cursor-default";
 /** UI / receipt label for Composer 2.5 with the fast parameter enabled. */
-export const CURSOR_FAST_MODEL_ID = "composer-2.5-fast";
+export { CURSOR_FAST_MODEL_ID } from "@/lib/agent-defaults";
 /** Base model id passed to `@cursor/sdk` (`Cursor.models.list()`). */
 export const CURSOR_BASE_MODEL_ID = "composer-2.5";
 
