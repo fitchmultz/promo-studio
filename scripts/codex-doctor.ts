@@ -9,6 +9,7 @@ import {
 	resolveCodexAuthState,
 	type CodexAuthState,
 } from "../lib/config";
+import { probeCodexExecAutomationFlags } from "./codex-exec-probe";
 
 function help() {
 	console.log(`Promo Studio Codex doctor
@@ -151,6 +152,9 @@ if (pathEntries.includes(localBin)) {
 		`npm run adds ${localBin} to PATH; use npm scripts for live exec fallback runs`,
 	);
 }
+
+const execProbe = probeCodexExecAutomationFlags(paths.projectRoot);
+check("Codex exec automation flags", execProbe.ok, execProbe.detail);
 
 info("Codex auth", codexAuthInfo(authState));
 

@@ -72,9 +72,9 @@ describe("RunReceipt", () => {
 		expect(markup).not.toContain("&lt;isolated-workspace&gt;");
 	});
 
-	it("renders legacy exec rows from codexRuntime fallback", () => {
+	it("renders legacy exec rows from codexRuntime fallback without overstating current flags", () => {
 		const command =
-			'codex exec --json --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -c approval_policy="never" -c sandbox_workspace_write.network_access=false -c web_search="disabled" -m gpt-5.5 -c model_reasoning_effort="low" -';
+			'codex exec --json --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -m gpt-5.5 -c model_reasoning_effort="low" -';
 		const markup = renderToStaticMarkup(
 			React.createElement(RunReceipt, {
 				run: runWithInvocation(command, "exec", "sdk"),
@@ -83,12 +83,16 @@ describe("RunReceipt", () => {
 
 		expect(markup).toContain("codex exec");
 		expect(markup).toContain("codex exec --json");
+		expect(markup).toContain("displayed command is the source of truth");
 		expect(markup).toContain("trailing <code>-</code> argument");
+		expect(markup).not.toContain("--ephemeral");
+		expect(markup).not.toContain("ephemeral session");
+		expect(markup).not.toContain("ignored user config/rules");
 	});
 
-	it("renders the exec fallback command accurately", () => {
+	it("renders the current exec fallback command accurately", () => {
 		const command =
-			'codex exec --json --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -c approval_policy="never" -c sandbox_workspace_write.network_access=false -c web_search="disabled" -m gpt-5.5 -c model_reasoning_effort="low" -';
+			'codex exec --json --ephemeral --ignore-user-config --ignore-rules --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -c approval_policy="never" -c sandbox_workspace_write.network_access=false -c web_search="disabled" -m gpt-5.5 -c model_reasoning_effort="low" -';
 		const markup = renderToStaticMarkup(
 			React.createElement(RunReceipt, {
 				run: runWithInvocation(command, "exec"),
@@ -97,6 +101,8 @@ describe("RunReceipt", () => {
 
 		expect(markup).toContain("codex exec");
 		expect(markup).toContain("codex exec --json");
+		expect(markup).toContain("--ephemeral");
+		expect(markup).toContain("ignored user config/rules");
 		expect(markup).toContain("trailing <code>-</code> argument");
 		expect(markup).not.toContain("&lt;isolated-workspace&gt;");
 	});

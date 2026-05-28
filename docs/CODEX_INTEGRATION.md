@@ -14,6 +14,16 @@ Reviewed for `@openai/codex-sdk@0.134.0` / `@openai/codex@0.134.0`:
 
 The upstream `0.134.0` release notes do not require a TypeScript SDK migration for this app. The relevant release change is the CLI-wide move to `--profile`; Promo Studio does not select Codex profiles and instead sends explicit per-run SDK/thread options.
 
+## Current exec contract
+
+Reviewed for Codex CLI `0.134.0` using the current non-interactive mode documentation and CLI reference:
+
+- `codex exec` is the stable non-interactive CLI surface for scripted runs.
+- `--json` is the documented machine-readable mode and emits JSONL events such as `thread.started`, `turn.started`, `item.*`, `turn.completed`, `turn.failed`, and `error`.
+- `--full-auto` is deprecated; new automation should use explicit sandbox and approval settings.
+- `--ephemeral`, `--ignore-user-config`, and `--ignore-rules` are stable exec flags for controlled automation.
+- `CODEX_API_KEY` is supported for `codex exec`; Promo Studio passes it only in the child environment for the selected invocation.
+
 ## Runtime flow
 
 1. `POST /api/variant-runs` checks auth and same-origin form submission.
@@ -42,10 +52,12 @@ Those controls keep hosted runs non-interactive and deterministic:
 - `networkAccessEnabled=false` keeps generated variants from depending on live network access.
 - `webSearchMode=disabled` keeps campaign execution bound to the local prompt and product facts.
 
-The preserved exec fallback mirrors the same policy with CLI config overrides:
+The preserved exec fallback follows the current `codex exec` non-interactive guidance for scripted runs:
 
 ```bash
-codex exec --json --sandbox workspace-write --skip-git-repo-check \
+codex exec --json --ephemeral --ignore-user-config --ignore-rules \
+  --sandbox workspace-write \
+  --skip-git-repo-check \
   --cd <workspace> \
   -c approval_policy="never" \
   -c sandbox_workspace_write.network_access=false \
@@ -54,6 +66,14 @@ codex exec --json --sandbox workspace-write --skip-git-repo-check \
   -c model_reasoning_effort="<effort>" \
   -
 ```
+
+Exec-specific controls:
+
+- `--json` emits JSONL events that Promo Studio can persist as the run transcript.
+- `--ephemeral` avoids writing Codex session rollout files for one-off storefront variants.
+- `--ignore-user-config` prevents `$CODEX_HOME/config.toml` from changing hosted automation behavior; authentication still uses `CODEX_HOME`.
+- `--ignore-rules` prevents user or project execpolicy `.rules` files from changing the controlled run policy.
+- The trailing `-` forces Codex to read the generated campaign task from stdin.
 
 Both runtimes use the same prompt, workspace, auth selection, timeout, transcript persistence, manifest validation, changed-file detection, preview inlining, and final receipt fields.
 
@@ -78,7 +98,7 @@ Codex always runs in `workspace-write` with its working directory set to the iso
 
 ## Doctor command
 
-`npm run codex:doctor` checks the storefront template, the installed SDK/CLI packages, version match, and the SDK native CLI resolver. It also prints auth and exec-fallback setup hints without requiring live Codex credentials.
+`npm run codex:doctor` checks the storefront template, the installed SDK/CLI packages, version match, SDK native CLI resolver, and the documented `codex exec` automation flags. It also prints auth and exec-fallback setup hints without requiring live Codex credentials.
 
 ## Required receipt
 

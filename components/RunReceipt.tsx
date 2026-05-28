@@ -6,6 +6,34 @@ import {
 import { runtimeLabel } from "@/lib/agent/invocation";
 import { agentRuntimeSpecFromStoredRun } from "@/lib/agent/runtime-spec";
 
+function commandHasFlag(command: string, flag: string) {
+	return new RegExp(`(?:^|\\s)${flag}(?:\\s|$)`).test(command);
+}
+
+function execCommandClaims(command: string) {
+	const claims: string[] = [];
+	if (commandHasFlag(command, "--json")) claims.push("JSONL output");
+	if (commandHasFlag(command, "--ephemeral"))
+		claims.push("an ephemeral session");
+	if (
+		commandHasFlag(command, "--ignore-user-config") &&
+		commandHasFlag(command, "--ignore-rules")
+	) {
+		claims.push("ignored user config/rules");
+	}
+	if (command.includes("--sandbox workspace-write")) {
+		claims.push("workspace-write sandboxing");
+	}
+	if (
+		command.includes('approval_policy="never"') &&
+		command.includes("sandbox_workspace_write.network_access=false") &&
+		command.includes('web_search="disabled"')
+	) {
+		claims.push("approvals/network/web search disabled");
+	}
+	return claims;
+}
+
 function harnessHelp(run: VariantRun) {
 	if (run.agentCore === "pi") {
 		return (
@@ -16,10 +44,13 @@ function harnessHelp(run: VariantRun) {
 		);
 	}
 	if (run.codexRuntime === "exec" || run.agentHarness === "exec") {
+		const claims = execCommandClaims(run.codexCommand);
 		return (
 			<>
-				This is the command executed for this run. The prompt was sent through
-				stdin via the trailing <code>-</code> argument.
+				This is the exact non-interactive command executed for this run. The
+				displayed command is the source of truth
+				{claims.length ? `; its flags show ${claims.join(", ")}` : ""}. The
+				prompt was sent through stdin via the trailing <code>-</code> argument.
 			</>
 		);
 	}

@@ -255,20 +255,29 @@ describe("Codex runner", () => {
 		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);
 
-		expect(codexArgs).toEqual(
-			expect.arrayContaining([
-				"-m",
-				"gpt-5.5-mini",
-				"-c",
-				'approval_policy="never"',
-				"-c",
-				"sandbox_workspace_write.network_access=false",
-				"-c",
-				'web_search="disabled"',
-				"-c",
-				'model_reasoning_effort="medium"',
-			]),
-		);
+		expect(codexArgs).toEqual([
+			"exec",
+			"--json",
+			"--ephemeral",
+			"--ignore-user-config",
+			"--ignore-rules",
+			"--sandbox",
+			"workspace-write",
+			"--skip-git-repo-check",
+			"--cd",
+			completed.workspacePath,
+			"-c",
+			'approval_policy="never"',
+			"-c",
+			"sandbox_workspace_write.network_access=false",
+			"-c",
+			'web_search="disabled"',
+			"-m",
+			"gpt-5.5-mini",
+			"-c",
+			'model_reasoning_effort="medium"',
+			"-",
+		]);
 		expect(completed.codexRuntime).toBe("exec");
 		expect(completed.codexCommand).toContain("codex exec --json");
 		expectValidatedVariant(completed, {
@@ -318,6 +327,56 @@ describe("Codex runner", () => {
 		const events = parseCodexEvents('not json\n{"type":"tool_call"}');
 		expect(events[0].type).toBe("log");
 		expect(events[1].type).toBe("tool_call");
+	});
+
+	it("parses current codex exec JSONL event shapes", () => {
+		const events = parseCodexEvents(
+			[
+				{ type: "thread.started", thread_id: "thread_123" },
+				{ type: "turn.started" },
+				{
+					type: "item.started",
+					item: {
+						id: "item_1",
+						type: "command_execution",
+						command: "npm test",
+						status: "in_progress",
+					},
+				},
+				{
+					type: "item.completed",
+					item: {
+						id: "item_2",
+						type: "agent_message",
+						text: "Variant complete.",
+					},
+				},
+				{
+					type: "turn.completed",
+					usage: {
+						input_tokens: 10,
+						cached_input_tokens: 0,
+						output_tokens: 5,
+						reasoning_output_tokens: 1,
+					},
+				},
+			]
+				.map((event) => JSON.stringify(event))
+				.join("\n"),
+		);
+
+		expect(events.map((event) => event.type)).toEqual([
+			"thread.started",
+			"turn.started",
+			"item.started",
+			"item.completed",
+			"turn.completed",
+		]);
+		expect(events[2]?.parsed.item).toMatchObject({
+			type: "command_execution",
+			command: "npm test",
+			status: "in_progress",
+		});
 	});
 
 	it("assigns stable unique ids to duplicate transcript lines", () => {
