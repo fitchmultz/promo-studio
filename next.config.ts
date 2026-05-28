@@ -3,8 +3,26 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+// Agent run outputs can contain thousands of generated files. Keep them out of
+// production file tracing and local dev watchers so Next only analyzes source.
+export const generatedArtifactDirs = [
+	"agent-workspaces",
+	"codex-workspaces",
+	"artifacts",
+] as const;
+
+export const outputFileTracingExcludes = generatedArtifactDirs.map(
+	(dir) => `./${dir}/**/*`,
+);
+
+export const webpackWatchIgnores = generatedArtifactDirs.map(
+	(dir) => `**/${dir}/**`,
+);
 
 const nextConfig: NextConfig = {
+	outputFileTracingExcludes: {
+		"/*": outputFileTracingExcludes,
+	},
 	turbopack: {
 		root: projectRoot,
 	},
@@ -17,7 +35,6 @@ const nextConfig: NextConfig = {
 	],
 	webpack: (config, { dev }) => {
 		if (dev) {
-			const extra = ["**/agent-workspaces/**", "**/codex-workspaces/**"];
 			const ignored = config.watchOptions?.ignored;
 			const base = (
 				Array.isArray(ignored) ? ignored : ignored ? [ignored] : []
@@ -27,7 +44,7 @@ const nextConfig: NextConfig = {
 			);
 			config.watchOptions = {
 				...config.watchOptions,
-				ignored: [...base, ...extra],
+				ignored: [...base, ...webpackWatchIgnores],
 			};
 		}
 		return config;

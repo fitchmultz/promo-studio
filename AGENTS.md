@@ -34,6 +34,7 @@ Receipts store `agentCore`, `agentHarness`, and legacy `codexRuntime` (`sdk`, `e
 
 - Default `npm run dev` uses **webpack** (`next dev --webpack`). Turbopack (`npm run dev:turbo`) can idle at very high CPU in this repo layout (parent `Projects/AI` lockfile + agent workspaces).
 - `turbopack.root` in `next.config.ts` pins the app root for production builds; do not remove it.
+- Generated run artifacts (`agent-workspaces`, `codex-workspaces`, `artifacts`) must stay excluded from Next tracing/watch surfaces.
 
 ## Operating rules
 

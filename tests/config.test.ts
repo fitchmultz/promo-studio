@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	codexChildEnv,
@@ -68,6 +70,49 @@ describe("Codex auth mode selection", () => {
 		expect(env.CODEX_RUNTIME).toBe("sdk");
 		expect(env.CODEX_MODEL).toBe("gpt-5.5");
 		expect(env.CODEX_REASONING_EFFORT).toBe("low");
+	});
+
+	it("normalizes relative PROJECT_ROOT once before deriving child paths", () => {
+		const tsxBin = path.join(
+			process.cwd(),
+			"node_modules",
+			".bin",
+			process.platform === "win32" ? "tsx.cmd" : "tsx",
+		);
+		const result = spawnSync(
+			tsxBin,
+			[
+				"-e",
+				`import { projectRoot, paths } from "./lib/config.ts";
+console.log(JSON.stringify({
+	projectRoot,
+	artifacts: paths.artifacts,
+	piSessions: paths.piSessions,
+	templateStorefront: paths.templateStorefront,
+	workspaces: paths.workspaces,
+}));`,
+			],
+			{
+				env: {
+					...process.env,
+					PROJECT_ROOT: "relative-root",
+					SESSION_SECRET: "relative-root-test-session-secret",
+				},
+				encoding: "utf8",
+			},
+		);
+		const expectedRoot = path.resolve("relative-root");
+
+		if (result.status !== 0) {
+			throw new Error(result.stderr || result.stdout);
+		}
+		expect(JSON.parse(result.stdout)).toEqual({
+			projectRoot: expectedRoot,
+			artifacts: path.join(expectedRoot, "artifacts"),
+			piSessions: path.join(expectedRoot, "artifacts", "pi-sessions"),
+			templateStorefront: path.join(expectedRoot, "templates", "storefront"),
+			workspaces: path.join(expectedRoot, "agent-workspaces"),
+		});
 	});
 
 	it("parses Pi model refs and Pi CLI model patterns with optional thinking suffix", () => {

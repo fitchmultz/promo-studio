@@ -100,7 +100,12 @@ export const env = EnvSchema.parse({
 	...process.env,
 	SESSION_SECRET: normalizeSessionSecret(process.env.SESSION_SECRET),
 });
-export const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+const configuredProjectRoot = process.env.PROJECT_ROOT;
+// process.cwd() is already absolute; only resolve explicit overrides so all
+// child paths share one normalized project-root boundary.
+export const projectRoot = configuredProjectRoot
+	? path.resolve(/*turbopackIgnore: true*/ configuredProjectRoot)
+	: process.cwd();
 
 export const paths = {
 	projectRoot,
