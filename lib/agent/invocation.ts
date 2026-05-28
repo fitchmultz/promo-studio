@@ -13,7 +13,6 @@ function buildCodexExecInvocation(
 	return [
 		"codex",
 		"exec",
-		"--json",
 		...codexAutomationExecArgs(workspace),
 		...codexModelArgs(requestedModel),
 		...codexReasoningArgs(requestedEffort),

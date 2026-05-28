@@ -29,7 +29,6 @@ function codexExecArgs(
 ) {
 	return [
 		"exec",
-		"--json",
 		...codexAutomationExecArgs(workspace),
 		...codexModelArgs(requestedModel),
 		...codexReasoningArgs(requestedEffort),

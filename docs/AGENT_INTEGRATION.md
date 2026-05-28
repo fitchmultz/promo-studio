@@ -19,7 +19,7 @@ Promo Studio runs storefront variants through a swappable agent core. The host a
 
 Run `npm install` once at the repository root. `agent-workspaces/run-<id>/storefront` copies the template files except ignored generated/dependency artifacts (`node_modules`, `dist`, `.DS_Store`) and resolves Vite/Vitest/React tooling from the root `node_modules`.
 
-Codex runs are intentionally non-interactive and local: `approvalPolicy=never`, `workspace-write`, `networkAccessEnabled=false`, and `webSearchMode=disabled`. The same policy is reflected in the SDK invocation receipt and the `codex exec` fallback config flags.
+Codex runs are intentionally non-interactive and local: `approvalPolicy=never`, `workspace-write`, `networkAccessEnabled=false`, and `webSearchMode=disabled`. The `codex exec` fallback also uses JSONL output, ephemeral sessions, and ignored user config/rules so local Codex preferences do not change queued storefront runs.
 
 ## Configuration
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env tsx
-import { spawnSync } from "node:child_process";
-import path from "node:path";
 import { env, paths } from "../lib/config";
+import { codexBinEnv, probeCodexExecAutomationFlags } from "./codex-exec-probe";
 
 function help() {
 	console.log(`Promo Studio Codex check
@@ -13,7 +12,7 @@ Verifies that the configured Codex runtime is available without starting a live 
 
 Runtime modes:
   sdk   Verify the @openai/codex-sdk package and bundled Codex runtime are resolvable.
-  exec  Verify the codex CLI is available on PATH.
+  exec  Verify the codex exec CLI and required automation flags are available.
 
 Exit codes:
   0  Configured Codex runtime is available or help shown
@@ -25,20 +24,19 @@ if (process.argv.includes("-h") || process.argv.includes("--help")) {
 	process.exit(0);
 }
 
+function checkExecHelp() {
+	const result = probeCodexExecAutomationFlags(paths.projectRoot);
+	if (!result.ok) {
+		console.error(`Codex exec automation flags unavailable: ${result.detail}`);
+		process.exit(1);
+	}
+	console.log(`Codex exec automation flags available: ${result.detail}.`);
+}
+
 if (env.CODEX_RUNTIME === "sdk") {
 	try {
 		const { Codex } = await import("@openai/codex-sdk");
-		new Codex({
-			codexPathOverride: path.join(
-				paths.projectRoot,
-				"node_modules",
-				"@openai",
-				"codex",
-				"bin",
-				"codex.js",
-			),
-			env: { PATH: process.env.PATH ?? "" },
-		});
+		new Codex({ env: { PATH: codexBinEnv(paths.projectRoot).PATH ?? "" } });
 		console.log("Codex SDK runtime available: @openai/codex-sdk");
 	} catch (error) {
 		console.error(
@@ -47,14 +45,5 @@ if (env.CODEX_RUNTIME === "sdk") {
 		process.exit(1);
 	}
 } else {
-	const result = spawnSync("codex", ["--version"], { encoding: "utf8" });
-	if (result.status !== 0) {
-		console.error(
-			"Codex CLI was not found. Install and authenticate Codex before running live variants with CODEX_RUNTIME=exec.",
-		);
-		process.exit(1);
-	}
-	console.log(
-		`Codex CLI available: ${(result.stdout || result.stderr).trim()}`,
-	);
+	checkExecHelp();
 }
