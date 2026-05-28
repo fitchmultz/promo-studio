@@ -161,15 +161,6 @@ export function parsePiModelSpec(requestedModel: string): PiModelSpec {
 	return { provider, modelId, thinking, cliModel };
 }
 
-/** @deprecated Use parsePiModelSpec */
-export function parsePiModelRef(requestedModel: string): {
-	provider: string;
-	modelId: string;
-} {
-	const spec = parsePiModelSpec(requestedModel);
-	return { provider: spec.provider, modelId: spec.modelId };
-}
-
 export function selectedPiModel(requestedModel: string): string {
 	return requestedModel || PI_DEFAULT_MODEL;
 }

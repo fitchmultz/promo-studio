@@ -12,7 +12,6 @@ import {
 	selectedPiThinkingFromModel,
 	type CodexAuthMode,
 	type CodexReasoningEffort,
-	type CodexRuntime,
 } from "@/lib/config";
 import type {
 	AgentCore,
@@ -26,8 +25,6 @@ export interface AgentRuntimeSpecInput {
 	authMode?: FormDataEntryValue | string | null;
 	model?: FormDataEntryValue | string | null;
 	effort?: FormDataEntryValue | string | null;
-	/** Legacy Codex runtime override. */
-	runtime?: CodexRuntime | null;
 }
 
 interface ResolveAgentRuntimeSpecOptions {
@@ -131,9 +128,11 @@ export function resolveAgentRuntimeSpec(
 		};
 	}
 
-	const harness = input.runtime
-		? parseCodexHarnessValue(input.runtime, env.CODEX_RUNTIME, options)
-		: parseCodexHarnessValue(input.harness, env.CODEX_RUNTIME, options);
+	const harness = parseCodexHarnessValue(
+		input.harness,
+		env.CODEX_RUNTIME,
+		options,
+	);
 	const requestedModel = normalizeCodexModel(input.model ?? env.CODEX_MODEL);
 	const requestedEffort = normalizeCodexReasoningEffort(
 		input.effort ?? env.CODEX_REASONING_EFFORT,

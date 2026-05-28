@@ -10,7 +10,6 @@ import { z } from "zod";
 
 export {
 	normalizePiModel,
-	parsePiModelRef,
 	parsePiModelSpec,
 	piThinkingLevel,
 	PI_CHILD_ENV_KEYS,

@@ -3,19 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireUserMock = vi.fn();
 const findUniqueMock = vi.fn();
 const queryRawMock = vi.fn();
-const recoverStaleVariantRunsMock = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ requireUser: requireUserMock }));
-vi.mock("@/lib/codex-runner", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@/lib/codex-runner")>();
-	return {
-		...actual,
-		parseCodexEvents: (text: string) => [
-			{ id: "1", type: "log", raw: text, parsed: {} },
-		],
-		recoverStaleVariantRuns: recoverStaleVariantRunsMock,
-	};
-});
+vi.mock("@/lib/agent/transcript", () => ({
+	parseAgentEvents: (text: string) => [
+		{ id: "1", type: "log", raw: text, parsed: {} },
+	],
+}));
 vi.mock("@/lib/db", () => ({
 	prisma: {
 		$queryRaw: queryRawMock,
@@ -50,7 +44,6 @@ describe("variant run live API", () => {
 			.mockResolvedValue([
 				{ transcriptTail: '{"type":"tail"}\n', transcriptLength: 16 },
 			]);
-		recoverStaleVariantRunsMock.mockReset().mockResolvedValue(undefined);
 	});
 
 	it("returns a slim live DTO without raw run or user fields", async () => {

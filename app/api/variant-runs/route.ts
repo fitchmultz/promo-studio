@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import {
-	createVariantRun,
-	parseCodexEvents,
-	resolveAgentFromForm,
-} from "@/lib/codex-runner";
+import { createVariantRun, resolveAgentFromForm } from "@/lib/agent/runner";
+import { parseAgentEvents } from "@/lib/agent/transcript";
 import { prisma } from "@/lib/db";
 import { primaryPromoProduct } from "@/lib/products";
 import {
@@ -84,7 +81,7 @@ export async function POST(request: Request) {
 		{
 			id: run.id,
 			status: run.status,
-			events: parseCodexEvents(run.transcript),
+			events: parseAgentEvents(run.transcript),
 		},
 		{ status: 202 },
 	);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { parseCodexEvents } from "@/lib/codex-runner";
+import { parseAgentEvents } from "@/lib/agent/transcript";
 import { prisma } from "@/lib/db";
 import {
 	serializeVariantRunLive,
@@ -51,6 +51,6 @@ export async function GET(
 	const pollTranscript = await readLiveTranscriptTail(run.id);
 	return NextResponse.json({
 		run: serializeVariantRunLive(run),
-		events: parseCodexEvents(pollTranscript),
+		events: parseAgentEvents(pollTranscript),
 	});
 }

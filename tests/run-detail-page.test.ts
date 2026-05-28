@@ -40,8 +40,8 @@ vi.mock("@/components/RunReceipt", () => ({
 vi.mock("@/lib/auth", () => ({
 	requireUser: vi.fn(async () => ({ id: "user-1", role: "admin" })),
 }));
-vi.mock("@/lib/codex-runner", () => ({
-	parseCodexEvents: () => [],
+vi.mock("@/lib/agent/transcript", () => ({
+	parseAgentEvents: () => [],
 }));
 vi.mock("@/lib/agent/transcript-store", () => ({
 	resolveFullTranscript: async (_id: string, db: string) => db,

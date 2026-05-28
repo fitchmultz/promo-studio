@@ -2,20 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireUserMock = vi.fn();
 const createVariantRunMock = vi.fn();
-const recoverStaleVariantRunsMock = vi.fn();
 const productFindManyMock = vi.fn();
 const variantRunFindManyMock = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ requireUser: requireUserMock }));
-vi.mock("@/lib/codex-runner", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@/lib/codex-runner")>();
+vi.mock("@/lib/agent/runner", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@/lib/agent/runner")>();
 	return {
 		...actual,
 		createVariantRun: createVariantRunMock,
-		parseCodexEvents: () => [],
-		recoverStaleVariantRuns: recoverStaleVariantRunsMock,
 	};
 });
+vi.mock("@/lib/agent/transcript", () => ({
+	parseAgentEvents: () => [],
+}));
 vi.mock("@/lib/db", () => ({
 	prisma: {
 		product: { findMany: productFindManyMock },
@@ -70,7 +70,6 @@ describe("variant run API", () => {
 		createVariantRunMock
 			.mockReset()
 			.mockResolvedValue({ id: "run-1", status: "queued", transcript: "" });
-		recoverStaleVariantRunsMock.mockReset().mockResolvedValue(undefined);
 		productFindManyMock.mockReset().mockResolvedValue([
 			{
 				id: "ribbed-market-tote",

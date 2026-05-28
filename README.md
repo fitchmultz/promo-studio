@@ -31,7 +31,7 @@ Promo Studio treats each campaign request as an isolated code run with visible p
 
 | Reader doubt | Promo Studio capability | Proof in this repo |
 | --- | --- | --- |
-| "Did Codex actually edit code?" | Creates `agent-workspaces/run-<id>/storefront` and runs the selected harness with write access to that isolated copy. | `lib/workspace.ts`, `lib/codex-runner.ts`, `/runs/<id>` transcript and diff tabs |
+| "Did Codex actually edit code?" | Creates `agent-workspaces/run-<id>/storefront` and runs the selected harness with write access to that isolated copy. | `lib/workspace.ts`, `lib/agent/runner.ts`, `/runs/<id>` transcript and diff tabs |
 | "Can I see the agent work live?" | Normalizes streamed Codex/Pi events into JSONL and renders them while the run is active. | `components/ActivityStream.tsx`, persisted `VariantRun.transcript` |
 | "Did the variant keep commerce facts intact?" | Accepts a run only when the manifest reports tests, build, and invariants passed; required commands are present; and changed-file paths are safe. | `templates/storefront/tests/`, `lib/validation.ts`, receipt validation panel |
 | "Can a reviewer audit the result later?" | Stores runtime, auth mode, model, reasoning effort, prompt, transcript, changed files, manifest, preview HTML, and validation outcome. | `/proof`, `components/RunReceipt.tsx`, `docs/CODEX_INTEGRATION.md` |
@@ -162,7 +162,7 @@ Boundaries to know before production use:
 | --- | --- |
 | `app/` | Next.js routes for login, studio, run detail, history, proof, and API endpoints |
 | `components/` | Campaign form, live activity stream, before/after preview, diff, receipt, and run history UI |
-| `lib/agent/` and `lib/codex-runner.ts` | Harness-neutral runner plus Codex/Pi adapters, JSONL streaming, manifest parsing, validation, and persistence |
+| `lib/agent/` | Harness-neutral runner plus Codex/Pi adapters, JSONL streaming, manifest parsing, validation, and persistence |
 | `lib/workspace.ts` | Storefront workspace copy and changed-file detection |
 | `lib/validation.ts` | Manifest schema, safe path checks, forbidden changed files, and receipt summary |
 | `prisma/` | SQLite schema and seeded demo user, product, and example run |
