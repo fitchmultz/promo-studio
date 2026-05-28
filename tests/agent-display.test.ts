@@ -45,9 +45,21 @@ describe("agent-display", () => {
 	it("builds studio intro copy from agent core", () => {
 		expect(studioAgentIntroSentence("pi", "Demo User")).toContain("Pi edits");
 		expect(studioAgentIntroSentence("pi", "Demo User")).not.toContain("Codex");
+		expect(studioAgentIntroSentence("cursor", "Demo User")).toContain(
+			"Cursor edits",
+		);
 		expect(studioAgentIntroSentence("codex", "Demo User")).toContain(
 			"Codex edits",
 		);
+	});
+
+	it("prefers Cursor model id over core name in run labels", () => {
+		expect(
+			runAgentDisplayLabel({
+				agentCore: "cursor",
+				selectedModel: "composer-2.5-fast",
+			}),
+		).toBe("Composer 2.5 Fast");
 	});
 
 	it("counts elapsed time from start when run is still in progress", () => {

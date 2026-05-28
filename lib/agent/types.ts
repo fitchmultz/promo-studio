@@ -4,10 +4,14 @@ import type {
 	CodexRuntime,
 } from "@/lib/config";
 
-export type AgentCore = "codex" | "pi";
+export type AgentCore = "codex" | "pi" | "cursor";
 export type CodexAgentHarness = "sdk" | "exec";
 export type PiAgentHarness = "json";
-export type AgentHarness = CodexAgentHarness | PiAgentHarness;
+export type CursorAgentHarness = "sdk";
+export type AgentHarness =
+	| CodexAgentHarness
+	| PiAgentHarness
+	| CursorAgentHarness;
 
 export interface ProcessResult {
 	code: number | null;
@@ -46,6 +50,19 @@ export type VariantSdkRunner = (
 	options: RuntimeOptions,
 ) => Promise<ProcessResult>;
 
+export interface CursorRuntimeOptions {
+	input: string;
+	requestedModel: string;
+	timeoutMs: number;
+	workspace: string;
+	onStdoutLine?: (line: string) => void;
+	onStderrLine?: (line: string) => void;
+}
+
+export type VariantCursorSdkRunner = (
+	options: CursorRuntimeOptions,
+) => Promise<ProcessResult>;
+
 export interface CodexAgentRuntimeSpec {
 	core: "codex";
 	harness: CodexAgentHarness;
@@ -68,9 +85,24 @@ export interface PiAgentRuntimeSpec {
 	legacyRuntime: "json";
 }
 
-export type AgentRuntimeSpec = CodexAgentRuntimeSpec | PiAgentRuntimeSpec;
+export interface CursorAgentRuntimeSpec {
+	core: "cursor";
+	harness: CursorAgentHarness;
+	requestedAuthMode: CodexAuthMode;
+	requestedModel: string;
+	requestedEffort: "";
+	selectedModel: string;
+	selectedEffort: string;
+	legacyRuntime: "cursor-sdk";
+}
+
+export type AgentRuntimeSpec =
+	| CodexAgentRuntimeSpec
+	| PiAgentRuntimeSpec
+	| CursorAgentRuntimeSpec;
 
 export interface ExecuteVariantRunOptions {
 	processRunner?: VariantProcessRunner;
 	codexSdkRunner?: VariantSdkRunner;
+	cursorSdkRunner?: VariantCursorSdkRunner;
 }

@@ -23,6 +23,14 @@ export {
 	selectedPiThinkingFromModel,
 } from "@/lib/pi-runtime-config";
 export type { PiModelSpec, PiThinkingLevel } from "@/lib/pi-runtime-config";
+export {
+	CURSOR_DEFAULT_MODEL,
+	CURSOR_FAST_MODEL_ID,
+	normalizeCursorModel,
+	parseCursorModelSelection,
+	selectedCursorModel,
+} from "@/lib/cursor-runtime-config";
+export type { CursorModelSelection } from "@/lib/cursor-runtime-config";
 
 const LOCAL_DEMO_SESSION_SECRET =
 	"promo-studio-local-demo-session-secret-for-demo-runs";
@@ -53,12 +61,15 @@ function deriveLocalSecret() {
 const EnvSchema = z.object({
 	DATABASE_URL: z.string().default("file:./dev.db"),
 	SESSION_SECRET: z.string().min(32).default(deriveLocalSecret()),
-	AGENT_CORE: z.enum(["codex", "pi"]).default("codex"),
+	AGENT_CORE: z.enum(["codex", "pi", "cursor"]).default("codex"),
 	CODEX_AUTH_MODE: z.enum(["auto", "subscription", "api-key"]).default("auto"),
 	CODEX_RUNTIME: z.enum(["sdk", "exec"]).default("sdk"),
 	CODEX_MODEL: z.string().default("gpt-5.5"),
 	CODEX_REASONING_EFFORT: z.string().default("low"),
 	PI_MODEL: z.string().default(""),
+	CURSOR_MODEL: z.string().default("composer-2.5-fast"),
+	CURSOR_API_KEY: z.string().optional(),
+	CURSOR_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
 	ANTHROPIC_API_KEY: z.string().optional(),
 	OPENAI_API_KEY: z.string().optional(),
 	CODEX_API_KEY: z.string().optional(),
@@ -67,8 +78,9 @@ const EnvSchema = z.object({
 	NODE_ENV: z.string().optional(),
 });
 
-export type AgentCore = "codex" | "pi";
+export type AgentCore = "codex" | "pi" | "cursor";
 export type AgentHarness = "sdk" | "exec" | "json";
+export type CursorLegacyRuntime = "cursor-sdk";
 export type CodexAuthMode = "auto" | "subscription" | "api-key";
 export type CodexRuntime = "sdk" | "exec";
 export type SelectedCodexAuthMode = "subscription" | "api-key";
@@ -116,7 +128,18 @@ export const paths = {
 };
 
 export function agentTimeoutMs(core: AgentCore): number {
-	return core === "pi" ? env.PI_TIMEOUT_MS : env.CODEX_TIMEOUT_MS;
+	if (core === "pi") return env.PI_TIMEOUT_MS;
+	if (core === "cursor") return env.CURSOR_TIMEOUT_MS;
+	return env.CODEX_TIMEOUT_MS;
+}
+
+/** Runtime Cursor API key (secrets are read from the process environment). */
+export function resolveCursorApiKey(): string {
+	return env.CURSOR_API_KEY?.trim() ?? "";
+}
+
+export function cursorApiKeyConfigured(): boolean {
+	return Boolean(resolveCursorApiKey());
 }
 
 export function normalizeCodexModel(
@@ -249,9 +272,11 @@ export function redactSecrets(text: string): string {
 	let redacted = text;
 	for (const value of [
 		env.CODEX_API_KEY,
+		env.CURSOR_API_KEY,
 		env.OPENAI_API_KEY,
 		env.ANTHROPIC_API_KEY,
 		process.env.CODEX_API_KEY,
+		process.env.CURSOR_API_KEY,
 		process.env.OPENAI_API_KEY,
 		process.env.ANTHROPIC_API_KEY,
 		...PI_SECRET_ENV_KEYS.map((key) => process.env[key]),

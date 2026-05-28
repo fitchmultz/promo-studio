@@ -25,6 +25,28 @@ describe("activity-view facade", () => {
 		expect(rows[0]?.label).toBe("Running tests");
 	});
 
+	it("routes Cursor SDK events to Cursor activity rows", () => {
+		const rows = agentEventsToActivityRows({
+			agentCore: "cursor",
+			agentLabel: "Composer 2.5 Fast",
+			events: [
+				{
+					id: "e1",
+					type: "tool_call",
+					raw: "",
+					parsed: {
+						name: "bash",
+						status: "completed",
+						args: { command: "npm test" },
+					},
+				},
+			],
+			maxBodyChars: 4000,
+			demoLive: true,
+		});
+		expect(rows[0]?.label.toLowerCase()).toContain("test");
+	});
+
 	it("routes Codex events to Codex activity rows", () => {
 		const events = [
 			{

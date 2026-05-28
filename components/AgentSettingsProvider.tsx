@@ -68,9 +68,16 @@ export function AgentSettingsProvider({
 			setSettings((current) => {
 				const next = normalizeAgentSettings({ ...current, ...patch });
 				if (patch.agentCore && patch.agentCore !== current.agentCore) {
-					next.agentHarness = patch.agentCore === "pi" ? "json" : "sdk";
-					next.model =
-						patch.agentCore === "pi" ? "cursor/composer-2.5" : "codex-default";
+					if (patch.agentCore === "pi") {
+						next.agentHarness = "json";
+						next.model = "cursor/composer-2.5";
+					} else if (patch.agentCore === "cursor") {
+						next.agentHarness = "sdk";
+						next.model = "composer-2.5-fast";
+					} else {
+						next.agentHarness = "sdk";
+						next.model = "codex-default";
+					}
 				}
 				persistExplicitUpdate(next);
 				return next;

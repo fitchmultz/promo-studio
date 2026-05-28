@@ -12,7 +12,7 @@ import {
 export type { AgentSettings } from "@/lib/agent-settings-shared";
 
 const AgentSettingsPayloadSchema = z.object({
-	agentCore: z.enum(["codex", "pi"]),
+	agentCore: z.enum(["codex", "pi", "cursor"]),
 	agentHarness: z.string(),
 	model: z.string(),
 	reasoningEffort: z.string(),
@@ -39,6 +39,15 @@ export function agentSettingsFromRuntimeSpec(
 			agentCore: "pi",
 			agentHarness: "json",
 			model: runtimeSpec.requestedModel || "pi-default",
+			reasoningEffort: "codex-default",
+			authMode: runtimeSpec.requestedAuthMode,
+		};
+	}
+	if (runtimeSpec.core === "cursor") {
+		return {
+			agentCore: "cursor",
+			agentHarness: "sdk",
+			model: runtimeSpec.requestedModel || "composer-2.5-fast",
 			reasoningEffort: "codex-default",
 			authMode: runtimeSpec.requestedAuthMode,
 		};

@@ -2,11 +2,15 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+	agentTimeoutMs,
 	codexChildEnv,
 	env,
 	normalizeCodexModel,
 	normalizeCodexReasoningEffort,
+	normalizeCursorModel,
 	normalizePiModel,
+	parseCursorModelSelection,
+	selectedCursorModel,
 	paths,
 	piChildEnv,
 	redactSecrets,
@@ -142,6 +146,34 @@ console.log(JSON.stringify({
 		);
 	});
 
+	it("uses dedicated timeouts per agent core", () => {
+		expect(agentTimeoutMs("codex")).toBe(env.CODEX_TIMEOUT_MS);
+		expect(agentTimeoutMs("pi")).toBe(env.PI_TIMEOUT_MS);
+		expect(agentTimeoutMs("cursor")).toBe(env.CURSOR_TIMEOUT_MS);
+	});
+
+	it("normalizes Cursor model overrides and default selection", () => {
+		expect(normalizeCursorModel("composer-2.5")).toBe("composer-2.5");
+		expect(normalizeCursorModel("cursor-default")).toBe("");
+		expect(selectedCursorModel("")).toBe("composer-2.5-fast");
+		expect(parseCursorModelSelection("")).toEqual({
+			id: "composer-2.5",
+			params: [{ id: "fast", value: "true" }],
+		});
+		expect(parseCursorModelSelection("composer-2.5-fast")).toEqual({
+			id: "composer-2.5",
+			params: [{ id: "fast", value: "true" }],
+		});
+		expect(parseCursorModelSelection("composer-2.5")).toEqual({
+			id: "composer-2.5",
+			params: [{ id: "fast", value: "false" }],
+		});
+	});
+
+	it("rejects unsafe Cursor model ids", () => {
+		expect(() => normalizeCursorModel("composer;rm")).toThrow();
+	});
+
 	it("normalizes Codex model overrides", () => {
 		expect(normalizeCodexModel("gpt-5.4-mini")).toBe("gpt-5.4-mini");
 		expect(normalizeCodexModel("codex-default")).toBe("");
@@ -162,6 +194,7 @@ console.log(JSON.stringify({
 
 	it("redacts configured API key material from transcripts", () => {
 		process.env.CODEX_API_KEY = "sk-test-redaction-value";
+		process.env.CURSOR_API_KEY = "cursor-test-redaction-value";
 		process.env.GEMINI_API_KEY = "gemini-test-redaction-value";
 		expect(
 			redactSecrets(
@@ -173,6 +206,9 @@ console.log(JSON.stringify({
 				"codex=sk-test-redaction-value gemini=gemini-test-redaction-value",
 			),
 		).not.toContain("gemini-test-redaction-value");
+		expect(redactSecrets("cursor=cursor-test-redaction-value")).not.toContain(
+			"cursor-test-redaction-value",
+		);
 	});
 
 	it("scopes Codex child process environments to safe runtime context", () => {

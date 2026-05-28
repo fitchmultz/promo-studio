@@ -1,7 +1,12 @@
 import { appendFile, mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { paths } from "@/lib/config";
-import { tailJsonlForPoll, MAX_DB_TRANSCRIPT_CHARS } from "@/lib/agent/process";
+import {
+	MAX_PROCESS_OUTPUT_CHARS,
+	tailJsonlForPoll,
+	MAX_DB_TRANSCRIPT_CHARS,
+} from "@/lib/agent/process";
+import { prisma } from "@/lib/db";
 
 export function runTranscriptPath(runId: string) {
 	return path.join(paths.artifacts, "transcripts", `${runId}.jsonl`);
@@ -32,6 +37,40 @@ export async function runTranscriptFileByteLength(
 	} catch {
 		return null;
 	}
+}
+
+function completeJsonlTail(tail: string, transcriptLength: number) {
+	if (transcriptLength <= MAX_PROCESS_OUTPUT_CHARS) return tail;
+	const firstBreak = tail.search(/\r?\n/);
+	return firstBreak >= 0 ? tail.slice(firstBreak + 1) : "";
+}
+
+async function readDbTranscriptTail(runId: string) {
+	const rows = await prisma.$queryRaw<
+		Array<{ transcriptTail: string | null; transcriptLength: number | bigint }>
+	>`
+		SELECT substr("transcript", -${MAX_PROCESS_OUTPUT_CHARS}) AS "transcriptTail",
+		       length("transcript") AS "transcriptLength"
+		FROM "VariantRun"
+		WHERE "id" = ${runId}
+		LIMIT 1
+	`;
+	const row = rows[0];
+	return completeJsonlTail(
+		row?.transcriptTail ?? "",
+		Number(row?.transcriptLength ?? 0),
+	);
+}
+
+/** Live poll source: prefer the on-disk JSONL file while the worker is streaming. */
+export async function readLiveTranscriptForPoll(runId: string): Promise<string> {
+	const [file, dbTail] = await Promise.all([
+		readRunTranscriptFile(runId),
+		readDbTranscriptTail(runId),
+	]);
+	const fileBody = file ?? "";
+	if (fileBody.length >= dbTail.length) return fileBody;
+	return dbTail;
 }
 
 /** Full trace for UI/API; prefers the on-disk JSONL file written during the run. */

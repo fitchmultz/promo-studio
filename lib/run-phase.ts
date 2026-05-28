@@ -1,5 +1,9 @@
 import { isJsonObject } from "@/lib/json";
 import {
+	cursorEventsToActivityRows,
+	type CursorActivityInputEvent,
+} from "@/lib/cursor-activity-view";
+import {
 	piEventsToActivityRows,
 	type PiActivityInputEvent,
 } from "@/lib/pi-activity-view";
@@ -119,7 +123,9 @@ function phaseForCodexEvent(event: {
 		if (command.includes("npm test")) return "testing";
 		if (/\bmanifest\.json\b/i.test(command)) return "manifest";
 		const inferred = inferFromActivityText(command);
-		return inferred !== "starting" || !command.trim() ? inferred : "discovering";
+		return inferred !== "starting" || !command.trim()
+			? inferred
+			: "discovering";
 	}
 	return "starting";
 }
@@ -130,6 +136,47 @@ function inferFromCodexEvents(
 	let phase: RunPhaseId = "starting";
 	for (const event of events) {
 		phase = maxPhaseId(phase, phaseForCodexEvent(event));
+	}
+	return phase;
+}
+
+function cursorToolText(event: {
+	type: string;
+	parsed: Record<string, unknown>;
+}): string {
+	if (event.type !== "tool_call") return "";
+	const name = typeof event.parsed.name === "string" ? event.parsed.name : "";
+	const args = event.parsed.args;
+	if (!isJsonObject(args)) return name;
+	if (typeof args.command === "string") return args.command;
+	if (typeof args.path === "string") return `${name} ${args.path}`.trim();
+	return name;
+}
+
+function inferFromCursorEvents(
+	events: Array<{
+		type: string;
+		parsed: Record<string, unknown>;
+		raw?: string;
+	}>,
+): RunPhaseId {
+	let phase: RunPhaseId = "starting";
+	for (const event of events) {
+		if (event.type === "thinking" && typeof event.parsed.text === "string") {
+			phase = maxPhaseId(phase, inferFromActivityText(event.parsed.text));
+		}
+		const toolText = cursorToolText(event);
+		if (toolText) phase = maxPhaseId(phase, inferFromActivityText(toolText));
+	}
+	const rows = cursorEventsToActivityRows(
+		events as CursorActivityInputEvent[],
+		4000,
+	).filter((row) => row.variant === "tool");
+	for (const row of rows) {
+		phase = maxPhaseId(
+			phase,
+			inferFromActivityText(`${row.label}\n${row.body}`),
+		);
 	}
 	return phase;
 }
@@ -157,11 +204,9 @@ function inferFromPiEvents(
 			.join("\n");
 		if (text) phase = maxPhaseId(phase, inferFromActivityText(text));
 	}
-	const rows = piEventsToActivityRows(
-		events as PiActivityInputEvent[],
-		4000,
-		{ demoLive: true },
-	).filter((row) => row.kind === "tool");
+	const rows = piEventsToActivityRows(events as PiActivityInputEvent[], 4000, {
+		demoLive: true,
+	}).filter((row) => row.kind === "tool");
 	for (const row of rows) {
 		phase = maxPhaseId(
 			phase,
@@ -208,7 +253,7 @@ export function inferRunPhase(params: {
 	if (params.status === "queued") {
 		return {
 			id: "starting",
-			label: "Waiting for runner",
+			label: PHASE_LABELS.starting,
 			step: 1,
 			total: PHASE_ORDER.length - 1,
 		};
@@ -216,9 +261,11 @@ export function inferRunPhase(params: {
 
 	const total = PHASE_ORDER.length - 1;
 	const id =
-		params.agentCore === "pi"
-			? inferFromPiEvents(params.events)
-			: inferFromCodexEvents(params.events);
+		params.agentCore === "cursor"
+			? inferFromCursorEvents(params.events)
+			: params.agentCore === "pi"
+				? inferFromPiEvents(params.events)
+				: inferFromCodexEvents(params.events);
 
 	return runPhaseStateFor(id, total);
 }

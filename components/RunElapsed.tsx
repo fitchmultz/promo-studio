@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { formatRunDuration } from "@/lib/agent-display";
 
+export function isLiveRunStatus(status: string) {
+	return status === "running" || status === "queued";
+}
+
 export function RunElapsed({
 	startedAt,
 	completedAt,
@@ -14,18 +18,31 @@ export function RunElapsed({
 	status: string;
 	showElapsedSuffix?: boolean;
 }) {
-	const [now, setNow] = useState(() => new Date());
+	const isLive = isLiveRunStatus(status);
+	const [tick, setTick] = useState<Date | null>(null);
 
 	useEffect(() => {
-		if (status !== "running" && status !== "queued") return;
-		const id = window.setInterval(() => setNow(new Date()), 1000);
+		if (!isLive) return;
+		setTick(new Date());
+		const id = window.setInterval(() => setTick(new Date()), 1000);
 		return () => window.clearInterval(id);
-	}, [status]);
+	}, [isLive, status]);
+
+	if (isLive && !tick) {
+		return (
+			<>
+				<span className="run-elapsed-pending" aria-hidden>
+					…
+				</span>
+				{showElapsedSuffix ? " elapsed" : ""}
+			</>
+		);
+	}
 
 	const duration = formatRunDuration(
 		startedAt,
-		status === "running" ? null : completedAt,
-		now,
+		isLive ? null : completedAt,
+		tick ?? undefined,
 	);
 
 	return (

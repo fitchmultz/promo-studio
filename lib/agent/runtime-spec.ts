@@ -1,11 +1,14 @@
 import {
 	CODEX_DEFAULT_MODEL,
 	CODEX_DEFAULT_REASONING_EFFORT,
+	CURSOR_DEFAULT_MODEL,
 	env,
 	normalizeCodexModel,
 	normalizeCodexReasoningEffort,
+	normalizeCursorModel,
 	normalizePiModel,
 	PI_DEFAULT_MODEL,
+	selectedCursorModel,
 	selectedCodexModel,
 	selectedCodexReasoningEffort,
 	selectedPiModel,
@@ -54,9 +57,19 @@ export function parseAgentCoreValue(
 ): AgentCore {
 	const value = stringValue(raw);
 	if (!value) return fallback;
-	if (value === "codex" || value === "pi") return value;
+	if (value === "codex" || value === "pi" || value === "cursor") return value;
 	if (options.strict) throw new Error(`Invalid agent core: ${value}.`);
 	return fallback;
+}
+
+function parseCursorHarnessValue(
+	raw: unknown,
+	options: ResolveAgentRuntimeSpecOptions = {},
+) {
+	const value = stringValue(raw);
+	if (!value || value === "sdk") return "sdk";
+	if (options.strict) throw new Error(`Invalid Cursor harness: ${value}.`);
+	return "sdk";
 }
 
 export function parseCodexHarnessValue(
@@ -128,6 +141,23 @@ export function resolveAgentRuntimeSpec(
 		};
 	}
 
+	if (core === "cursor") {
+		parseCursorHarnessValue(input.harness, options);
+		const requestedModel = normalizeCursorModel(
+			input.model ?? env.CURSOR_MODEL,
+		);
+		return {
+			core,
+			harness: "sdk",
+			requestedAuthMode,
+			requestedModel,
+			requestedEffort: "",
+			selectedModel: selectedCursorModel(requestedModel),
+			selectedEffort: "default",
+			legacyRuntime: "cursor-sdk",
+		};
+	}
+
 	const harness = parseCodexHarnessValue(
 		input.harness,
 		env.CODEX_RUNTIME,
@@ -168,7 +198,10 @@ export function resolveAgentRuntimeSpecFromForm(
 export function agentRuntimeSpecFromStoredRun(
 	run: StoredAgentRuntimeFields,
 ): AgentRuntimeSpec {
-	const core = parseAgentCoreValue(run.agentCore, "codex");
+	let core = parseAgentCoreValue(run.agentCore, "codex");
+	if (core !== "cursor" && run.codexRuntime === "cursor-sdk") {
+		core = "cursor";
+	}
 	const requestedAuthMode = parseCodexAuthModeValue(
 		run.requestedAuthMode,
 		"auto",
@@ -186,6 +219,21 @@ export function agentRuntimeSpecFromStoredRun(
 			selectedEffort:
 				run.selectedEffort || selectedPiThinkingFromModel(requestedModel),
 			legacyRuntime: "json",
+		};
+	}
+
+	if (core === "cursor") {
+		const requestedModel =
+			run.requestedModel === CURSOR_DEFAULT_MODEL ? "" : run.requestedModel;
+		return {
+			core,
+			harness: "sdk",
+			requestedAuthMode,
+			requestedModel,
+			requestedEffort: "",
+			selectedModel: run.selectedModel || selectedCursorModel(requestedModel),
+			selectedEffort: run.selectedEffort || "default",
+			legacyRuntime: "cursor-sdk",
 		};
 	}
 

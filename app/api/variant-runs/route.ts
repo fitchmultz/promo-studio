@@ -1,6 +1,11 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { createVariantRun, resolveAgentFromForm } from "@/lib/agent/runner";
+import {
+	createVariantRun,
+	executeVariantRun,
+	resolveAgentFromForm,
+} from "@/lib/agent/runner";
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { prisma } from "@/lib/db";
 import { primaryPromoProduct } from "@/lib/products";
@@ -70,11 +75,17 @@ export async function POST(request: Request) {
 			campaignBrief,
 			campaignGoal,
 			runtimeSpec: agent,
+			autoExecute: false,
 		});
+		after(() => executeVariantRun(run.id));
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to create variant run.";
-		const status = message.includes("API-key mode requested") ? 400 : 500;
+		const status =
+			message.includes("API-key mode requested") ||
+			message.includes("CURSOR_API_KEY is required")
+				? 400
+				: 500;
 		return NextResponse.json({ error: message }, { status });
 	}
 	const acceptsHtml =

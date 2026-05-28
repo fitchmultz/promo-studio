@@ -1,4 +1,5 @@
 import { codexEventsToActivityRows } from "@/lib/codex-activity-view";
+import { cursorEventsToActivityRows } from "@/lib/cursor-activity-view";
 import { piEventsToActivityRows } from "@/lib/pi-activity-view";
 
 export interface ActivityInputEvent {
@@ -33,6 +34,9 @@ export function agentEventsToActivityRows({
 			demoLive,
 			agentLabel,
 		});
+	}
+	if (agentCore === "cursor") {
+		return cursorEventsToActivityRows(events, maxBodyChars, { demoLive });
 	}
 	return codexEventsToActivityRows(events, maxBodyChars);
 }

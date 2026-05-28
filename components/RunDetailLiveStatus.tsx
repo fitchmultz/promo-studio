@@ -10,9 +10,7 @@ export function RunDetailLiveStatus({
 }) {
 	const live = useOptionalRunLiveState();
 	const status = live?.status ?? initialStatus;
-	return (
-		<span className={`status-pill status-pill--${status}`}>{status}</span>
-	);
+	return <span className={`status-pill status-pill--${status}`}>{status}</span>;
 }
 
 export function RunDetailLiveElapsed({

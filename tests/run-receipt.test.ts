@@ -90,6 +90,27 @@ describe("RunReceipt", () => {
 		expect(markup).not.toContain("ignored user config/rules");
 	});
 
+	it("renders Cursor SDK execution evidence", () => {
+		const invocation =
+			"Cursor TypeScript SDK Agent.send cwd=/tmp/workspace/run-1/storefront mode=agent sandboxOptions.enabled=true model=composer-2.5-fast";
+		const markup = renderToStaticMarkup(
+			React.createElement(RunReceipt, {
+				run: {
+					...runWithInvocation(invocation, "cursor-sdk", "sdk"),
+					agentCore: "cursor",
+					selectedModel: "composer-2.5-fast",
+					selectedEffort: "default",
+					requestedModel: "composer-2.5-fast",
+				},
+			}),
+		);
+
+		expect(markup).toContain("Cursor SDK");
+		expect(markup).toContain("Agent.send");
+		expect(markup).toContain("composer-2.5-fast");
+		expect(markup).not.toContain("Reasoning effort");
+	});
+
 	it("renders the current exec fallback command accurately", () => {
 		const command =
 			'codex exec --json --ephemeral --ignore-user-config --ignore-rules --sandbox workspace-write --skip-git-repo-check --cd <isolated-workspace> -c approval_policy="never" -c sandbox_workspace_write.network_access=false -c web_search="disabled" -m gpt-5.5 -c model_reasoning_effort="low" -';

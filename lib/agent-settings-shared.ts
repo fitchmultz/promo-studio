@@ -1,4 +1,4 @@
-export type AgentCoreChoice = "codex" | "pi";
+export type AgentCoreChoice = "codex" | "pi" | "cursor";
 
 export interface AgentSettings {
 	agentCore: AgentCoreChoice;
@@ -39,6 +39,15 @@ export function normalizeAgentSettings(settings: AgentSettings): AgentSettings {
 			agentCore: "pi",
 			agentHarness: "json",
 			model: settings.model || "pi-default",
+			reasoningEffort: "codex-default",
+			authMode: codexAuthMode(settings.authMode),
+		};
+	}
+	if (settings.agentCore === "cursor") {
+		return {
+			agentCore: "cursor",
+			agentHarness: "sdk",
+			model: settings.model || "composer-2.5-fast",
 			reasoningEffort: "codex-default",
 			authMode: codexAuthMode(settings.authMode),
 		};

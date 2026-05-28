@@ -5,6 +5,8 @@ import {
 	CODEX_DEFAULT_MODEL,
 	CODEX_DEFAULT_REASONING_EFFORT,
 	type CodexAuthMode,
+	CURSOR_DEFAULT_MODEL,
+	cursorApiKeyConfigured,
 	PI_DEFAULT_MODEL,
 	redactSecrets,
 } from "@/lib/config";
@@ -18,6 +20,10 @@ import {
 	agentSummary,
 	buildInvocationDescriptor,
 } from "@/lib/agent/invocation";
+import {
+	defaultCursorSdkRunner,
+	runCursorRuntime,
+} from "@/lib/agent/cursor-adapter";
 import { runPiRuntime } from "@/lib/agent/pi-adapter";
 import {
 	appendLimited,
@@ -45,6 +51,7 @@ import {
 } from "@/lib/agent/runtime-spec";
 import { inlineBuiltPreview } from "@/lib/storefront-preview";
 import { readVariantManifest, validateVariantReceipt } from "@/lib/validation";
+import { scheduleVariantRunExecution } from "@/lib/agent/schedule-variant-run";
 import { buildVariantPrompt } from "@/lib/variant-prompt";
 import {
 	claimVariantRun,
@@ -54,8 +61,16 @@ import {
 } from "@/lib/variant-run-queue";
 import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
 
-export type { VariantProcessRunner, VariantSdkRunner } from "@/lib/agent/types";
+export type {
+	VariantCursorSdkRunner,
+	VariantProcessRunner,
+	VariantSdkRunner,
+} from "@/lib/agent/types";
 export { defaultCodexSdkRunner as defaultSdkRunner } from "@/lib/agent/codex-adapter";
+export {
+	defaultCursorSdkRunner,
+	runCursorRuntime,
+} from "@/lib/agent/cursor-adapter";
 export { recoverStaleVariantRuns } from "@/lib/variant-run-queue";
 
 async function persistTranscript(runId: string, transcript: string) {
@@ -65,17 +80,26 @@ async function persistTranscript(runId: string, transcript: string) {
 	});
 }
 
+function agentDisplayName(core: AgentCore) {
+	if (core === "pi") return "Pi";
+	if (core === "cursor") return "Cursor";
+	return "Codex";
+}
+
 function agentFailureMessage(
 	core: AgentCore,
 	result: {
 		code: number | null;
 		timedOut: boolean;
 	},
+	stderr = "",
 ) {
-	const name = core === "pi" ? "Pi" : "Codex";
+	const name = agentDisplayName(core);
 	if (result.timedOut) {
 		return `${name} timed out before completing the storefront variant.`;
 	}
+	const detail = stderr.trim().split(/\r?\n/).find(Boolean);
+	if (detail) return `${name} failed: ${detail}`;
 	return `${name} exited with code ${result.code ?? "unknown"}.`;
 }
 
@@ -90,11 +114,16 @@ function storedRequestedModel(runtimeSpec: AgentRuntimeSpec) {
 	if (runtimeSpec.core === "pi") {
 		return runtimeSpec.requestedModel || PI_DEFAULT_MODEL;
 	}
+	if (runtimeSpec.core === "cursor") {
+		return runtimeSpec.requestedModel || CURSOR_DEFAULT_MODEL;
+	}
 	return runtimeSpec.requestedModel || CODEX_DEFAULT_MODEL;
 }
 
 function storedRequestedEffort(runtimeSpec: AgentRuntimeSpec) {
-	if (runtimeSpec.core === "pi") return runtimeSpec.selectedEffort;
+	if (runtimeSpec.core === "pi" || runtimeSpec.core === "cursor") {
+		return runtimeSpec.selectedEffort;
+	}
 	return runtimeSpec.requestedEffort || CODEX_DEFAULT_REASONING_EFFORT;
 }
 
@@ -109,6 +138,9 @@ export async function createVariantRun(params: {
 	runtimeSpec?: AgentRuntimeSpec;
 	agentCore?: AgentCore;
 	agentHarness?: AgentHarness;
+	/** When true (default), claim and run the agent without blocking the caller. */
+	autoExecute?: boolean;
+	executeOptions?: ExecuteVariantRunOptions;
 }) {
 	const runtimeSpec =
 		params.runtimeSpec ??
@@ -127,6 +159,11 @@ export async function createVariantRun(params: {
 	) {
 		throw new Error(
 			"API-key mode requested, but neither CODEX_API_KEY nor OPENAI_API_KEY is configured.",
+		);
+	}
+	if (runtimeSpec.core === "cursor" && !cursorApiKeyConfigured()) {
+		throw new Error(
+			"CURSOR_API_KEY is required for Cursor SDK storefront variant runs.",
 		);
 	}
 
@@ -172,6 +209,13 @@ export async function createVariantRun(params: {
 			outputSummary: agentSummary(runtimeSpec),
 		},
 	});
+	if (params.autoExecute !== false) {
+		scheduleVariantRunExecution(
+			runRecord.id,
+			executeVariantRun,
+			params.executeOptions,
+		);
+	}
 	return runRecord;
 }
 
@@ -222,20 +266,31 @@ export async function executeVariantRun(
 						onStdoutLine,
 						onStderrLine,
 					})
-				: await runCodexWithFallback({
-						runtime: runtimeSpec.harness,
-						input: runRecord.inputPrompt,
-						processRunner,
-						sdkRunner: executeOptions.codexSdkRunner ?? defaultCodexSdkRunner,
-						requestedAuthMode: runtimeSpec.requestedAuthMode,
-						requestedModel: runtimeSpec.requestedModel,
-						requestedEffort: runtimeSpec.requestedEffort,
-						selection: initialSelection,
-						workspace: workspacePath,
-						timeoutMs,
-						onStdoutLine,
-						onStderrLine,
-					});
+				: runtimeSpec.core === "cursor"
+					? await runCursorRuntime({
+							input: runRecord.inputPrompt,
+							cursorSdkRunner:
+								executeOptions.cursorSdkRunner ?? defaultCursorSdkRunner,
+							requestedModel: runtimeSpec.requestedModel,
+							workspace: workspacePath,
+							timeoutMs,
+							onStdoutLine,
+							onStderrLine,
+						})
+					: await runCodexWithFallback({
+							runtime: runtimeSpec.harness,
+							input: runRecord.inputPrompt,
+							processRunner,
+							sdkRunner: executeOptions.codexSdkRunner ?? defaultCodexSdkRunner,
+							requestedAuthMode: runtimeSpec.requestedAuthMode,
+							requestedModel: runtimeSpec.requestedModel,
+							requestedEffort: runtimeSpec.requestedEffort,
+							selection: initialSelection,
+							workspace: workspacePath,
+							timeoutMs,
+							onStdoutLine,
+							onStderrLine,
+						});
 
 		const { result, selection } = agentResult;
 		await fileWrite;
@@ -254,7 +309,9 @@ export async function executeVariantRun(
 		await transcriptWrite;
 		if (transcriptWriteError) throw transcriptWriteError;
 		if (result.code !== 0 || result.timedOut) {
-			throw new Error(agentFailureMessage(runtimeSpec.core, result));
+			throw new Error(
+				agentFailureMessage(runtimeSpec.core, result, stderrText),
+			);
 		}
 		const manifest = await readVariantManifest(workspacePath);
 		const detectedChanges = await detectChangedFiles(workspacePath);
@@ -290,7 +347,7 @@ export async function executeVariantRun(
 		const message = redactSecrets(
 			failure instanceof Error ? failure.message : String(failure),
 		);
-		const agentName = runtimeSpec.core === "pi" ? "Pi" : "Codex";
+		const agentName = agentDisplayName(runtimeSpec.core);
 		const fullTranscript = redactSecrets(
 			await resolveFullTranscript(runId, pollTranscript),
 		);

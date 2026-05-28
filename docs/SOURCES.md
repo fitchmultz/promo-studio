@@ -1,15 +1,17 @@
 # Sources
 
-Promo Studio is built from local project code and the installed Codex SDK/CLI contract exercised by this repository.
+Promo Studio is built from local project code and the installed agent harness contracts exercised by this repository. The app is **multi-agent by design**: Codex, Pi, and Cursor SDK share the same runner, workspace, transcript, validation, and receipt surfaces.
 
 ## Local source of truth
 
-- `README.md` — demo overview, setup, flow, validation, and architecture.
-- `docs/CODEX_INTEGRATION.md` — Codex runtime flow and receipt contract.
-- `docs/PI_INTEGRATION.md` — Pi JSON CLI runtime flow, session, model, environment, and doctor contract.
-- `templates/storefront/AGENTS.md` — rules Codex must follow inside a storefront workspace.
-- `templates/storefront/BRAND_RULES.md` — product and campaign constraints.
-- `tests/` — executable validation for auth, config, workspace isolation, manifest validation, route behavior, and runner lifecycle.
+- [README.md](../README.md) — demo overview, multi-agent setup, flow, validation, and architecture.
+- [AGENT_INTEGRATION.md](./AGENT_INTEGRATION.md) — harness-agnostic runtime flow and demo matrix.
+- [CODEX_INTEGRATION.md](./CODEX_INTEGRATION.md) — Codex SDK / `codex exec` contract.
+- [PI_INTEGRATION.md](./PI_INTEGRATION.md) — Pi JSON CLI contract.
+- [CURSOR_SDK_INTEGRATION.md](./CURSOR_SDK_INTEGRATION.md) — Cursor TypeScript SDK contract.
+- [templates/storefront/AGENTS.md](../templates/storefront/AGENTS.md) — rules any agent must follow inside a storefront workspace.
+- [templates/storefront/BRAND_RULES.md](../templates/storefront/BRAND_RULES.md) — product and campaign constraints.
+- [tests/](../tests/) — executable validation for auth, config, workspace isolation, manifest validation, route behavior, per-harness selection, and runner lifecycle.
 
 ## Product data
 
@@ -20,10 +22,23 @@ The seeded product is the Ribbed Market Tote:
 - Inventory: `3`
 - Features and description are seeded in `prisma/seed.ts` and mirrored in the storefront template.
 
+## Shared run contract
+
+Regardless of agent core:
+
+- Each run gets `agent-workspaces/run-<id>/storefront` (template copy).
+- Activity streams as JSONL on `VariantRun.transcript` (plus on-disk `artifacts/transcripts/<id>.jsonl` during live runs).
+- The agent must edit source, run `npm test`, `npm run build`, and write `artifact/manifest.json`.
+- The host validates manifest fields, commerce invariants, and detected file changes before accepting a variant.
+
 ## Codex runtime contract
 
-The integration uses `CODEX_RUNTIME=sdk` by default through `@openai/codex-sdk` streamed turns. The SDK path relies on the version-matched `@openai/codex` CLI bundled through the SDK dependency, not a custom `codexPathOverride`. The preserved `CODEX_RUNTIME=exec` fallback expects `codex exec` to support JSONL output, ephemeral non-interactive runs, ignored user config/rules, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides for `approval_policy`, `sandbox_workspace_write.network_access`, `web_search`, and `model_reasoning_effort`.
+When `agentCore=codex`, the integration uses `CODEX_RUNTIME=sdk` by default through `@openai/codex-sdk` streamed turns. The SDK path relies on the version-matched `@openai/codex` CLI bundled through the SDK dependency. The preserved `CODEX_RUNTIME=exec` fallback expects `codex exec` to support JSONL output, ephemeral non-interactive runs, ignored user config/rules, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides for `approval_policy`, `sandbox_workspace_write.network_access`, `web_search`, and `model_reasoning_effort`.
 
 ## Pi runtime contract
 
-The Pi integration uses `@earendil-works/pi-coding-agent` v0.76.0 or newer and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process. JSON CLI mode is the canonical Pi harness; SDK and RPC are documented alternatives but are not adopted because this demo values process isolation and CLI extension parity.
+When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.76.0 or newer and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process.
+
+## Cursor runtime contract
+
+When `agentCore=cursor`, the integration uses `@cursor/sdk` with a local agent scoped to the storefront workspace (`Agent.create` + `Agent.send` + `run.stream()`). Transcript lines are normalized to the same JSONL activity shape as Codex SDK runs. Live runs require `CURSOR_API_KEY`.

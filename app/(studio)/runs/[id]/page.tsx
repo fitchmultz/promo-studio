@@ -20,6 +20,7 @@ import {
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { prisma } from "@/lib/db";
 import {
+	readLiveTranscriptForPoll,
 	resolveFullTranscript,
 	runTranscriptFileByteLength,
 } from "@/lib/agent/transcript-store";
@@ -50,7 +51,7 @@ export default async function RunDetailPage({
 	const fileBytes = await runTranscriptFileByteLength(run.id);
 	const pollTranscript =
 		run.status === "queued" || run.status === "running"
-			? run.transcript
+			? await readLiveTranscriptForPoll(run.id)
 			: fullTranscript;
 	const events = parseAgentEvents(pollTranscript);
 	const legacyMarkerTruncated = fullTranscript.includes(

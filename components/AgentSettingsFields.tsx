@@ -10,6 +10,7 @@ const codexModels = [
 	"gpt-5.5-mini",
 	"gpt-5.4-mini",
 ];
+const cursorModels = ["composer-2.5-fast", "composer-2.5", "cursor-default"];
 const effortOptions = [
 	{ value: "codex-default", label: "Default" },
 	{ value: "low", label: "Low" },
@@ -34,12 +35,14 @@ export function AgentSettingsFields({
 
 	const modelOptions = codexModels;
 	const isPi = settings.agentCore === "pi";
+	const isCursor = settings.agentCore === "cursor";
 
 	return (
 		<div className="agent-settings-fields">
 			<p className="muted">
 				Agent and model used when you create a variant. Saved to your account.
-				Pi runs via <code>pi --mode json</code> (stdin prompt).
+				Pi runs via <code>pi --mode json</code> (stdin prompt). Cursor runs via{" "}
+				<code>@cursor/sdk</code> local agents.
 			</p>
 			<fieldset className="goal-chips" aria-label="Agent core">
 				<button
@@ -58,6 +61,15 @@ export function AgentSettingsFields({
 				>
 					Pi
 				</button>
+				<button
+					className={
+						settings.agentCore === "cursor" ? "chip chip--active" : "chip"
+					}
+					type="button"
+					onClick={() => onChange({ agentCore: "cursor", agentHarness: "sdk" })}
+				>
+					Cursor SDK
+				</button>
 			</fieldset>
 			{isPi ? (
 				<div className="field">
@@ -68,6 +80,16 @@ export function AgentSettingsFields({
 						campaign prompt is sent on stdin. Extension models (for example{" "}
 						<code>cursor/composer-2.5</code>) are passed via{" "}
 						<code>--model</code>.
+					</p>
+				</div>
+			) : isCursor ? (
+				<div className="field">
+					<span className="field-label">Harness</span>
+					<p className="harness-value">Cursor SDK</p>
+					<p className="muted field-note">
+						Runs <code>Agent.create</code> + <code>Agent.send</code> with local{" "}
+						<code>cwd</code> set to the isolated storefront. Requires{" "}
+						<code>CURSOR_API_KEY</code>.
 					</p>
 				</div>
 			) : (
@@ -90,6 +112,20 @@ export function AgentSettingsFields({
 					value={settings.model}
 					onChange={(model) => onChange({ model })}
 				/>
+			) : isCursor ? (
+				<label className="field">
+					Model
+					<select
+						value={settings.model}
+						onChange={(event) => onChange({ model: event.target.value })}
+					>
+						{cursorModels.map((model) => (
+							<option key={model} value={model}>
+								{model}
+							</option>
+						))}
+					</select>
+				</label>
 			) : (
 				<label className="field">
 					Model

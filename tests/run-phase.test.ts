@@ -71,7 +71,11 @@ describe("inferRunPhase", () => {
 					type: "item.completed",
 					raw: "{}",
 					parsed: {
-						item: { type: "command_execution", command: "date", status: "completed" },
+						item: {
+							type: "command_execution",
+							command: "date",
+							status: "completed",
+						},
 					},
 				},
 			],
@@ -130,6 +134,26 @@ describe("inferRunPhase", () => {
 		});
 		expect(phase.id).toBe("editing");
 		expect(phase.step).toBe(3);
+	});
+
+	it("infers testing phase from Cursor SDK tool_call shell events", () => {
+		const phase = inferRunPhase({
+			status: "running",
+			agentCore: "cursor",
+			hasPreview: false,
+			events: [
+				{
+					type: "tool_call",
+					raw: "{}",
+					parsed: {
+						name: "shell",
+						status: "completed",
+						args: { command: "npm test" },
+					},
+				},
+			],
+		});
+		expect(phase.id).toBe("testing");
 	});
 
 	it("infers testing phase from npm test in pi transcript", () => {

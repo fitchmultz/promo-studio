@@ -2,6 +2,7 @@ import {
 	codexAutomationDescriptorParts,
 	codexAutomationExecArgs,
 } from "@/lib/agent/codex-automation-policy";
+import { cursorAutomationDescriptorParts } from "@/lib/agent/cursor-automation-policy";
 import { codexModelArgs, codexReasoningArgs, paths } from "@/lib/config";
 import type { AgentCore, AgentHarness } from "@/lib/agent/types";
 
@@ -48,6 +49,16 @@ function buildPiJsonInvocation(requestedModel: string, runId: string) {
 	return parts.join(" ");
 }
 
+function buildCursorSdkInvocation(params: {
+	workspace: string;
+	selectedModel: string;
+}) {
+	return [
+		"Cursor TypeScript SDK Agent.send",
+		...cursorAutomationDescriptorParts(params.workspace, params.selectedModel),
+	].join(" ");
+}
+
 export function buildInvocationDescriptor(params: {
 	core: AgentCore;
 	harness: AgentHarness;
@@ -60,6 +71,12 @@ export function buildInvocationDescriptor(params: {
 }): string {
 	if (params.core === "pi") {
 		return buildPiJsonInvocation(params.requestedModel, params.runId);
+	}
+	if (params.core === "cursor") {
+		return buildCursorSdkInvocation({
+			workspace: params.workspace,
+			selectedModel: params.selectedModel,
+		});
 	}
 	if (params.harness === "exec") {
 		return buildCodexExecInvocation(
@@ -77,7 +94,14 @@ export function buildInvocationDescriptor(params: {
 
 export function runtimeLabel(core: AgentCore, runtime: AgentHarness): string {
 	if (core === "pi") return "pi JSON CLI";
+	if (core === "cursor") return "Cursor SDK";
 	return runtime === "exec" ? "codex exec" : "Codex SDK";
+}
+
+function agentDisplayNameForCore(core: AgentCore): string {
+	if (core === "pi") return "Pi";
+	if (core === "cursor") return "Cursor";
+	return "Codex";
 }
 
 export function agentSummary(params: {
@@ -85,8 +109,8 @@ export function agentSummary(params: {
 	selectedModel: string;
 	selectedEffort: string;
 }): string {
-	const agentName = params.core === "pi" ? "Pi" : "Codex";
-	if (params.core === "pi") {
+	const agentName = agentDisplayNameForCore(params.core);
+	if (params.core === "pi" || params.core === "cursor") {
 		return `${agentName} ${params.selectedModel} is editing an isolated storefront workspace.`;
 	}
 	return `${agentName} ${params.selectedModel} is editing an isolated storefront workspace with ${params.selectedEffort} reasoning.`;
