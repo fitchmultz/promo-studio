@@ -1,4 +1,4 @@
-import { drainQueuedVariantRunQueue } from "@/lib/codex-runner";
+import { drainQueuedVariantRunQueue } from "@/lib/agent/runner";
 
 const HELP = `Usage: npm run runs:worker -- [--once] [--poll-ms <ms>]
 

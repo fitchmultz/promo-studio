@@ -76,13 +76,3 @@ export interface ExecuteVariantRunOptions {
 	processRunner?: VariantProcessRunner;
 	codexSdkRunner?: VariantSdkRunner;
 }
-
-/** Maps harness to the legacy codexRuntime column for receipts and filters. */
-export function legacyCodexRuntime(
-	core: AgentCore,
-	harness: AgentHarness,
-): CodexRuntime | "json" {
-	if (core === "pi" && harness === "json") return "json";
-	if (harness === "exec") return "exec";
-	return "sdk";
-}

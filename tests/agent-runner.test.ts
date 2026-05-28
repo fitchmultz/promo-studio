@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 import {
 	createVariantRun,
 	drainQueuedVariantRunQueue,
-	parseCodexEvents,
 	recoverStaleVariantRuns,
 	type VariantProcessRunner,
 	type VariantSdkRunner,
-} from "@/lib/codex-runner";
+} from "@/lib/agent/runner";
+import { parseAgentEvents } from "@/lib/agent/transcript";
 import { paths } from "@/lib/config";
 import { prisma } from "@/lib/db";
 
@@ -250,7 +250,7 @@ describe("Codex runner", () => {
 			requestedAuthMode: "auto",
 			requestedModel: "gpt-5.5-mini",
 			requestedEffort: "medium",
-			runtime: "exec",
+			agentHarness: "exec",
 		});
 		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);
@@ -324,13 +324,13 @@ describe("Codex runner", () => {
 	});
 
 	it("parses non-JSON transcript lines as logs", () => {
-		const events = parseCodexEvents('not json\n{"type":"tool_call"}');
+		const events = parseAgentEvents('not json\n{"type":"tool_call"}');
 		expect(events[0].type).toBe("log");
 		expect(events[1].type).toBe("tool_call");
 	});
 
 	it("parses current codex exec JSONL event shapes", () => {
-		const events = parseCodexEvents(
+		const events = parseAgentEvents(
 			[
 				{ type: "thread.started", thread_id: "thread_123" },
 				{ type: "turn.started" },
@@ -380,7 +380,7 @@ describe("Codex runner", () => {
 	});
 
 	it("assigns stable unique ids to duplicate transcript lines", () => {
-		const events = parseCodexEvents("duplicate\nduplicate");
+		const events = parseAgentEvents("duplicate\nduplicate");
 		expect(events.map((event) => event.id)).toEqual([
 			"1:e24a5a32c9b8",
 			"2:e24a5a32c9b8",

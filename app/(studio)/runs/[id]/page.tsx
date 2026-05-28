@@ -10,9 +10,9 @@ import { RunReceipt } from "@/components/RunReceipt";
 import { RunLiveProvider } from "@/components/RunLiveProvider";
 import { RunTranscriptPanel } from "@/components/RunTranscriptPanel";
 import { requireUser } from "@/lib/auth";
-import { parseCodexEvents } from "@/lib/codex-runner";
-import { prisma } from "@/lib/db";
 import { LEGACY_TRANSCRIPT_TRUNCATED_MARKER } from "@/lib/agent/process";
+import { parseAgentEvents } from "@/lib/agent/transcript";
+import { prisma } from "@/lib/db";
 import {
 	resolveFullTranscript,
 	runTranscriptFileByteLength,
@@ -46,7 +46,7 @@ export default async function RunDetailPage({
 		run.status === "queued" || run.status === "running"
 			? run.transcript
 			: fullTranscript;
-	const events = parseCodexEvents(pollTranscript);
+	const events = parseAgentEvents(pollTranscript);
 	const legacyMarkerTruncated = fullTranscript.includes(
 		LEGACY_TRANSCRIPT_TRUNCATED_MARKER,
 	);

@@ -29,7 +29,7 @@ Reviewed for Codex CLI `0.134.0` using the current non-interactive mode document
 1. `POST /api/variant-runs` checks auth and same-origin form submission.
 2. `lib/workspace.ts` copies `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
 3. `lib/variant-prompt.ts` builds a campaign-specific software task.
-4. `npm run runs:worker` claims queued runs and `lib/codex-runner.ts` runs Codex through the configured runtime:
+4. `npm run runs:worker` claims queued runs and `lib/agent/runner.ts` runs Codex through the configured runtime:
    - Default: official TypeScript SDK via `CODEX_RUNTIME=sdk`.
    - Fallback: direct CLI execution via `CODEX_RUNTIME=exec`.
 5. Runtime events are normalized into JSONL transcript lines and stored on the `VariantRun` row while Codex runs.

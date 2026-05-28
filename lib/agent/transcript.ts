@@ -27,6 +27,3 @@ export function parseAgentEvents(transcript: string) {
 			}
 		});
 }
-
-/** @deprecated Use parseAgentEvents */
-export const parseCodexEvents = parseAgentEvents;

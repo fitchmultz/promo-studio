@@ -7,7 +7,6 @@ import {
 	CODEX_DEFAULT_MODEL,
 	CODEX_DEFAULT_REASONING_EFFORT,
 	type CodexAuthMode,
-	type CodexRuntime,
 	env,
 	PI_DEFAULT_MODEL,
 	redactSecrets,
@@ -56,7 +55,6 @@ import { buildVariantPrompt } from "@/lib/variant-prompt";
 import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
 
 export type { VariantProcessRunner, VariantSdkRunner } from "@/lib/agent/types";
-export { parseAgentEvents, parseCodexEvents } from "@/lib/agent/transcript";
 export { defaultCodexSdkRunner as defaultSdkRunner } from "@/lib/agent/codex-adapter";
 
 async function persistTranscript(runId: string, transcript: string) {
@@ -212,8 +210,6 @@ export async function createVariantRun(params: {
 	runtimeSpec?: AgentRuntimeSpec;
 	agentCore?: AgentCore;
 	agentHarness?: AgentHarness;
-	/** @deprecated Use runtimeSpec or agentHarness with agentCore=codex */
-	runtime?: CodexRuntime;
 }) {
 	const runtimeSpec =
 		params.runtimeSpec ??
@@ -223,7 +219,6 @@ export async function createVariantRun(params: {
 			authMode: params.requestedAuthMode,
 			model: params.requestedModel,
 			effort: params.requestedEffort,
-			runtime: params.runtime ?? null,
 		});
 	const selection = resolveCodexSelection(runtimeSpec.requestedAuthMode);
 	if (
