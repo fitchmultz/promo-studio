@@ -137,6 +137,27 @@ describe("login API route", () => {
 		);
 	});
 
+	it("accepts login from HTML forms that omit Origin but send Sec-Fetch-Site", async () => {
+		loginMock.mockResolvedValue({ id: "user-123" });
+		const { POST } = await import("@/app/api/login/route");
+		const response = await POST(
+			new Request("http://localhost:3000/api/login", {
+				method: "POST",
+				headers: { "sec-fetch-site": "same-origin" },
+				body: new URLSearchParams({
+					email: "demo@promostudio.test",
+					password: "promo-studio",
+				}),
+			}),
+		);
+
+		expect(response.status).toBe(303);
+		expect(response.headers.get("location")).toBe(
+			"http://localhost:3000/studio",
+		);
+		expect(loginMock).toHaveBeenCalledOnce();
+	});
+
 	it("accepts login without Host header when Origin matches request URL", async () => {
 		loginMock.mockResolvedValue({ id: "user-123" });
 		const { POST } = await import("@/app/api/login/route");
