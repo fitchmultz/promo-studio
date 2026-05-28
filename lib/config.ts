@@ -1,6 +1,27 @@
 import crypto from "node:crypto";
 import path from "node:path";
+import {
+	normalizePiModel,
+	piChildEnv as buildPiChildEnv,
+	piSessionsPath,
+	PI_SECRET_ENV_KEYS,
+} from "@/lib/pi-runtime-config";
 import { z } from "zod";
+
+export {
+	normalizePiModel,
+	parsePiModelRef,
+	parsePiModelSpec,
+	piThinkingLevel,
+	PI_CHILD_ENV_KEYS,
+	PI_DEFAULT_MODEL,
+	PI_PROVIDER_ENV_KEYS,
+	PI_RUNTIME_ENV_KEYS,
+	PI_SECRET_ENV_KEYS,
+	selectedPiModel,
+	selectedPiThinkingFromModel,
+} from "@/lib/pi-runtime-config";
+export type { PiModelSpec, PiThinkingLevel } from "@/lib/pi-runtime-config";
 
 const LOCAL_DEMO_SESSION_SECRET =
 	"promo-studio-local-demo-session-secret-for-demo-runs";
@@ -57,20 +78,9 @@ export type CodexReasoningEffort =
 	| "medium"
 	| "high"
 	| "xhigh";
-/** Pi SDK thinking levels (includes off; matches pi-agent-core ThinkingLevel). */
-export type PiThinkingLevel = "off" | CodexReasoningEffort;
 export const CODEX_DEFAULT_MODEL = "codex-default";
 export const CODEX_DEFAULT_REASONING_EFFORT = "codex-default";
-export const PI_DEFAULT_MODEL = "pi-default";
 const ReasoningEffortSchema = z.enum([
-	"minimal",
-	"low",
-	"medium",
-	"high",
-	"xhigh",
-]);
-const PiThinkingLevelSchema = z.enum([
-	"off",
 	"minimal",
 	"low",
 	"medium",
@@ -95,7 +105,7 @@ export const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
 export const paths = {
 	projectRoot,
 	artifacts: path.join(projectRoot, "artifacts"),
-	piSessions: path.join(projectRoot, "artifacts", "pi-sessions"),
+	piSessions: piSessionsPath(projectRoot),
 	templateStorefront: path.join(projectRoot, "templates", "storefront"),
 	workspaces: path.join(projectRoot, "agent-workspaces"),
 };
@@ -108,64 +118,6 @@ export function resolveRequestedMode(
 	return env.CODEX_AUTH_MODE;
 }
 
-export function normalizePiModel(
-	raw: FormDataEntryValue | string | null | undefined,
-): string {
-	const value = String(raw ?? "").trim();
-	if (!value || value === PI_DEFAULT_MODEL) return "";
-	return ModelOverrideSchema.parse(value);
-}
-
-export interface PiModelSpec {
-	provider: string;
-	modelId: string;
-	thinking: CodexReasoningEffort | "";
-	/** Full Pi CLI model ref, e.g. openai-codex/gpt-5.5:low */
-	cliModel: string;
-}
-
-function parsePiThinkingSuffix(value: string): {
-	modelId: string;
-	thinking: CodexReasoningEffort | "";
-} {
-	const colon = value.lastIndexOf(":");
-	if (colon === -1) return { modelId: value, thinking: "" };
-	const suffix = value.slice(colon + 1);
-	const parsed = ReasoningEffortSchema.safeParse(suffix);
-	if (!parsed.success) return { modelId: value, thinking: "" };
-	return { modelId: value.slice(0, colon), thinking: parsed.data };
-}
-
-/** Parse PI_MODEL as provider/model or provider/model:thinking (Pi CLI format). */
-export function parsePiModelSpec(requestedModel: string): PiModelSpec {
-	const value = String(requestedModel ?? "").trim();
-	if (!value) {
-		return { provider: "", modelId: "", thinking: "", cliModel: "" };
-	}
-	const slash = value.indexOf("/");
-	if (slash === -1) {
-		throw new Error(
-			`PI_MODEL must be provider/model or provider/model:thinking (got "${value}").`,
-		);
-	}
-	const provider = value.slice(0, slash);
-	const rest = value.slice(slash + 1);
-	const { modelId, thinking } = parsePiThinkingSuffix(rest);
-	const cliModel = thinking
-		? `${provider}/${modelId}:${thinking}`
-		: `${provider}/${modelId}`;
-	return { provider, modelId, thinking, cliModel };
-}
-
-/** @deprecated Use parsePiModelSpec */
-export function parsePiModelRef(requestedModel: string): {
-	provider: string;
-	modelId: string;
-} {
-	const spec = parsePiModelSpec(requestedModel);
-	return { provider: spec.provider, modelId: spec.modelId };
-}
-
 export function resolveRequestedPiModel(
 	input: FormData | URLSearchParams | null,
 ): string {
@@ -173,28 +125,8 @@ export function resolveRequestedPiModel(
 	return normalizePiModel(raw ?? env.PI_MODEL);
 }
 
-export function selectedPiModel(requestedModel: string): string {
-	return requestedModel || PI_DEFAULT_MODEL;
-}
-
-export function selectedPiThinkingFromModel(requestedModel: string): string {
-	if (!requestedModel || requestedModel === PI_DEFAULT_MODEL) {
-		return "default";
-	}
-	const { thinking } = parsePiModelSpec(requestedModel);
-	return thinking || "default";
-}
-
 export function agentTimeoutMs(core: AgentCore): number {
 	return core === "pi" ? env.PI_TIMEOUT_MS : env.CODEX_TIMEOUT_MS;
-}
-
-export function piThinkingLevel(
-	thinking: CodexReasoningEffort | "",
-): PiThinkingLevel {
-	if (!thinking) return "low";
-	const parsed = PiThinkingLevelSchema.safeParse(thinking);
-	return parsed.success ? parsed.data : "low";
 }
 
 export function normalizeCodexModel(
@@ -343,21 +275,7 @@ export function codexChildEnv(
 }
 
 export function piChildEnv() {
-	const childEnv: Record<string, string | undefined> = {
-		PATH: process.env.PATH,
-		USER: process.env.USER,
-		LOGNAME: process.env.LOGNAME,
-		SHELL: process.env.SHELL,
-		LANG: process.env.LANG,
-		LC_ALL: process.env.LC_ALL,
-		TERM: process.env.TERM,
-		TMPDIR: process.env.TMPDIR,
-		PROJECT_ROOT: paths.projectRoot,
-		HOME: process.env.HOME,
-	};
-	if (env.ANTHROPIC_API_KEY) childEnv.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
-	if (env.OPENAI_API_KEY) childEnv.OPENAI_API_KEY = env.OPENAI_API_KEY;
-	return toProcessEnv(childEnv);
+	return buildPiChildEnv(process.env, paths.projectRoot);
 }
 
 export function redactSecrets(text: string): string {
@@ -369,6 +287,7 @@ export function redactSecrets(text: string): string {
 		process.env.CODEX_API_KEY,
 		process.env.OPENAI_API_KEY,
 		process.env.ANTHROPIC_API_KEY,
+		...PI_SECRET_ENV_KEYS.map((key) => process.env[key]),
 	]) {
 		if (value && value.length > 8) {
 			redacted = redacted.split(value).join("[REDACTED_API_KEY]");

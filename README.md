@@ -86,7 +86,7 @@ Agent runtime settings:
 - `CODEX_AUTH_MODE` supports `auto`, `subscription`, and `api-key`.
 - Subscription mode expects a working local Codex login.
 - API-key mode requires `CODEX_AUTH_MODE=api-key` plus `CODEX_API_KEY` or `OPENAI_API_KEY`.
-- `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_TIMEOUT_MS` tune Codex runs. `PI_MODEL` and `PI_TIMEOUT_MS` tune Pi runs.
+- `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_TIMEOUT_MS` tune Codex runs. `PI_MODEL` accepts Pi `--model` values (full `provider/model[:thinking]` refs are preferred) and `PI_TIMEOUT_MS` tunes Pi runs.
 
 ## Proof and verification
 
@@ -182,6 +182,8 @@ npm run build              # production build check
 npm run validate           # full local gate
 npm run reset:workspaces   # remove generated agent workspaces
 npm run runs:worker        # claim and execute queued variant runs
+npm run codex:doctor       # verify local Codex SDK/exec setup
+npm run pi:doctor          # verify local Pi JSON harness setup
 npm run demo:zip           # zip git-tracked demo files only
 ```
 

@@ -5,6 +5,7 @@ import {
 	normalizeCodexModel,
 	normalizeCodexReasoningEffort,
 	paths,
+	piChildEnv,
 	redactSecrets,
 	resolveRequestedMode,
 	resolveRequestedModel,
@@ -14,8 +15,22 @@ import {
 	selectCodexMode,
 } from "@/lib/config";
 
+const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
+const ORIGINAL_SESSION_SECRET = process.env.SESSION_SECRET;
+
 afterEach(() => {
 	process.env.CODEX_API_KEY = "";
+	delete process.env.GEMINI_API_KEY;
+	if (ORIGINAL_DATABASE_URL === undefined) {
+		delete process.env.DATABASE_URL;
+	} else {
+		process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
+	}
+	if (ORIGINAL_SESSION_SECRET === undefined) {
+		delete process.env.SESSION_SECRET;
+	} else {
+		process.env.SESSION_SECRET = ORIGINAL_SESSION_SECRET;
+	}
 });
 
 describe("Codex auth mode selection", () => {
@@ -55,7 +70,7 @@ describe("Codex auth mode selection", () => {
 		expect(env.CODEX_REASONING_EFFORT).toBe("low");
 	});
 
-	it("parses Pi model refs with optional thinking suffix", () => {
+	it("parses Pi model refs and Pi CLI model patterns with optional thinking suffix", () => {
 		expect(parsePiModelSpec("openai-codex/gpt-5.5:low")).toEqual({
 			provider: "openai-codex",
 			modelId: "gpt-5.5",
@@ -67,6 +82,16 @@ describe("Codex auth mode selection", () => {
 			modelId: "composer-2.5",
 			thinking: "",
 			cliModel: "cursor/composer-2.5",
+		});
+		expect(parsePiModelSpec("sonnet:high")).toEqual({
+			provider: "",
+			modelId: "sonnet",
+			thinking: "high",
+			cliModel: "sonnet:high",
+		});
+		expect(parsePiModelSpec("openai/gpt-5.5:off")).toMatchObject({
+			thinking: "off",
+			cliModel: "openai/gpt-5.5:off",
 		});
 		expect(
 			parsePiModelSpec("anthropic/claude-sonnet-4-20250514").cliModel,
@@ -99,9 +124,17 @@ describe("Codex auth mode selection", () => {
 
 	it("redacts configured API key material from transcripts", () => {
 		process.env.CODEX_API_KEY = "sk-test-redaction-value";
-		expect(redactSecrets("key=sk-test-redaction-value")).not.toContain(
-			"sk-test-redaction-value",
-		);
+		process.env.GEMINI_API_KEY = "gemini-test-redaction-value";
+		expect(
+			redactSecrets(
+				"codex=sk-test-redaction-value gemini=gemini-test-redaction-value",
+			),
+		).not.toContain("sk-test-redaction-value");
+		expect(
+			redactSecrets(
+				"codex=sk-test-redaction-value gemini=gemini-test-redaction-value",
+			),
+		).not.toContain("gemini-test-redaction-value");
 	});
 
 	it("scopes Codex child process environments to safe runtime context", () => {
@@ -118,5 +151,19 @@ describe("Codex auth mode selection", () => {
 
 		expect(childEnv.HOME).toBeUndefined();
 		expect(childEnv.CODEX_HOME).toBeUndefined();
+	});
+
+	it("scopes Pi child process environments to Pi runtime and provider auth", () => {
+		process.env.GEMINI_API_KEY = "gemini-test-child-env";
+		process.env.DATABASE_URL = "file:private.db";
+		process.env.SESSION_SECRET = "private-session-secret-value";
+
+		const childEnv = piChildEnv();
+
+		expect(childEnv.PROJECT_ROOT).toBe(paths.projectRoot);
+		expect(childEnv.HOME).toBe(process.env.HOME);
+		expect(childEnv.GEMINI_API_KEY).toBe("gemini-test-child-env");
+		expect(childEnv.DATABASE_URL).toBeUndefined();
+		expect(childEnv.SESSION_SECRET).toBeUndefined();
 	});
 });

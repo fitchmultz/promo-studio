@@ -1,6 +1,6 @@
 # Pi Integration
 
-Promo Studio runs storefront variants by spawning **`pi --mode json`** in the isolated workspace. The campaign prompt is sent on **stdin** (same as piping into `pi`).
+Promo Studio runs storefront variants by spawning **`pi --mode json`** in the isolated workspace. The campaign prompt is sent on **stdin** (same as piping into `pi`). JSON CLI mode remains the canonical harness because the agent process stays isolated from the host Next.js process while still streaming Pi session events as JSONL.
 
 ## Invocation
 
@@ -10,19 +10,22 @@ pi --mode json --session-id <run-id> --session-dir <repo>/artifacts/pi-sessions 
 # prompt on stdin
 ```
 
-Pi v0.76.0 added explicit automation session IDs. Promo Studio uses the variant run ID as `--session-id` and stores Pi session files under gitignored `artifacts/pi-sessions/`, keeping session history deterministic and outside the storefront diff surface. Extension-only models (e.g. **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) work here. Do **not** use `-p`; that flag is for print mode, not JSON mode.
+Pi v0.76.0 added explicit automation session IDs. Promo Studio uses the variant run ID as `--session-id` and stores Pi session files under gitignored `artifacts/pi-sessions/`, keeping session history deterministic and outside the storefront diff surface. Do **not** use `-p`; that flag is for print mode, not JSON mode.
+
+SDK and RPC were reviewed against the v0.76.0 docs. The SDK is preferred for same-process Node integrations and RPC is preferred for long-lived custom clients, but Promo Studio intentionally keeps Pi in a subprocess for run isolation, CLI extension parity, and a one-shot prompt lifecycle.
 
 Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full JSONL, no in-stream truncation markers). The database keeps a **recent tail** for live polling only; the run detail page and poll API read the on-disk file when present. Subprocess in-memory buffers stay at **120KB** and are not used as the final transcript source.
 
 ## Configuration
 
-- Gear → **Pi** core, model field (e.g. `cursor/composer-2.5` or `openai-codex/gpt-5.5:low`)
+- Gear → **Pi** core, model field (e.g. `cursor/composer-2.5`, `openai-codex/gpt-5.5:low`, or a Pi CLI model pattern such as `sonnet:high`)
 - Optional env: `AGENT_CORE=pi`, `PI_MODEL=cursor/composer-2.5`
-- Model format: `provider/model` or `provider/model:thinking`
+- Model format: any Pi `--model` value is passed through after validation; full `provider/model` or `provider/model:thinking` refs are preferred for deterministic automation, and `:off` is supported for models where thinking should be disabled.
+- Environment forwarding: the Pi subprocess receives safe runtime variables (`PATH`, shell/locale/temp values, `HOME`, `PROJECT_ROOT`), Pi-specific variables (`PI_CODING_AGENT_DIR`, `PI_PACKAGE_DIR`, `PI_OFFLINE`, etc.), and provider auth/config variables listed by `pi --help` (Anthropic, OpenAI/Azure, Gemini, OpenRouter, AWS Bedrock, and other supported providers). Host app secrets such as `DATABASE_URL` and `SESSION_SECRET` are not forwarded. Provider secret values are redacted from Pi error output.
 
 ## Studio model list
 
-`GET /api/agent/pi-models` lists models from Pi `ModelRegistry` (auth-configured providers). Extension models may be missing from the list; type the ref anyway.
+`GET /api/agent/pi-models` lists models from Pi `ModelRegistry` (auth-configured providers) and always includes `pi-default`. Extension-backed models (for example **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) may be missing from the list because they are loaded by Pi extensions at CLI startup; type the ref manually when needed.
 
 ## Doctor
 
@@ -30,4 +33,4 @@ Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full 
 npm run pi:doctor
 ```
 
-The doctor requires a Pi CLI version with `--session-id` support (v0.76.0 or newer).
+The doctor requires a Pi CLI version with `--session-id` support (v0.76.0 or newer). It also verifies required CLI help flags, checks that the forwarded Pi env allowlist matches the `pi --help` environment section, validates the local `@earendil-works/pi-coding-agent` package version and `PI_MODEL` syntax, checks forwarded Pi environment state, confirms writable/gitignored session storage, and reports model-registry availability warnings.
