@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
 import { RunPhaseStepper } from "@/components/RunPhaseStepper";
 import { useOptionalRunLiveState } from "@/components/RunLiveProvider";
+import { useMonotonicRunPhase } from "@/components/useMonotonicRunPhase";
 import { builtVariantHeading } from "@/lib/agent-display";
-import { inferRunPhase } from "@/lib/run-phase";
 
 function escapeHtml(value: string) {
 	return value
@@ -33,16 +32,13 @@ export function BeforeAfter({
 	const events = liveState?.events ?? [];
 	const hasPreview = liveState?.hasPreview ?? Boolean(previewHtml?.trim());
 	const afterHeading = builtVariantHeading(agentCore, selectedModel);
-	const phase = useMemo(
-		() =>
-			inferRunPhase({
-				status,
-				agentCore,
-				hasPreview,
-				events,
-			}),
-		[status, agentCore, hasPreview, events],
-	);
+	const phase = useMonotonicRunPhase({
+		runId: liveState?.runId,
+		status,
+		agentCore,
+		hasPreview,
+		events,
+	});
 
 	const live = status === "queued" || status === "running";
 	const previewPlaceholder = live

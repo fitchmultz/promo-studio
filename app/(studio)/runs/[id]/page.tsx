@@ -4,7 +4,10 @@ import { BeforeAfter } from "@/components/BeforeAfter";
 import { DiffViewer } from "@/components/DiffViewer";
 import { RunCodeDiffPanel } from "@/components/RunCodeDiffPanel";
 import { RunDetailTabs } from "@/components/RunDetailTabs";
-import { RunElapsed } from "@/components/RunElapsed";
+import {
+	RunDetailLiveElapsed,
+	RunDetailLiveStatus,
+} from "@/components/RunDetailLiveStatus";
 import { RunFailureBanner } from "@/components/RunFailureBanner";
 import { RunReceipt } from "@/components/RunReceipt";
 import { RunLiveProvider } from "@/components/RunLiveProvider";
@@ -143,38 +146,33 @@ export default async function RunDetailPage({
 	);
 	return (
 		<main className="studio-page" id="main-content">
-			<section className="studio-hero studio-hero--compact">
-				<div className="split-heading">
-					<div>
-						<p className="section-kicker">Run detail · {runLabel}</p>
-						<h1>{run.campaignGoal}</h1>
-						<p>{run.campaignBrief}</p>
-						<p className="muted run-meta">
-							{workspacePathForDisplay(run.agentCore, run.workspacePath)} ·{" "}
-							<RunElapsed
-								startedAt={run.startedAt.toISOString()}
-								completedAt={run.completedAt?.toISOString() ?? null}
-								status={run.status}
-								showElapsedSuffix={
-									run.status === "queued" || run.status === "running"
-								}
-							/>
-						</p>
-					</div>
-					<span className={`status-pill status-pill--${run.status}`}>
-						{run.status}
-					</span>
-				</div>
-			</section>
-			{run.status === "failed" ? (
-				<RunFailureBanner error={run.error} runId={run.id} />
-			) : null}
 			<RunLiveProvider
 				runId={run.id}
 				initialStatus={run.status}
 				initialEvents={events}
 				initialHasPreview={Boolean(run.previewHtml?.trim())}
 			>
+				<section className="studio-hero studio-hero--compact">
+					<div className="split-heading">
+						<div>
+							<p className="section-kicker">Run detail · {runLabel}</p>
+							<h1>{run.campaignGoal}</h1>
+							<p>{run.campaignBrief}</p>
+							<p className="muted run-meta">
+								{workspacePathForDisplay(run.agentCore, run.workspacePath)} ·{" "}
+								<RunDetailLiveElapsed
+									startedAt={run.startedAt.toISOString()}
+									completedAt={run.completedAt?.toISOString() ?? null}
+									initialStatus={run.status}
+								/>
+							</p>
+						</div>
+						<RunDetailLiveStatus initialStatus={run.status} />
+					</div>
+				</section>
+				{run.status === "failed" ? (
+					<RunFailureBanner error={run.error} runId={run.id} />
+				) : null}
 				{activity}
 				{tabs}
 			</RunLiveProvider>
