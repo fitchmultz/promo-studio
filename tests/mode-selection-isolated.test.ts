@@ -10,10 +10,18 @@ describe("Codex subscription-first auth precedence", () => {
 	it("keeps auto mode on subscription auth even when API keys are present", async () => {
 		process.env.CODEX_API_KEY = "codex-key";
 		process.env.OPENAI_API_KEY = "openai-key";
-		const { selectCodexMode } = await import("@/lib/config");
+		const { resolveCodexAuthState, selectCodexMode } = await import(
+			"@/lib/config"
+		);
 		expect(selectCodexMode("auto")).toEqual({
 			selectedMode: "subscription",
 			keySource: "none",
+		});
+		expect(resolveCodexAuthState("auto")).toMatchObject({
+			apiKeyFallbackSource: "CODEX_API_KEY",
+			childEnvKeySource: "none",
+			requestedMode: "auto",
+			selectedMode: "subscription",
 		});
 	});
 

@@ -1,3 +1,7 @@
+import {
+	codexAutomationDescriptorParts,
+	codexAutomationExecArgs,
+} from "@/lib/agent/codex-automation-policy";
 import { codexModelArgs, codexReasoningArgs, paths } from "@/lib/config";
 import type { AgentCore, AgentHarness } from "@/lib/agent/types";
 
@@ -10,11 +14,7 @@ function buildCodexExecInvocation(
 		"codex",
 		"exec",
 		"--json",
-		"--sandbox",
-		"workspace-write",
-		"--skip-git-repo-check",
-		"--cd",
-		workspace,
+		...codexAutomationExecArgs(workspace),
 		...codexModelArgs(requestedModel),
 		...codexReasoningArgs(requestedEffort),
 		"-",
@@ -29,8 +29,7 @@ function buildCodexSdkInvocation(params: {
 	return [
 		"Codex TypeScript SDK runStreamed",
 		`workingDirectory=${params.workspace}`,
-		"sandboxMode=workspace-write",
-		"skipGitRepoCheck=true",
+		...codexAutomationDescriptorParts(),
 		`model=${params.selectedModel}`,
 		`modelReasoningEffort=${params.selectedEffort}`,
 	].join(" ");

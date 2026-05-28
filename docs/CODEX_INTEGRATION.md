@@ -1,6 +1,18 @@
 # Codex Integration
 
-Promo Studio uses Codex as an autonomous code agent, not as a text completion API.
+Promo Studio uses Codex as an autonomous code agent, not as a text completion API. The default Codex harness is the official TypeScript SDK from `@openai/codex-sdk`.
+
+## Current SDK contract
+
+Reviewed for `@openai/codex-sdk@0.134.0` / `@openai/codex@0.134.0`:
+
+- The TypeScript SDK wraps the version-matched `@openai/codex` CLI and exchanges JSONL events over stdin/stdout.
+- `runStreamed()` is the right API for host apps that need live tool, file, command, and usage events.
+- `startThread()` owns workspace controls such as `workingDirectory`, `sandboxMode`, `skipGitRepoCheck`, `model`, `modelReasoningEffort`, `approvalPolicy`, `networkAccessEnabled`, and `webSearchMode`.
+- The SDK resolves its bundled native CLI from `@openai/codex` optional dependencies. Promo Studio does not pass `codexPathOverride`; that option is reserved for custom binary probes.
+- Supplying `env` to `new Codex()` disables broad process-env inheritance. Promo Studio passes a deliberately small child environment and only includes subscription auth state or API-key credentials according to the selected auth mode.
+
+The upstream `0.134.0` release notes do not require a TypeScript SDK migration for this app. The relevant release change is the CLI-wide move to `--profile`; Promo Studio does not select Codex profiles and instead sends explicit per-run SDK/thread options.
 
 ## Runtime flow
 
@@ -17,24 +29,56 @@ Promo Studio uses Codex as an autonomous code agent, not as a text completion AP
 
 ## Runtime contracts
 
-The SDK path starts a streamed Codex turn with:
+The SDK path starts a streamed Codex turn with explicit automation controls:
 
 ```text
-Codex TypeScript SDK runStreamed workingDirectory=<workspace> sandboxMode=workspace-write skipGitRepoCheck=true model=<model> modelReasoningEffort=<effort>
+Codex TypeScript SDK runStreamed workingDirectory=<workspace> sandboxMode=workspace-write skipGitRepoCheck=true approvalPolicy=never networkAccessEnabled=false webSearchMode=disabled model=<model> modelReasoningEffort=<effort>
 ```
 
-The preserved exec fallback runs:
+Those controls keep hosted runs non-interactive and deterministic:
+
+- `approvalPolicy=never` prevents approval prompts from blocking queue workers.
+- `sandboxMode=workspace-write` confines writes to the isolated storefront workspace.
+- `networkAccessEnabled=false` keeps generated variants from depending on live network access.
+- `webSearchMode=disabled` keeps campaign execution bound to the local prompt and product facts.
+
+The preserved exec fallback mirrors the same policy with CLI config overrides:
 
 ```bash
 codex exec --json --sandbox workspace-write --skip-git-repo-check \
-  --cd <workspace> -m <model> -c model_reasoning_effort="<effort>" -
+  --cd <workspace> \
+  -c approval_policy="never" \
+  -c sandbox_workspace_write.network_access=false \
+  -c web_search="disabled" \
+  -m <model> \
+  -c model_reasoning_effort="<effort>" \
+  -
 ```
 
 Both runtimes use the same prompt, workspace, auth selection, timeout, transcript persistence, manifest validation, changed-file detection, preview inlining, and final receipt fields.
 
+## Auth handling
+
+Promo Studio supports subscription auth and API-key auth without exposing broad host environment state:
+
+- Subscription mode passes `HOME` and optional `CODEX_HOME` so Codex can find existing login state.
+- API-key mode passes only the selected API key as `CODEX_API_KEY`; `OPENAI_API_KEY` is accepted as a fallback source and remapped before the child process starts.
+- `auto` mode tries subscription auth first, then falls back to API-key mode only when the first run fails with an auth-shaped error and an API key exists.
+- Secrets are redacted before transcript, stdout, stderr, and receipt persistence.
+
+## Timeout and event handling
+
+The SDK runner uses `runStreamed()` with an `AbortSignal` tied to `CODEX_TIMEOUT_MS`. Every structured event is serialized as one redacted JSONL line. `turn.failed` and top-level `error` events are treated as failed process results so the harness-neutral runner can reuse the same validation/finalization path as subprocess runtimes.
+
+The transcript includes the SDK `thread.started` event when Codex emits it. Promo Studio treats threads as single-run execution records and does not resume them later.
+
 ## Sandbox and isolation
 
 Codex always runs in `workspace-write` with its working directory set to the isolated storefront copy. The host Next.js app and template source remain outside the writable workspace. Workspaces copy the template files except ignored generated/dependency artifacts (`node_modules`, `dist`, `.DS_Store`) and resolve template tooling from the repository root `node_modules`.
+
+## Doctor command
+
+`npm run codex:doctor` checks the storefront template, the installed SDK/CLI packages, version match, and the SDK native CLI resolver. It also prints auth and exec-fallback setup hints without requiring live Codex credentials.
 
 ## Required receipt
 
