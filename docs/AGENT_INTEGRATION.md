@@ -10,7 +10,7 @@ Promo Studio runs storefront variants through a swappable agent core. The host a
 4. `npm run runs:worker` calls `drainQueuedVariantRunQueue()`, which claims queued rows before invoking the selected adapter:
    - **Codex SDK** — `@openai/codex-sdk` streamed JSONL with explicit non-interactive automation controls
    - **Codex exec** — `codex exec --json` subprocess with mirrored sandbox/config controls
-   - **Pi** — `pi --mode json --session-id <run-id> --session-dir artifacts/pi-sessions` subprocess (prompt on stdin)
+   - **Pi** — `pi --mode json --session-id <run-id> --session-dir artifacts/pi-sessions` subprocess (prompt on stdin, SDK/RPC intentionally not used for host-process isolation)
 5. Events are persisted as JSONL on `VariantRun.transcript`.
 6. The agent must edit source, run `npm test`, `npm run build`, and write `artifact/manifest.json`.
 7. The queued runner validates the manifest against real detected source changes, inlines the built preview, and finalizes the receipt. Stale `running` rows are failed during queue recovery.
@@ -27,7 +27,7 @@ See `.env.example`. Defaults:
 
 - `AGENT_CORE=codex`
 - `CODEX_RUNTIME=sdk`
-- `PI_MODEL=` is blank by default; set it to a Pi model ref such as `cursor/composer-2.5` or `openai-codex/gpt-5.5:low` when you want an env default
+- `PI_MODEL=` is blank by default; set it to a Pi model ref such as `cursor/composer-2.5` or `openai-codex/gpt-5.5:low` when you want an env default. Pi CLI model patterns such as `sonnet:high` are accepted, but full provider/model refs are preferred for deterministic automation.
 
 ## Demo matrix
 
