@@ -3,11 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { paths } from "@/lib/config";
-import {
-	createVariantWorkspace,
-	detectChangedFiles,
-	resolveWorkspacePathForIo,
-} from "@/lib/workspace";
+import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
 
 const createdRunIds: string[] = [];
 
@@ -81,11 +77,5 @@ describe("variant workspace isolation", () => {
 		const changed = await detectChangedFiles(workspace);
 		expect(changed).toContain("src/theme.ts");
 		expect(changed).toContain("src/components/CampaignBanner.tsx");
-	});
-
-	it("maps legacy codex-workspaces paths to agent-workspaces for I/O", () => {
-		expect(
-			resolveWorkspacePathForIo("/repo/codex-workspaces/run-abc/storefront"),
-		).toBe("/repo/agent-workspaces/run-abc/storefront");
 	});
 });

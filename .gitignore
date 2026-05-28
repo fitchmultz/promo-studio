@@ -19,7 +19,6 @@ public/generated-scenes/
 
 agent-workspaces/*
 !agent-workspaces/.gitkeep
-codex-workspaces/*
 
 # private local notes and scratch files
 .private/

@@ -210,17 +210,12 @@ describe("variant run API", () => {
 		});
 	});
 
-	it("normalizes legacy workspace paths in list DTOs", async () => {
-		variantRunFindManyMock.mockResolvedValue([
-			listedRun({
-				workspacePath: "/tmp/codex-workspaces/run-1/storefront",
-			}),
-		]);
+	it("returns stored workspace paths in list DTOs", async () => {
+		const workspacePath = "/tmp/agent-workspaces/run-1/storefront";
+		variantRunFindManyMock.mockResolvedValue([listedRun({ workspacePath })]);
 		const { GET } = await import("@/app/api/variant-runs/route");
 		const response = await GET();
 		const payload = await response.json();
-		expect(payload.runs[0].workspacePath).toBe(
-			"/tmp/agent-workspaces/run-1/storefront",
-		);
+		expect(payload.runs[0].workspacePath).toBe(workspacePath);
 	});
 });

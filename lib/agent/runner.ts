@@ -52,11 +52,7 @@ import {
 	finalizeVariantRun,
 	recoverStaleVariantRuns,
 } from "@/lib/variant-run-queue";
-import {
-	createVariantWorkspace,
-	detectChangedFiles,
-	resolveWorkspacePathForIo,
-} from "@/lib/workspace";
+import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
 
 export type { VariantProcessRunner, VariantSdkRunner } from "@/lib/agent/types";
 export { defaultCodexSdkRunner as defaultSdkRunner } from "@/lib/agent/codex-adapter";
@@ -188,7 +184,7 @@ export async function executeVariantRun(
 	const processRunner = executeOptions.processRunner ?? runProcess;
 	const runRecord = await claimVariantRun(runId);
 	if (!runRecord) return null;
-	const workspacePath = resolveWorkspacePathForIo(runRecord.workspacePath);
+	const workspacePath = runRecord.workspacePath;
 	const runtimeSpec = agentRuntimeSpecFromStoredRun(runRecord);
 	const timeoutMs = agentTimeoutMs(runtimeSpec.core);
 	const initialSelection = resolveCodexSelection(runtimeSpec.requestedAuthMode);

@@ -9,7 +9,7 @@ Promo Studio is a commerce demo: the host Next.js app creates isolated storefron
 - `app/` — Next.js routes for login, studio, run detail, history, proof, and API endpoints.
 - `components/` — Campaign form with agent core/harness picker, activity stream, previews, diffs, receipts.
 - `lib/agent/` — Harness-agnostic runner, Codex/Pi adapters, transcript parsing, invocation descriptors.
-- `lib/workspace.ts` — copies `templates/storefront` into `agent-workspaces/run-<id>/storefront` (legacy DB rows may still say `codex-workspaces`; UI normalizes display).
+- `lib/workspace.ts` — copies `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
 - `templates/storefront/` — Vite storefront template the agent modifies.
 - `tests/` — Vitest coverage including Codex and Pi harness selection.
 
@@ -33,7 +33,7 @@ Receipts store `agentCore`, `agentHarness`, and legacy `codexRuntime` (`sdk`, `e
 
 - Default `npm run dev` uses **webpack** (`next dev --webpack`). Turbopack (`npm run dev:turbo`) can idle at very high CPU in this repo layout (parent `Projects/AI` lockfile + agent workspaces).
 - `turbopack.root` in `next.config.ts` pins the app root for production builds; do not remove it.
-- Generated run artifacts (`agent-workspaces`, `codex-workspaces`, `artifacts`) must stay excluded from Next tracing/watch surfaces.
+- Generated run artifacts (`agent-workspaces`, `artifacts`) must stay excluded from Next tracing/watch surfaces.
 
 ## Operating rules
 

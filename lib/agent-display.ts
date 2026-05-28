@@ -1,7 +1,4 @@
-import {
-	CANONICAL_WORKSPACE_DIR,
-	formatWorkspacePathForDisplay,
-} from "@/lib/workspace-paths";
+import { WORKSPACE_DIR_NAME } from "@/lib/workspace-constants";
 
 /** User-facing strings keyed by agent core (codex | pi). */
 
@@ -78,20 +75,17 @@ export function studioAgentIntroSentence(
 	return `Signed in as ${userName}. ${agent} edits an isolated storefront workspace, streams activity, runs validation, and saves the artifact.`;
 }
 
-/** Normalize legacy on-disk dir name for all UI surfaces (receipts, shell output, lists). */
-export { formatWorkspacePathForDisplay } from "@/lib/workspace-paths";
-
 export function workspacePathForDisplay(
 	_core: AgentCoreId | string,
 	workspacePath: string,
 ): string {
-	return formatWorkspacePathForDisplay(workspacePath);
+	return workspacePath;
 }
 
 /** Shorten shell commands for activity stream (agent-workspaces + drop repo prefix). */
 export function formatShellCommandForDisplay(command: string): string {
-	let normalized = formatWorkspacePathForDisplay(command.trim());
-	const marker = `${CANONICAL_WORKSPACE_DIR}/`;
+	let normalized = command.trim();
+	const marker = `${WORKSPACE_DIR_NAME}/`;
 	const index = normalized.indexOf(marker);
 	if (index >= 0) {
 		normalized = normalized.slice(index);

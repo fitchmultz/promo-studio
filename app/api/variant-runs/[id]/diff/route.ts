@@ -4,7 +4,7 @@ import { buildDiffEntries } from "@/lib/diff";
 import { prisma } from "@/lib/db";
 import { parseStringArrayJson } from "@/lib/json";
 import { variantRunDiffSelect } from "@/lib/variant-run-dto";
-import { detectChangedFiles, resolveWorkspacePathForIo } from "@/lib/workspace";
+import { detectChangedFiles } from "@/lib/workspace";
 
 export async function GET(
 	_request: Request,
@@ -22,14 +22,13 @@ export async function GET(
 		return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 	}
 
-	const workspacePath = resolveWorkspacePathForIo(run.workspacePath);
 	const persistedChangedFiles = parseStringArrayJson(run.changedFiles);
 	const changedFiles =
 		run.status === "queued" || run.status === "running"
-			? await detectChangedFiles(workspacePath)
+			? await detectChangedFiles(run.workspacePath)
 			: persistedChangedFiles;
 	const diffs = changedFiles.length
-		? await buildDiffEntries(workspacePath, changedFiles)
+		? await buildDiffEntries(run.workspacePath, changedFiles)
 		: [];
 
 	return NextResponse.json({ status: run.status, changedFiles, diffs });

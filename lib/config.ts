@@ -8,6 +8,7 @@ import {
 } from "@/lib/pi-runtime-config";
 import { z } from "zod";
 import { toProcessEnv } from "@/lib/process-env";
+import { WORKSPACE_DIR_NAME } from "@/lib/workspace-constants";
 
 export {
 	normalizePiModel,
@@ -111,7 +112,7 @@ export const paths = {
 	artifacts: path.join(projectRoot, "artifacts"),
 	piSessions: piSessionsPath(projectRoot),
 	templateStorefront: path.join(projectRoot, "templates", "storefront"),
-	workspaces: path.join(projectRoot, "agent-workspaces"),
+	workspaces: path.join(projectRoot, WORKSPACE_DIR_NAME),
 };
 
 export function agentTimeoutMs(core: AgentCore): number {

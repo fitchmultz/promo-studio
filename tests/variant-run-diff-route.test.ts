@@ -33,12 +33,13 @@ describe("variant run diff API", () => {
 		vi.mocked(prisma.variantRun.findUnique).mockReset();
 	});
 
-	it("resolves legacy workspace paths before diffing", async () => {
+	it("diffs using the stored workspace path", async () => {
+		const workspacePath = "/repo/agent-workspaces/run-1/storefront";
 		vi.mocked(prisma.variantRun.findUnique).mockResolvedValue({
 			id: "run-1",
 			userId: "user-1",
 			status: "succeeded",
-			workspacePath: "/repo/codex-workspaces/run-1/storefront",
+			workspacePath,
 			changedFiles: '["src/theme.ts"]',
 		} as never);
 		buildDiffEntriesMock.mockResolvedValue([
@@ -50,10 +51,9 @@ describe("variant run diff API", () => {
 		});
 
 		expect(response.status).toBe(200);
-		expect(buildDiffEntriesMock).toHaveBeenCalledWith(
-			"/repo/agent-workspaces/run-1/storefront",
-			["src/theme.ts"],
-		);
+		expect(buildDiffEntriesMock).toHaveBeenCalledWith(workspacePath, [
+			"src/theme.ts",
+		]);
 	});
 
 	it("returns 403 for non-owner viewers", async () => {

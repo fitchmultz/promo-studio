@@ -134,6 +134,11 @@ function transcript() {
 }
 
 async function main() {
+	const { migrateLegacyWorkspaceDirs, migrateLegacyWorkspaceRecords } =
+		await import("@/lib/workspace-migrate");
+	await migrateLegacyWorkspaceRecords();
+	await migrateLegacyWorkspaceDirs();
+
 	const workspace = await createSeededWorkspace();
 	const passwordHash = await bcrypt.hash("promo-studio", 10);
 	const user = await prisma.user.upsert({

@@ -16,7 +16,7 @@ describe("activity-path helpers", () => {
 	it("shortens Codex file_change paths consistently", () => {
 		expect(
 			shortenCodexFileChangePath(
-				"/repo/codex-workspaces/run-abc/storefront/src/theme.ts",
+				"/repo/agent-workspaces/run-abc/storefront/src/theme.ts",
 			),
 		).toBe("src/theme.ts");
 	});
