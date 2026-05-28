@@ -18,7 +18,7 @@ Promo Studio is a commerce demo: the host Next.js app creates isolated storefron
 | Env / form | Values |
 |------------|--------|
 | `AGENT_CORE` / `agentCore` | `codex` (default), `pi` |
-| `AGENT_HARNESS` / `agentHarness` | Codex: `sdk`, `exec` — Pi: `json` |
+| `agentHarness` (form / stored run) | Codex: `sdk`, `exec` — Pi: `json` (`CODEX_RUNTIME` env default for Codex) |
 | Codex model / effort | `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, form `model`, `reasoningEffort` |
 | Pi model | `PI_MODEL`, form `model` — `provider/model` or `provider/model:thinking` |
 

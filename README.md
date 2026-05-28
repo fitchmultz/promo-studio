@@ -1,45 +1,38 @@
-# Promo Studio — Multi-Harness Commerce Demo
+# Promo Studio
 
-Promo Studio helps commerce teams and evaluators see how **Codex** or **Pi** can turn a campaign brief into a tested, reviewable storefront variant instead of a throwaway text mockup. Switch agent core, harness (SDK vs CLI), and model from the studio form or `.env`.
+Promo Studio turns a campaign brief into a **tested, reviewable storefront variant** using **Codex** (TypeScript SDK or `codex exec`) or **Pi** (`pi --mode json`) in an isolated workspace—with live activity, validation, and a durable receipt.
 
 [![Watch the Promo Studio walkthrough](https://img.youtube.com/vi/zPRLtiP8v7w/maxresdefault.jpg)](https://youtu.be/zPRLtiP8v7w)
 
 ## What you are seeing
 
-A user picks a campaign goal for the Ribbed Market Tote, clicks **Create Variant**, and Promo Studio runs the selected agent as a commerce code agent:
+A user picks a campaign goal for the Ribbed Market Tote, clicks **Create Variant**, and Promo Studio:
 
-- The selected agent receives a real software task, not a copywriting prompt.
-- A fresh storefront workspace is copied from `templates/storefront` for that run.
-- The agent is instructed to edit source files, run `npm test`, run `npm run build`, and write a manifest that reports the outcome.
-- Promo Studio streams the JSONL activity, stores the after-preview HTML, changed-file list, transcript, validation result, and receipt, then renders the preview and diff for review.
-
-The payoff is a bounded agent workflow: useful creative output, plus the evidence needed to trust and review what changed.
+1. Copies `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
+2. Runs the selected agent harness with a real software task (edit code, test, build, manifest).
+3. Streams JSONL activity on `/runs/<id>` while the worker executes.
+4. Accepts the run only when tests, build, commerce invariants, and safe changed files pass.
+5. Stores preview HTML, diff, transcript, and receipt for review.
 
 ## Who this is for
 
-- **Evaluators and reviewers** who want proof that the demo uses Codex or Pi to modify and validate code, not just generate UI text.
-- **Commerce and growth teams** exploring safe campaign-page iteration with human review before publish.
-- **Developers** looking for a compact pattern for agent workspaces, live observability, validation gates, and durable receipts.
+- **Evaluators** who need proof of code edits, not mock copy.
+- **Commerce teams** exploring campaign-page iteration with audit trails.
+- **Developers** who want a compact pattern for agent workspaces, streaming, validation, and receipts.
 
-## The problem
+## Agent harnesses
 
-AI commerce demos often stop at a generated paragraph or a static mockup. That is hard to trust because the reviewer cannot see what files changed, whether the storefront still builds, or whether product facts were preserved.
+| Core | Harness | Runtime |
+|------|---------|---------|
+| `codex` | `sdk` (default) | `@openai/codex-sdk` streamed JSONL |
+| `codex` | `exec` | `codex exec --json` subprocess |
+| `pi` | `json` | `pi --mode json` with run-scoped `--session-id` |
 
-Promo Studio treats each campaign request as an isolated code run with visible proof: transcript, changed files, tests, build, manifest, preview HTML, and receipt.
+Pick **agent core**, **harness**, and **model** in the studio UI (gear icon) or via `.env` defaults. See [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md) for the full contract.
 
-## What it does
+## Quick start (no live agent required)
 
-| Reader doubt | Promo Studio capability | Proof in this repo |
-| --- | --- | --- |
-| "Did Codex actually edit code?" | Creates `agent-workspaces/run-<id>/storefront` and runs the selected harness with write access to that isolated copy. | `lib/workspace.ts`, `lib/agent/runner.ts`, `/runs/<id>` transcript and diff tabs |
-| "Can I see the agent work live?" | Normalizes streamed Codex/Pi events into JSONL and renders them while the run is active. | `components/ActivityStream.tsx`, persisted `VariantRun.transcript` |
-| "Did the variant keep commerce facts intact?" | Accepts a run only when the manifest reports tests, build, and invariants passed; required commands are present; and changed-file paths are safe. | `templates/storefront/tests/`, `lib/validation.ts`, receipt validation panel |
-| "Can a reviewer audit the result later?" | Stores runtime, auth mode, model, reasoning effort, prompt, transcript, changed files, manifest, preview HTML, and validation outcome. | `/proof`, `components/RunReceipt.tsx`, `docs/CODEX_INTEGRATION.md` |
-| "Is this easy to inspect locally?" | Seeds a demo user, product, and completed example receipt so the review UI works before a live agent run. | `prisma/seed.ts`, `npm run setup`, `/proof` |
-
-## Fastest way to see it work
-
-Prerequisites: Node.js `>=22.19.0 <27` and npm. The seeded proof path does not require a `.env` file or live agent credentials.
+**Prerequisites:** Node.js `>=22.19.0 <27`, npm.
 
 ```bash
 npm install
@@ -47,46 +40,72 @@ npm run setup
 npm run dev
 ```
 
-Open the URL printed by Next.js, then sign in:
+Sign in at the URL Next.js prints (usually `http://localhost:3000`):
 
-- Email: `demo@promostudio.test`
-- Password: `promo-studio`
+| Field | Value |
+|-------|-------|
+| Email | `demo@promostudio.test` |
+| Password | `promo-studio` |
 
-Fastest proof path after login:
+Then:
 
-1. Open `/proof` to inspect the seeded execution receipt.
-2. Open `/studio` to see the product, campaign brief presets, and **Create Variant** flow.
-3. Open `/runs/seeded-demo-variant` or `/history` to inspect preview, code diff, validation, and transcript tabs.
+1. **`/proof`** — seeded execution receipt (fastest trust path).
+2. **`/studio`** — product, brief presets, **Create Variant** form.
+3. **`/runs/seeded-demo-variant`** or **`/history`** — preview, diff, validation, transcript.
 
-Expected local result: the app starts with a seeded Ribbed Market Tote product and a completed `seeded-demo-variant` receipt. Creating a new live agent variant also requires a working local Codex auth setup or Pi CLI/model configuration.
+The seeded proof path does not require Codex or Pi credentials.
 
-Dependency boundary: run `npm install` once at the repository root. Isolated storefront workspaces copy the template files except ignored generated/dependency artifacts (`node_modules`, `dist`, `.DS_Store`) and resolve Vite, Vitest, React, and other template tooling from the root `node_modules`; do not run per-workspace installs unless you intentionally change that boundary.
+**Dependency boundary:** run `npm install` only at the repo root. Agent workspaces copy the storefront template and resolve Vite/Vitest/React from root `node_modules` (see [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md)).
 
-## Run a live agent variant
+## Run a live variant (all three harnesses)
 
-After setup, start a worker in a second terminal, then go to `/studio`, choose a campaign goal, optionally edit the brief, and click **Create Variant**.
+Live runs need **two terminals** plus the browser:
 
 ```bash
+# Terminal 1 — web app
+npm run dev
+
+# Terminal 2 — claims queued runs and executes agents
 npm run runs:worker
 ```
 
-The web app creates a queued run receipt; the worker claims queued runs and finalizes them. A live run is designed to:
+In the browser: **`/studio`** → choose agent settings → **Create Variant** → watch **`/runs/<id>`** (activity stream updates while `runs:worker` is running).
 
-1. Copy `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
-2. Run Codex through the TypeScript SDK by default, or Pi through `pi --mode json` with an explicit run-scoped session ID when selected.
-3. Stream activity to the run page.
-4. Instruct the agent to run `npm test` and `npm run build` in the storefront workspace.
-5. Validate `artifact/manifest.json` and changed files.
-6. Persist the after-preview HTML, changed-file list, transcript, prompt, manifest, and receipt, then render the before/after preview and code diff.
+### Configuration
 
-Agent runtime settings:
+Copy `.env.example` to `.env` when you need overrides. Common variables:
 
-- `CODEX_RUNTIME=sdk` is the default.
-- `CODEX_RUNTIME=exec` preserves the direct `codex exec` fallback.
-- `CODEX_AUTH_MODE` supports `auto`, `subscription`, and `api-key`.
-- Subscription mode expects a working local Codex login.
-- API-key mode requires `CODEX_AUTH_MODE=api-key` plus `CODEX_API_KEY` or `OPENAI_API_KEY`.
-- `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_TIMEOUT_MS` tune Codex runs. `PI_MODEL` accepts Pi `--model` values (full `provider/model[:thinking]` refs are preferred) and `PI_TIMEOUT_MS` tunes Pi runs.
+| Variable | Purpose |
+|----------|---------|
+| `AGENT_CORE` | Default `codex` or `pi` |
+| `CODEX_RUNTIME` | `sdk` (default) or `exec` |
+| `CODEX_AUTH_MODE` | `auto`, `subscription`, or `api-key` |
+| `CODEX_MODEL`, `CODEX_REASONING_EFFORT` | Codex model and effort |
+| `PI_MODEL` | Pi model ref (`provider/model` or `provider/model:thinking`) |
+| `CODEX_API_KEY` / `OPENAI_API_KEY` | API-key Codex auth |
+| `CODEX_TIMEOUT_MS`, `PI_TIMEOUT_MS` | Per-core timeouts (default 300000) |
+
+**Doctors** (run before debugging live agents):
+
+```bash
+npm run agent:doctor    # workspace + template
+npm run codex:doctor    # Codex SDK / exec
+npm run pi:doctor       # Pi JSON CLI
+```
+
+### Verify all harnesses (optional)
+
+With `dev` + `runs:worker` running:
+
+```bash
+npm run agent:harness-http-e2e
+```
+
+Runner-only smoke (no HTTP; uses `dev.db`):
+
+```bash
+DATABASE_URL=file:./dev.db npm run agent:harness-e2e
+```
 
 ## Proof and verification
 
@@ -96,97 +115,59 @@ Full local gate:
 npm run validate
 ```
 
-`npm run validate` resets and seeds the local database, runs typecheck, format check, lint, Vitest, and a production Next.js build.
-
-Storefront-only gate (uses the root `node_modules`; do not install inside the template/workspace):
+Storefront template only:
 
 ```bash
 npm --prefix templates/storefront test
 npm --prefix templates/storefront run build
 ```
 
-The storefront template protects these commerce invariants:
-
-- Price: `$42.00`
-- SKU: `RMT-001`
-- Inventory: `3`
-- Cart API returns the same SKU, quantity, and unit price
-- Original tote image remains visible and unmodified
+Commerce invariants enforced in the template: price `$42.00`, SKU `RMT-001`, inventory `3`, cart API consistency, original product image unchanged.
 
 ## How it works
 
 ```text
-POST /api/variant-runs
-  -> authenticate and check same-origin POST
-  -> copy templates/storefront into agent-workspaces/run-<id>/storefront
-  -> build a campaign-specific software task prompt
-  -> enqueue a durable VariantRun row
-npm run runs:worker
-  -> claim queued runs and run the selected agent harness in the isolated storefront workspace
-  -> persist streamed JSONL transcript lines
-  -> validate manifest-reported tests/build/invariants plus safe changed files
-  -> inline the built preview HTML
-  -> render run evidence in /runs/<id>, /history, and /proof
+POST /api/variant-runs  →  enqueue VariantRun (queued)
+npm run runs:worker     →  claim run → agent harness → JSONL transcript
+                        →  validate manifest + changed files → preview + receipt
+GET /api/variant-runs/[id]  →  live poll (status + recent events)
 ```
 
-Key implementation choices:
-
-- **Isolation first** — each run modifies a copied storefront, never the host app or source template.
-- **One receipt per run** — the database stores enough execution context to review the run after the fact.
-- **Validation before trust** — accepted variants must produce a manifest reporting passing tests, build, and commerce-invariant checks, then pass schema and changed-file validation.
-- **SDK default, CLI fallback** — `@openai/codex-sdk` is the default runtime, with a preserved `codex exec` path for environments that need it.
-- **Deterministic Pi sessions** — Pi JSON runs use the variant run ID as `--session-id` and store session files under gitignored `artifacts/pi-sessions/` for automation auditability without polluting storefront diffs.
-
-See `docs/CODEX_INTEGRATION.md` for the runtime contract and required manifest shape.
-
-## Current status and limits
-
-What is working today:
-
-- Local Next.js app with seeded auth, product, and example receipt.
-- Isolated storefront workspace creation and change detection.
-- Codex SDK runtime with `codex exec` fallback, plus Pi JSON CLI support.
-- Live transcript rendering, run history, diff view, before/after preview, and admin proof page.
-- Tests for auth, routes, config, workspace isolation, runner lifecycle, validation, and UI rendering.
-
-Boundaries to know before production use:
-
-- This is a local demo app backed by SQLite, not a hosted multi-tenant production service.
-- Live variant creation depends on local Codex or Pi credentials and network/runtime availability.
-- Generated workspaces are local artifacts under `agent-workspaces/` and can be cleared with `npm run reset:workspaces`.
-- The storefront is intentionally small so the agent change, validation path, and review surface stay easy to inspect.
+**Design choices:** isolated workspaces per run, one receipt per run, validation before trust, SDK-default Codex with exec fallback, Pi sessions under `artifacts/pi-sessions/` (gitignored).
 
 ## Project map
 
 | Path | Purpose |
-| --- | --- |
-| `app/` | Next.js routes for login, studio, run detail, history, proof, and API endpoints |
-| `components/` | Campaign form, live activity stream, before/after preview, diff, receipt, and run history UI |
-| `lib/agent/` | Harness-neutral runner plus Codex/Pi adapters, JSONL streaming, manifest parsing, validation, and persistence |
-| `lib/workspace.ts` | Storefront workspace copy and changed-file detection |
-| `lib/validation.ts` | Manifest schema, safe path checks, forbidden changed files, and receipt summary |
-| `prisma/` | SQLite schema and seeded demo user, product, and example run |
-| `templates/storefront/` | Vite storefront template that the agent modifies during each isolated run |
-| `tests/` | Vitest coverage for auth, routes, config, workspace isolation, runner lifecycle, validation, and UI rendering |
-| `docs/CODEX_INTEGRATION.md` | Codex runtime flow, sandbox contract, and receipt requirements |
+|------|---------|
+| `app/` | Login, studio, run detail, history, proof, API routes |
+| `components/` | Campaign form, activity stream, previews, diffs, receipts |
+| `lib/agent/` | Runner, Codex/Pi adapters, transcript, validation |
+| `lib/workspace.ts` | Workspace copy and change detection |
+| `templates/storefront/` | Vite storefront the agent edits |
+| `tests/` | Vitest (routes, runner, validation, UI) |
+| `docs/AGENT_INTEGRATION.md` | Harness-agnostic integration |
+| `docs/CODEX_INTEGRATION.md` | Codex-specific details |
+| `docs/PI_INTEGRATION.md` | Pi-specific details |
 
-## Useful scripts
+## Scripts
 
-```bash
-npm run setup              # reset local SQLite DB and seed demo data
-npm run dev                # start Next.js dev server; Next.js falls forward if port 3000 is busy
-npm run typecheck          # generate Prisma/Next types and run TypeScript checks
-npm run lint               # run Biome lint
-npm test                   # reset test DB, seed, and run Vitest
-npm run build              # production build check
-npm run validate           # full local gate
-npm run reset:workspaces   # remove generated agent workspaces
-npm run runs:worker        # claim and execute queued variant runs
-npm run codex:doctor       # verify local Codex SDK/exec setup
-npm run pi:doctor          # verify local Pi JSON harness setup
-npm run demo:zip           # zip git-tracked demo files only
-```
+| Command | Purpose |
+|---------|---------|
+| `npm run setup` | Reset SQLite DB and seed demo data |
+| `npm run dev` | Next.js dev server (webpack; use `dev:turbo` only if you accept higher CPU) |
+| `npm run runs:worker` | Execute queued variant runs (**required for live variants**) |
+| `npm run validate` | DB + typecheck + lint + test + build |
+| `npm run reset:workspaces` | Remove generated `agent-workspaces/` trees |
+| `npm run agent:harness-e2e` | Live E2E: Codex SDK, exec, Pi (runner path) |
+| `npm run agent:harness-http-e2e` | Live E2E via HTTP + worker |
+| `npm run codex:doctor` / `npm run pi:doctor` | Harness setup checks |
 
-## Next action
+## Limits
 
-Run the quick start, sign in with the seeded demo account, and open `/proof` first. It shows the receipt shape that every live agent variant must earn before you inspect or share the generated storefront.
+- Local SQLite demo, not multi-tenant production.
+- Live runs depend on local Codex auth and/or Pi CLI configuration.
+- Generated artifacts live under `agent-workspaces/` and `artifacts/`; clear with `reset:workspaces` when needed.
+
+## Next step
+
+Run the quick start, open **`/proof`**, then start **`runs:worker`** and create a live variant from **`/studio`** with each harness you care about.
