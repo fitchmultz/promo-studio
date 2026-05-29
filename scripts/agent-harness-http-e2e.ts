@@ -6,6 +6,10 @@
  * Prereq:
  *   npm run dev
  */
+import {
+	CURSOR_DEFAULT_SETTINGS_MODEL,
+	PI_DEFAULT_SETTINGS_MODEL,
+} from "../lib/agent-defaults";
 import { cursorApiKeyConfigured } from "../lib/config";
 
 const BASE = process.env.PROMO_STUDIO_BASE_URL ?? "http://localhost:3000";
@@ -55,9 +59,9 @@ async function createRun(cookie: string, testCase: (typeof CASES)[number]) {
 		authMode: "auto",
 		model:
 			testCase.agentCore === "cursor"
-				? "composer-2.5-fast"
+				? CURSOR_DEFAULT_SETTINGS_MODEL
 				: testCase.agentCore === "pi"
-					? "cursor/composer-2.5"
+					? PI_DEFAULT_SETTINGS_MODEL
 					: "",
 		reasoningEffort: "",
 	});
