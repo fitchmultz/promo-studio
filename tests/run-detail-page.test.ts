@@ -30,6 +30,7 @@ vi.mock("@/components/RunTranscriptPanel", () => ({
 }));
 vi.mock("@/components/RunLiveProvider", () => ({
 	RunLiveProvider: ({ children }: { children: ReactNode }) => children,
+	useOptionalRunLiveState: () => undefined,
 }));
 vi.mock("@/components/RunDetailTabs", () => ({
 	RunDetailTabs: () => "TABS_MARKER",
@@ -45,7 +46,9 @@ vi.mock("@/lib/agent/transcript", () => ({
 }));
 vi.mock("@/lib/agent/transcript-store", () => ({
 	resolveFullTranscript: async (_id: string, db: string) => db,
+	readLiveTranscriptForPoll: async (_id: string) => "",
 	runTranscriptFileByteLength: async () => null,
+	transcriptBodyForPoll: (full: string) => full,
 }));
 vi.mock("@/lib/storefront-baseline", () => ({
 	renderStorefrontBaselineHtml: async () => "<html>baseline</html>",

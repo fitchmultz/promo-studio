@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { transcriptBodyForDb } from "@/lib/agent/transcript-store";
+import {
+	transcriptBodyForDb,
+	transcriptBodyForPoll,
+} from "@/lib/agent/transcript-store";
 import {
 	appendLimited,
 	MAX_DB_TRANSCRIPT_CHARS,
@@ -26,6 +29,26 @@ describe("transcript capture buffers", () => {
 		expect(tailed).not.toContain("[promo-studio:");
 		expect(tailed).toContain('"n":49');
 		expect(parseAgentEvents(tailed).length).toBeGreaterThan(0);
+	});
+
+	it("tailJsonlForPoll drops one oversized line to preserve JSONL shape", () => {
+		const hugeLine = `{"type":"message_update","payload":"${"x".repeat(900_000)}"}`;
+		const tailed = tailJsonlForPoll(`${hugeLine}\n`, 800_000);
+		expect(tailed).toBe("");
+		expect(parseAgentEvents(tailed)).toEqual([]);
+	});
+
+	it("transcriptBodyForPoll caps live API traces", () => {
+		const lines = Array.from(
+			{ length: 20_000 },
+			(_, index) =>
+				`{"type":"message_update","payload":"${"x".repeat(60)}","n":${index}}`,
+		);
+		const huge = `${lines.join("\n")}\n`;
+		const live = transcriptBodyForPoll(huge);
+		expect(live.length).toBeLessThan(huge.length);
+		expect(live).toContain('"n":19999');
+		expect(live).not.toContain('"n":0');
 	});
 
 	it("transcriptBodyForDb stores full text when under cap", () => {

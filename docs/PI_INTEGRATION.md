@@ -1,6 +1,8 @@
-# Pi Integration
+# Pi integration
 
-Promo Studio runs storefront variants by spawning **`pi --mode json`** in the isolated workspace. The campaign prompt is sent on **stdin** (same as piping into `pi`). JSON CLI mode remains the canonical harness because the agent process stays isolated from the host Next.js process while still streaming Pi session events as JSONL.
+> **Multi-agent context:** Promo Studio supports Codex, Pi, and Cursor SDK on the same runner and receipt pipeline. This document covers **Pi only**. Start with [AGENT_INTEGRATION.md](./AGENT_INTEGRATION.md) for the shared architecture.
+
+When `agentCore=pi`, Promo Studio runs storefront variants by spawning **`pi --mode json`** in the isolated workspace. The campaign prompt is sent on **stdin** (same as piping into `pi`). JSON CLI mode remains the canonical harness because the agent process stays isolated from the host Next.js process while still streaming Pi session events as JSONL.
 
 ## Invocation
 

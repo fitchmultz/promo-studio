@@ -15,6 +15,7 @@ import {
 	DEFAULT_AGENT_SETTINGS,
 	normalizeAgentSettings,
 } from "@/lib/agent-settings-shared";
+import { agentCoreDefinition } from "@/lib/agent/definitions";
 
 interface AgentSettingsContextValue {
 	settings: AgentSettings;
@@ -68,9 +69,9 @@ export function AgentSettingsProvider({
 			setSettings((current) => {
 				const next = normalizeAgentSettings({ ...current, ...patch });
 				if (patch.agentCore && patch.agentCore !== current.agentCore) {
-					next.agentHarness = patch.agentCore === "pi" ? "json" : "sdk";
-					next.model =
-						patch.agentCore === "pi" ? "cursor/composer-2.5" : "codex-default";
+					const definition = agentCoreDefinition(patch.agentCore);
+					next.agentHarness = definition.defaultHarness;
+					next.model = definition.defaultModel;
 				}
 				persistExplicitUpdate(next);
 				return next;

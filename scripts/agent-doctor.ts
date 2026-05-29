@@ -7,7 +7,7 @@ function help() {
 
 Usage: npm run agent:doctor
 
-Checks template, Codex CLI, and Pi CLI inputs for live variant runs.
+Checks shared template/workspace inputs for live variant runs (all agent cores).
 
 Exit codes:
   0  Required local inputs exist or help shown
@@ -35,6 +35,6 @@ for (const [label, target] of checks) {
 }
 
 console.log(
-	"\nRun npm run codex:doctor and npm run pi:doctor for harness-specific checks.",
+	"\nRun npm run codex:doctor, npm run pi:doctor, and npm run cursor:doctor for harness-specific checks.",
 );
 process.exit(failed ? 1 : 0);

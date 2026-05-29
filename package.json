@@ -1,7 +1,7 @@
 {
 	"name": "promo-studio",
 	"version": "1.0.0",
-	"description": "Commerce demo with swappable Codex and Pi agent harnesses for isolated storefront variants",
+	"description": "Multi-agent commerce demo: Codex, Pi, and Cursor SDK harnesses for isolated storefront variants with shared validation and receipts",
 	"private": true,
 	"engines": {
 		"node": ">=22.19.0 <27"
@@ -19,6 +19,8 @@
 		"agent:harness-http-e2e": "tsx scripts/agent-harness-http-e2e.ts",
 		"codex:doctor": "tsx scripts/codex-doctor.ts",
 		"pi:doctor": "tsx scripts/pi-doctor.ts",
+		"cursor:doctor": "tsx scripts/cursor-doctor.ts",
+		"cursor:smoke": "tsx scripts/cursor-smoke-gate.ts",
 		"codex:smoke": "tsx scripts/codex-smoke-gate.ts",
 		"codex:check": "tsx scripts/check-codex.ts",
 		"codex:app-smoke": "tsx scripts/codex-app-smoke.ts",
@@ -39,8 +41,9 @@
 	"license": "MIT",
 	"type": "module",
 	"dependencies": {
-		"@earendil-works/pi-coding-agent": "^0.76.0",
-		"@openai/codex-sdk": "^0.134.0",
+		"@cursor/sdk": "^1.0.16",
+		"@earendil-works/pi-coding-agent": "^0.77.0",
+		"@openai/codex-sdk": "^0.135.0",
 		"@prisma/adapter-better-sqlite3": "^7.8.0",
 		"@prisma/client": "^7.8.0",
 		"bcryptjs": "^3.0.3",
@@ -65,7 +68,11 @@
 	},
 	"overrides": {
 		"postcss": "8.5.15",
-		"@hono/node-server": "1.19.13"
+		"@hono/node-server": "1.19.13",
+		"sqlite3": "^6.0.1",
+		"@connectrpc/connect-node": {
+			"undici": "^6.24.0"
+		}
 	},
 	"packageManager": "npm@11.16.0"
 }

@@ -1,5 +1,13 @@
 import { z } from "zod";
 import {
+	CODEX_DEFAULT_MODEL,
+	CODEX_DEFAULT_REASONING_EFFORT,
+} from "@/lib/agent-defaults";
+import {
+	defaultHarnessForCore,
+	defaultModelForCore,
+} from "@/lib/agent/definitions";
+import {
 	resolveAgentRuntimeSpec,
 	type AgentRuntimeSpecInput,
 } from "@/lib/agent/runtime-spec";
@@ -12,7 +20,7 @@ import {
 export type { AgentSettings } from "@/lib/agent-settings-shared";
 
 const AgentSettingsPayloadSchema = z.object({
-	agentCore: z.enum(["codex", "pi"]),
+	agentCore: z.enum(["codex", "pi", "cursor"]),
 	agentHarness: z.string(),
 	model: z.string(),
 	reasoningEffort: z.string(),
@@ -37,17 +45,27 @@ export function agentSettingsFromRuntimeSpec(
 	if (runtimeSpec.core === "pi") {
 		return {
 			agentCore: "pi",
-			agentHarness: "json",
-			model: runtimeSpec.requestedModel || "pi-default",
-			reasoningEffort: "codex-default",
-			authMode: runtimeSpec.requestedAuthMode,
+			agentHarness: defaultHarnessForCore("pi"),
+			model: runtimeSpec.requestedModel || defaultModelForCore("pi"),
+			reasoningEffort: CODEX_DEFAULT_REASONING_EFFORT,
+			authMode: "auto",
+		};
+	}
+	if (runtimeSpec.core === "cursor") {
+		return {
+			agentCore: "cursor",
+			agentHarness: defaultHarnessForCore("cursor"),
+			model: runtimeSpec.requestedModel || defaultModelForCore("cursor"),
+			reasoningEffort: CODEX_DEFAULT_REASONING_EFFORT,
+			authMode: "auto",
 		};
 	}
 	return {
 		agentCore: "codex",
 		agentHarness: runtimeSpec.harness,
-		model: runtimeSpec.requestedModel || "codex-default",
-		reasoningEffort: runtimeSpec.requestedEffort || "codex-default",
+		model: runtimeSpec.requestedModel || CODEX_DEFAULT_MODEL,
+		reasoningEffort:
+			runtimeSpec.requestedEffort || CODEX_DEFAULT_REASONING_EFFORT,
 		authMode: runtimeSpec.requestedAuthMode,
 	};
 }

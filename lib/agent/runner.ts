@@ -2,23 +2,16 @@ import { randomUUID } from "node:crypto";
 import type { Product, User } from "@prisma/client";
 import {
 	agentTimeoutMs,
-	CODEX_DEFAULT_MODEL,
-	CODEX_DEFAULT_REASONING_EFFORT,
 	type CodexAuthMode,
-	PI_DEFAULT_MODEL,
 	redactSecrets,
 } from "@/lib/config";
 import { prisma } from "@/lib/db";
-import {
-	defaultCodexSdkRunner,
-	resolveCodexSelection,
-	runCodexWithFallback,
-} from "@/lib/agent/codex-adapter";
+import { agentDisplayName } from "@/lib/agent/definitions";
 import {
 	agentSummary,
 	buildInvocationDescriptor,
 } from "@/lib/agent/invocation";
-import { runPiRuntime } from "@/lib/agent/pi-adapter";
+import { agentRuntimeDefinition } from "@/lib/agent/registry";
 import {
 	appendLimited,
 	MAX_POLL_TRANSCRIPT_CHARS,
@@ -39,23 +32,35 @@ import type {
 } from "@/lib/agent/types";
 import type { AgentRuntimeSpec } from "@/lib/agent/types";
 import {
+	agentRuntimePersistenceFields,
 	agentRuntimeSpecFromStoredRun,
 	resolveAgentRuntimeSpec,
 	resolveAgentRuntimeSpecFromForm,
 } from "@/lib/agent/runtime-spec";
 import { inlineBuiltPreview } from "@/lib/storefront-preview";
 import { readVariantManifest, validateVariantReceipt } from "@/lib/validation";
+import {
+	scheduleVariantRunExecution,
+	type VariantRunScheduler,
+} from "@/lib/agent/schedule-variant-run";
 import { buildVariantPrompt } from "@/lib/variant-prompt";
 import {
 	claimVariantRun,
 	drainQueuedVariantRunQueue as drainQueue,
 	finalizeVariantRun,
-	recoverStaleVariantRuns,
 } from "@/lib/variant-run-queue";
 import { createVariantWorkspace, detectChangedFiles } from "@/lib/workspace";
 
-export type { VariantProcessRunner, VariantSdkRunner } from "@/lib/agent/types";
+export type {
+	VariantCursorSdkRunner,
+	VariantProcessRunner,
+	VariantSdkRunner,
+} from "@/lib/agent/types";
 export { defaultCodexSdkRunner as defaultSdkRunner } from "@/lib/agent/codex-adapter";
+export {
+	defaultCursorSdkRunner,
+	runCursorRuntime,
+} from "@/lib/agent/cursor-adapter";
 export { recoverStaleVariantRuns } from "@/lib/variant-run-queue";
 
 async function persistTranscript(runId: string, transcript: string) {
@@ -71,11 +76,14 @@ function agentFailureMessage(
 		code: number | null;
 		timedOut: boolean;
 	},
+	stderr = "",
 ) {
-	const name = core === "pi" ? "Pi" : "Codex";
+	const name = agentDisplayName(core);
 	if (result.timedOut) {
 		return `${name} timed out before completing the storefront variant.`;
 	}
+	const detail = stderr.trim().split(/\r?\n/).find(Boolean);
+	if (detail) return `${name} failed: ${detail}`;
 	return `${name} exited with code ${result.code ?? "unknown"}.`;
 }
 
@@ -84,18 +92,6 @@ export async function drainQueuedVariantRunQueue(
 	limit = 5,
 ) {
 	return drainQueue(executeVariantRun, options, limit);
-}
-
-function storedRequestedModel(runtimeSpec: AgentRuntimeSpec) {
-	if (runtimeSpec.core === "pi") {
-		return runtimeSpec.requestedModel || PI_DEFAULT_MODEL;
-	}
-	return runtimeSpec.requestedModel || CODEX_DEFAULT_MODEL;
-}
-
-function storedRequestedEffort(runtimeSpec: AgentRuntimeSpec) {
-	if (runtimeSpec.core === "pi") return runtimeSpec.selectedEffort;
-	return runtimeSpec.requestedEffort || CODEX_DEFAULT_REASONING_EFFORT;
 }
 
 export async function createVariantRun(params: {
@@ -109,6 +105,10 @@ export async function createVariantRun(params: {
 	runtimeSpec?: AgentRuntimeSpec;
 	agentCore?: AgentCore;
 	agentHarness?: AgentHarness;
+	/** When true (default), claim and run the agent without blocking the caller. */
+	autoExecute?: boolean;
+	executeOptions?: ExecuteVariantRunOptions;
+	scheduler?: VariantRunScheduler;
 }) {
 	const runtimeSpec =
 		params.runtimeSpec ??
@@ -119,16 +119,8 @@ export async function createVariantRun(params: {
 			model: params.requestedModel,
 			effort: params.requestedEffort,
 		});
-	const selection = resolveCodexSelection(runtimeSpec.requestedAuthMode);
-	if (
-		runtimeSpec.core === "codex" &&
-		selection.selectedMode === "api-key" &&
-		selection.keySource === "none"
-	) {
-		throw new Error(
-			"API-key mode requested, but neither CODEX_API_KEY nor OPENAI_API_KEY is configured.",
-		);
-	}
+	const runtimeDefinition = agentRuntimeDefinition(runtimeSpec.core);
+	runtimeDefinition.validateBeforeCreate?.(runtimeSpec);
 
 	const runId = randomUUID();
 	const workspace = await createVariantWorkspace(runId);
@@ -149,6 +141,7 @@ export async function createVariantRun(params: {
 		selectedEffort: runtimeSpec.selectedEffort,
 	});
 
+	const persistenceFields = agentRuntimePersistenceFields(runtimeSpec);
 	const runRecord = await prisma.variantRun.create({
 		data: {
 			id: runId,
@@ -158,20 +151,20 @@ export async function createVariantRun(params: {
 			campaignBrief: params.campaignBrief,
 			campaignGoal: params.campaignGoal,
 			workspacePath: workspace,
-			requestedAuthMode: runtimeSpec.requestedAuthMode,
-			selectedAuthMode: selection.selectedMode,
-			requestedModel: storedRequestedModel(runtimeSpec),
-			selectedModel: runtimeSpec.selectedModel,
-			requestedEffort: storedRequestedEffort(runtimeSpec),
-			selectedEffort: runtimeSpec.selectedEffort,
-			agentCore: runtimeSpec.core,
-			agentHarness: runtimeSpec.harness,
-			codexRuntime: runtimeSpec.legacyRuntime,
+			...persistenceFields,
 			codexCommand: invocation,
 			inputPrompt: prompt,
 			outputSummary: agentSummary(runtimeSpec),
 		},
 	});
+	if (params.autoExecute !== false) {
+		scheduleVariantRunExecution(
+			runRecord.id,
+			executeVariantRun,
+			params.executeOptions,
+			params.scheduler,
+		);
+	}
 	return runRecord;
 }
 
@@ -187,7 +180,7 @@ export async function executeVariantRun(
 	const workspacePath = runRecord.workspacePath;
 	const runtimeSpec = agentRuntimeSpecFromStoredRun(runRecord);
 	const timeoutMs = agentTimeoutMs(runtimeSpec.core);
-	const initialSelection = resolveCodexSelection(runtimeSpec.requestedAuthMode);
+	const runtimeDefinition = agentRuntimeDefinition(runtimeSpec.core);
 	let pollTranscript = runRecord.transcript;
 	let fileWrite = Promise.resolve();
 	let transcriptWrite = Promise.resolve();
@@ -210,34 +203,18 @@ export async function executeVariantRun(
 			stderrText = appendLimited(stderrText, `${line}\n`);
 		};
 
-		const agentResult =
-			runtimeSpec.core === "pi"
-				? await runPiRuntime({
-						input: runRecord.inputPrompt,
-						processRunner,
-						requestedModel: runtimeSpec.requestedModel,
-						runId,
-						workspace: workspacePath,
-						timeoutMs,
-						onStdoutLine,
-						onStderrLine,
-					})
-				: await runCodexWithFallback({
-						runtime: runtimeSpec.harness,
-						input: runRecord.inputPrompt,
-						processRunner,
-						sdkRunner: executeOptions.codexSdkRunner ?? defaultCodexSdkRunner,
-						requestedAuthMode: runtimeSpec.requestedAuthMode,
-						requestedModel: runtimeSpec.requestedModel,
-						requestedEffort: runtimeSpec.requestedEffort,
-						selection: initialSelection,
-						workspace: workspacePath,
-						timeoutMs,
-						onStdoutLine,
-						onStderrLine,
-					});
+		const agentResult = await runtimeDefinition.execute(runtimeSpec, {
+			input: runRecord.inputPrompt,
+			processRunner,
+			runId,
+			workspace: workspacePath,
+			timeoutMs,
+			onStdoutLine,
+			onStderrLine,
+			executeOptions,
+		});
 
-		const { result, selection } = agentResult;
+		const { result } = agentResult;
 		await fileWrite;
 		const fullTranscript = redactSecrets(
 			(await readRunTranscriptFile(runId))?.trim() ||
@@ -254,7 +231,9 @@ export async function executeVariantRun(
 		await transcriptWrite;
 		if (transcriptWriteError) throw transcriptWriteError;
 		if (result.code !== 0 || result.timedOut) {
-			throw new Error(agentFailureMessage(runtimeSpec.core, result));
+			throw new Error(
+				agentFailureMessage(runtimeSpec.core, result, stderrText),
+			);
 		}
 		const manifest = await readVariantManifest(workspacePath);
 		const detectedChanges = await detectChangedFiles(workspacePath);
@@ -269,7 +248,10 @@ export async function executeVariantRun(
 		);
 		return finalizeVariantRun(runId, {
 			status: "succeeded",
-			selectedAuthMode: selection.selectedMode,
+			...agentRuntimePersistenceFields(
+				runtimeSpec,
+				agentResult.codexAuthSelection,
+			),
 			manifest: JSON.stringify(manifest, null, 2),
 			transcript: dbTranscript,
 			stdout: dbTranscript,
@@ -290,13 +272,14 @@ export async function executeVariantRun(
 		const message = redactSecrets(
 			failure instanceof Error ? failure.message : String(failure),
 		);
-		const agentName = runtimeSpec.core === "pi" ? "Pi" : "Codex";
+		const agentName = agentDisplayName(runtimeSpec.core);
 		const fullTranscript = redactSecrets(
 			await resolveFullTranscript(runId, pollTranscript),
 		);
 		const dbTranscript = transcriptBodyForDb(fullTranscript);
 		return finalizeVariantRun(runId, {
 			status: "failed",
+			...agentRuntimePersistenceFields(runtimeSpec),
 			transcript: dbTranscript,
 			stdout: dbTranscript,
 			stderr: stderrText,

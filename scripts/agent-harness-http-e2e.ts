@@ -1,12 +1,17 @@
 #!/usr/bin/env tsx
 /**
- * HTTP E2E against a running app + worker:
+ * HTTP E2E against a running app:
  * login → create variant (per harness) → poll live API until terminal.
  *
- * Prereqs (two terminals):
+ * Prereq:
  *   npm run dev
- *   npm run runs:worker
  */
+import {
+	CURSOR_DEFAULT_SETTINGS_MODEL,
+	PI_DEFAULT_SETTINGS_MODEL,
+} from "../lib/agent-defaults";
+import { cursorApiKeyConfigured } from "../lib/config";
+
 const BASE = process.env.PROMO_STUDIO_BASE_URL ?? "http://localhost:3000";
 const BRIEF =
 	"Make the Ribbed Market Tote a vivid commuter gift: warmer hero copy, one accent color in theme.ts, and a short gift story block.";
@@ -16,6 +21,7 @@ const CASES = [
 	{ label: "codex-sdk", agentCore: "codex", agentHarness: "sdk" },
 	{ label: "codex-exec", agentCore: "codex", agentHarness: "exec" },
 	{ label: "pi-json", agentCore: "pi", agentHarness: "json" },
+	{ label: "cursor-sdk", agentCore: "cursor", agentHarness: "sdk" },
 ] as const;
 
 function sleep(ms: number) {
@@ -51,7 +57,12 @@ async function createRun(cookie: string, testCase: (typeof CASES)[number]) {
 		agentCore: testCase.agentCore,
 		agentHarness: testCase.agentHarness,
 		authMode: "auto",
-		model: "",
+		model:
+			testCase.agentCore === "cursor"
+				? CURSOR_DEFAULT_SETTINGS_MODEL
+				: testCase.agentCore === "pi"
+					? PI_DEFAULT_SETTINGS_MODEL
+					: "",
 		reasoningEffort: "",
 	});
 	const response = await fetch(`${BASE}/api/variant-runs`, {
@@ -105,6 +116,11 @@ async function main() {
 	const cookie = await loginCookie();
 	console.log(`HTTP E2E against ${BASE}`);
 	for (const testCase of CASES) {
+		if (testCase.agentCore === "cursor" && !cursorApiKeyConfigured()) {
+			console.log(`\n=== ${testCase.label} ===`);
+			console.log("SKIP cursor-sdk (CURSOR_API_KEY not configured)");
+			continue;
+		}
 		console.log(`\n=== ${testCase.label} ===`);
 		const id = await createRun(cookie, testCase);
 		console.log(`created ${id}`);

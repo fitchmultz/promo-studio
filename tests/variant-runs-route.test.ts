@@ -2,15 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireUserMock = vi.fn();
 const createVariantRunMock = vi.fn();
+const executeVariantRunMock = vi.fn();
+const afterMock = vi.fn((callback: () => void | Promise<void>) => {
+	void callback();
+});
 const productFindManyMock = vi.fn();
 const variantRunFindManyMock = vi.fn();
 
+vi.mock("next/server", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("next/server")>();
+	return { ...actual, after: afterMock };
+});
 vi.mock("@/lib/auth", () => ({ requireUser: requireUserMock }));
 vi.mock("@/lib/agent/runner", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@/lib/agent/runner")>();
 	return {
 		...actual,
 		createVariantRun: createVariantRunMock,
+		executeVariantRun: executeVariantRunMock,
 	};
 });
 vi.mock("@/lib/agent/transcript", () => ({
@@ -70,6 +79,8 @@ describe("variant run API", () => {
 		createVariantRunMock
 			.mockReset()
 			.mockResolvedValue({ id: "run-1", status: "queued", transcript: "" });
+		executeVariantRunMock.mockReset().mockResolvedValue(null);
+		afterMock.mockClear();
 		productFindManyMock.mockReset().mockResolvedValue([
 			{
 				id: "ribbed-market-tote",
@@ -121,6 +132,7 @@ describe("variant run API", () => {
 		expect(createVariantRunMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				campaignGoal: "Holiday gift push",
+				scheduler: afterMock,
 				runtimeSpec: expect.objectContaining({
 					core: "codex",
 					harness: "sdk",
@@ -130,6 +142,61 @@ describe("variant run API", () => {
 				}),
 			}),
 		);
+		expect(afterMock).not.toHaveBeenCalled();
+	});
+
+	it("passes Cursor SDK runtime spec from form fields", async () => {
+		const { POST } = await import("@/app/api/variant-runs/route");
+		const response = await POST(
+			new Request("http://localhost:3000/api/variant-runs", {
+				method: "POST",
+				headers: { origin: "http://localhost:3000" },
+				body: new URLSearchParams({
+					campaignBrief: "Create a vivid commuter gift campaign.",
+					campaignGoal: "Holiday gift push",
+					productId: "ribbed-market-tote",
+					agentCore: "cursor",
+					agentHarness: "sdk",
+					model: "composer-2.5-fast",
+				}),
+			}),
+		);
+
+		expect(response.status).toBe(202);
+		expect(createVariantRunMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runtimeSpec: expect.objectContaining({
+					core: "cursor",
+					harness: "sdk",
+					requestedModel: "composer-2.5-fast",
+					legacyRuntime: "cursor-sdk",
+				}),
+			}),
+		);
+	});
+
+	it("returns 400 when createVariantRun rejects missing Cursor API key", async () => {
+		createVariantRunMock.mockRejectedValue(
+			new Error(
+				"CURSOR_API_KEY is required for Cursor SDK storefront variant runs.",
+			),
+		);
+		const { POST } = await import("@/app/api/variant-runs/route");
+		const response = await POST(
+			new Request("http://localhost:3000/api/variant-runs", {
+				method: "POST",
+				headers: { origin: "http://localhost:3000" },
+				body: new URLSearchParams({
+					campaignBrief: "Create a vivid commuter gift campaign.",
+					agentCore: "cursor",
+					agentHarness: "sdk",
+				}),
+			}),
+		);
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({
+			error: expect.stringContaining("CURSOR_API_KEY"),
+		});
 	});
 
 	it("passes safe Codex model and reasoning overrides to the runner", async () => {

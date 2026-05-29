@@ -1,5 +1,6 @@
 import type { VariantRun } from "@prisma/client";
 import {
+	agentDisplayName,
 	runAgentDisplayLabel,
 	workspacePathForDisplay,
 } from "@/lib/agent-display";
@@ -40,6 +41,15 @@ function harnessHelp(run: VariantRun) {
 			<>
 				This is the Pi JSON CLI command for this run. The campaign prompt was
 				sent on stdin (same as <code>pi --mode json</code> with a piped prompt).
+			</>
+		);
+	}
+	if (run.agentCore === "cursor" || run.codexRuntime === "cursor-sdk") {
+		return (
+			<>
+				This is the Cursor TypeScript SDK invocation descriptor for this run.
+				The campaign prompt was sent through <code>Agent.send</code> against the
+				isolated storefront workspace.
 			</>
 		);
 	}
@@ -113,7 +123,7 @@ export function RunReceipt({
 				<div className="receipt-grid">
 					<div className="receipt-card">
 						<span>Core</span>
-						<strong>{core}</strong>
+						<strong>{agentDisplayName(core)}</strong>
 					</div>
 					<div className="receipt-card">
 						<span>Harness</span>

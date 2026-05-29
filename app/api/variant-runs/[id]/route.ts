@@ -7,31 +7,7 @@ import {
 	variantRunLiveSelect,
 } from "@/lib/variant-run-dto";
 
-import { MAX_PROCESS_OUTPUT_CHARS } from "@/lib/agent/process";
-
-interface TranscriptTailRow {
-	transcriptTail: string | null;
-	transcriptLength: number | bigint | null;
-}
-
-function completeJsonlTail(row: TranscriptTailRow | undefined) {
-	const tail = row?.transcriptTail ?? "";
-	const transcriptLength = Number(row?.transcriptLength ?? 0);
-	if (transcriptLength <= MAX_PROCESS_OUTPUT_CHARS) return tail;
-	const firstBreak = tail.search(/\r?\n/);
-	return firstBreak >= 0 ? tail.slice(firstBreak + 1) : "";
-}
-
-async function readLiveTranscriptTail(runId: string) {
-	const rows = await prisma.$queryRaw<TranscriptTailRow[]>`
-		SELECT substr("transcript", -${MAX_PROCESS_OUTPUT_CHARS}) AS "transcriptTail",
-		       length("transcript") AS "transcriptLength"
-		FROM "VariantRun"
-		WHERE "id" = ${runId}
-		LIMIT 1
-	`;
-	return completeJsonlTail(rows[0]);
-}
+import { readLiveTranscriptForPoll } from "@/lib/agent/transcript-store";
 
 export async function GET(
 	_request: Request,
@@ -48,7 +24,7 @@ export async function GET(
 	if (user.role !== "admin" && run.userId !== user.id) {
 		return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 	}
-	const pollTranscript = await readLiveTranscriptTail(run.id);
+	const pollTranscript = await readLiveTranscriptForPoll(run.id);
 	return NextResponse.json({
 		run: serializeVariantRunLive(run),
 		events: parseAgentEvents(pollTranscript),

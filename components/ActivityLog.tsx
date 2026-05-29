@@ -75,7 +75,7 @@ export function ActivityLog({
 					{hiddenCount > 0 ? (
 						<p className="muted activity-list-meta">
 							Showing last {visibleRows.length} of {rows.length} activity steps.
-							{agentCore === "pi" ? (
+							{agentCore === "pi" || agentCore === "cursor" ? (
 								<> Full raw JSONL is on the Transcript tab.</>
 							) : null}
 						</p>

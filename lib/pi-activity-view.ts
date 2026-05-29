@@ -13,7 +13,7 @@ import {
 	labelForPiActionStart,
 	type PiThinkingAction,
 	summarizeAssistantProse,
-} from "@/lib/pi-activity-steps";
+} from "@/lib/agent-activity-steps";
 
 export interface PiActivityInputEvent {
 	id: string;

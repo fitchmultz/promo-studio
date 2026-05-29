@@ -2,8 +2,21 @@ import {
 	codexAutomationDescriptorParts,
 	codexAutomationExecArgs,
 } from "@/lib/agent/codex-automation-policy";
+import { cursorAutomationDescriptorParts } from "@/lib/agent/cursor-automation-policy";
+import { agentDisplayName } from "@/lib/agent/definitions";
 import { codexModelArgs, codexReasoningArgs, paths } from "@/lib/config";
 import type { AgentCore, AgentHarness } from "@/lib/agent/types";
+
+interface InvocationParams {
+	core: AgentCore;
+	harness: AgentHarness;
+	runId: string;
+	workspace: string;
+	requestedModel: string;
+	requestedEffort: string;
+	selectedModel: string;
+	selectedEffort: string;
+}
 
 function buildCodexExecInvocation(
 	workspace: string,
@@ -48,36 +61,52 @@ function buildPiJsonInvocation(requestedModel: string, runId: string) {
 	return parts.join(" ");
 }
 
-export function buildInvocationDescriptor(params: {
-	core: AgentCore;
-	harness: AgentHarness;
-	runId: string;
+function buildCursorSdkInvocation(params: {
 	workspace: string;
-	requestedModel: string;
-	requestedEffort: string;
 	selectedModel: string;
-	selectedEffort: string;
-}): string {
-	if (params.core === "pi") {
-		return buildPiJsonInvocation(params.requestedModel, params.runId);
-	}
-	if (params.harness === "exec") {
-		return buildCodexExecInvocation(
-			params.workspace,
-			params.requestedModel,
-			params.requestedEffort,
-		);
-	}
-	return buildCodexSdkInvocation({
-		workspace: params.workspace,
-		selectedModel: params.selectedModel,
-		selectedEffort: params.selectedEffort,
-	});
+}) {
+	return [
+		"Cursor TypeScript SDK Agent.send",
+		...cursorAutomationDescriptorParts(params.workspace, params.selectedModel),
+	].join(" ");
+}
+
+const INVOCATION_BUILDERS: Record<
+	AgentCore,
+	(params: InvocationParams) => string
+> = {
+	codex: (params) =>
+		params.harness === "exec"
+			? buildCodexExecInvocation(
+					params.workspace,
+					params.requestedModel,
+					params.requestedEffort,
+				)
+			: buildCodexSdkInvocation({
+					workspace: params.workspace,
+					selectedModel: params.selectedModel,
+					selectedEffort: params.selectedEffort,
+				}),
+	pi: (params) => buildPiJsonInvocation(params.requestedModel, params.runId),
+	cursor: (params) =>
+		buildCursorSdkInvocation({
+			workspace: params.workspace,
+			selectedModel: params.selectedModel,
+		}),
+};
+
+const RUNTIME_LABELS: Record<AgentCore, (runtime: AgentHarness) => string> = {
+	codex: (runtime) => (runtime === "exec" ? "codex exec" : "Codex SDK"),
+	pi: () => "pi JSON CLI",
+	cursor: () => "Cursor SDK",
+};
+
+export function buildInvocationDescriptor(params: InvocationParams): string {
+	return INVOCATION_BUILDERS[params.core](params);
 }
 
 export function runtimeLabel(core: AgentCore, runtime: AgentHarness): string {
-	if (core === "pi") return "pi JSON CLI";
-	return runtime === "exec" ? "codex exec" : "Codex SDK";
+	return RUNTIME_LABELS[core](runtime);
 }
 
 export function agentSummary(params: {
@@ -85,9 +114,9 @@ export function agentSummary(params: {
 	selectedModel: string;
 	selectedEffort: string;
 }): string {
-	const agentName = params.core === "pi" ? "Pi" : "Codex";
-	if (params.core === "pi") {
-		return `${agentName} ${params.selectedModel} is editing an isolated storefront workspace.`;
+	const agentName = agentDisplayName(params.core);
+	if (params.core === "codex") {
+		return `${agentName} ${params.selectedModel} is editing an isolated storefront workspace with ${params.selectedEffort} reasoning.`;
 	}
-	return `${agentName} ${params.selectedModel} is editing an isolated storefront workspace with ${params.selectedEffort} reasoning.`;
+	return `${agentName} ${params.selectedModel} is editing an isolated storefront workspace.`;
 }

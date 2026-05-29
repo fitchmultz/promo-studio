@@ -1,6 +1,8 @@
-# Codex Integration
+# Codex integration
 
-Promo Studio uses Codex as an autonomous code agent, not as a text completion API. The default Codex harness is the official TypeScript SDK from `@openai/codex-sdk`.
+> **Multi-agent context:** Promo Studio supports Codex, Pi, and Cursor SDK on the same runner and receipt pipeline. This document covers **Codex only**. Start with [AGENT_INTEGRATION.md](./AGENT_INTEGRATION.md) for the shared architecture.
+
+Promo Studio uses Codex as an autonomous code agent, not as a text completion API. When `agentCore=codex`, the default harness is the official TypeScript SDK from `@openai/codex-sdk`; `codex exec` is the preserved CLI fallback.
 
 ## Current SDK contract
 
@@ -29,12 +31,13 @@ Reviewed for Codex CLI `0.134.0` using the current non-interactive mode document
 1. `POST /api/variant-runs` checks auth and same-origin form submission.
 2. `lib/workspace.ts` copies `templates/storefront` into `agent-workspaces/run-<id>/storefront`.
 3. `lib/variant-prompt.ts` builds a campaign-specific software task.
-4. `npm run runs:worker` claims queued runs and `lib/agent/runner.ts` runs Codex through the configured runtime:
+4. `POST /api/variant-runs` schedules `executeVariantRun()` (via Next.js `after()`), so **Create Variant** starts the selected agent without a separate worker. When the core is Codex, `lib/agent/runner.ts` uses:
    - Default: official TypeScript SDK via `CODEX_RUNTIME=sdk`.
    - Fallback: direct CLI execution via `CODEX_RUNTIME=exec`.
-5. Runtime events are normalized into JSONL transcript lines and stored on the `VariantRun` row while Codex runs.
-6. Codex must edit source files, run `npm test`, run `npm run build`, and write `artifact/manifest.json`.
-7. The runner validates the manifest against detected workspace changes, inlines the built preview, and finalizes the run status.
+   - Optional: `npm run runs:worker` drains stuck `queued` rows only.
+5. Runtime events are normalized into JSONL transcript lines and stored on the `VariantRun` row.
+6. The agent must edit source files, run `npm test`, run `npm run build`, and write `artifact/manifest.json`.
+7. The host runner validates the manifest against detected workspace changes, inlines the built preview, and finalizes the run status.
 8. `/runs/<id>` and `/proof` render the persisted receipt.
 
 ## Runtime contracts

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	createVariantRun,
 	drainQueuedVariantRunQueue,
@@ -9,6 +9,7 @@ import {
 	type VariantProcessRunner,
 	type VariantSdkRunner,
 } from "@/lib/agent/runner";
+import type { VariantCursorSdkRunner } from "@/lib/agent/types";
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { paths } from "@/lib/config";
 import { prisma } from "@/lib/db";
@@ -181,6 +182,7 @@ describe("Codex runner", () => {
 			requestedAuthMode: "auto",
 			requestedModel: "gpt-5.5-mini",
 			requestedEffort: "medium",
+			autoExecute: false,
 		});
 		expect(started.status).toBe("queued");
 		await drainQueuedVariantRunQueue({ codexSdkRunner: sdkRunner });
@@ -251,6 +253,7 @@ describe("Codex runner", () => {
 			requestedModel: "gpt-5.5-mini",
 			requestedEffort: "medium",
 			agentHarness: "exec",
+			autoExecute: false,
 		});
 		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);
@@ -310,12 +313,15 @@ describe("Codex runner", () => {
 				requestedAuthMode: "auto",
 				requestedModel: "gpt-5.5-mini",
 				requestedEffort: "medium",
+				autoExecute: false,
 			});
 			await drainQueuedVariantRunQueue({ codexSdkRunner: sdkRunner });
 			const completed = await waitForRun(started.id);
 
 			expect(completed.status).toBe("failed");
-			expect(completed.error).toContain("Codex exited with code 1.");
+			expect(completed.error).toContain("Codex failed:");
+			expect(completed.error).toContain("[REDACTED_API_KEY]");
+			expect(completed.error).not.toContain("sk-test-sdk-failure-secret");
 			expect(completed.stderr).toContain("[REDACTED_API_KEY]");
 			expect(completed.stderr).not.toContain("sk-test-sdk-failure-secret");
 		} finally {
@@ -387,6 +393,88 @@ describe("Codex runner", () => {
 		]);
 	});
 
+	it("rejects Cursor runs when CURSOR_API_KEY is not configured", async () => {
+		const config = await import("@/lib/config");
+		const spy = vi
+			.spyOn(config, "cursorApiKeyConfigured")
+			.mockReturnValue(false);
+		const user = await prisma.user.findUniqueOrThrow({
+			where: { email: "demo@promostudio.test" },
+		});
+		const product = await prisma.product.findUniqueOrThrow({
+			where: { id: "ribbed-market-tote" },
+		});
+
+		await expect(
+			createVariantRun({
+				user,
+				product,
+				campaignBrief: "Brief",
+				campaignGoal: "Goal",
+				agentCore: "cursor",
+				agentHarness: "sdk",
+			}),
+		).rejects.toThrow("CURSOR_API_KEY is required");
+
+		spy.mockRestore();
+	});
+
+	it("runs Cursor SDK harness with mocked cursor runner", async () => {
+		process.env.CURSOR_API_KEY = "test-cursor-key";
+		const user = await prisma.user.findUniqueOrThrow({
+			where: { email: "demo@promostudio.test" },
+		});
+		const product = await prisma.product.findUniqueOrThrow({
+			where: { id: "ribbed-market-tote" },
+		});
+		const cursorSdkRunner: VariantCursorSdkRunner = async (options) => {
+			const events = [
+				{ type: "system", subtype: "init", agent_id: "a1", run_id: "r1" },
+				{
+					type: "tool_call",
+					agent_id: "a1",
+					run_id: "r1",
+					call_id: "c1",
+					name: "edit",
+					status: "completed",
+					args: { path: "src/theme.ts" },
+				},
+			];
+			for (const event of events) options.onStdoutLine?.(JSON.stringify(event));
+			await writeVariantArtifacts(options.workspace);
+			return {
+				code: 0,
+				stdout: events.map((event) => JSON.stringify(event)).join("\n"),
+				stderr: "",
+				timedOut: false,
+			};
+		};
+		const started = await createVariantRun({
+			user,
+			product,
+			campaignBrief:
+				"Make the tote compelling for commuters who need a practical gift.",
+			campaignGoal: "Holiday gift push",
+			agentCore: "cursor",
+			agentHarness: "sdk",
+			requestedModel: "composer-2.5-fast",
+			autoExecute: false,
+		});
+		await drainQueuedVariantRunQueue({ cursorSdkRunner });
+		const completed = await waitForRun(started.id);
+
+		expect(completed.agentCore).toBe("cursor");
+		expect(completed.agentHarness).toBe("sdk");
+		expect(completed.codexRuntime).toBe("cursor-sdk");
+		expect(completed.codexCommand).toContain("Cursor TypeScript SDK");
+		expect(completed.codexCommand).toContain("composer-2.5-fast");
+		expect(completed.transcript).toContain("tool_call");
+		expectValidatedVariant(completed, {
+			model: "composer-2.5-fast",
+			effort: "default",
+		});
+	});
+
 	it("runs Pi JSON harness with mocked pi subprocess", async () => {
 		const user = await prisma.user.findUniqueOrThrow({
 			where: { email: "demo@promostudio.test" },
@@ -419,6 +507,7 @@ describe("Codex runner", () => {
 			agentCore: "pi",
 			agentHarness: "json",
 			requestedModel: "cursor/composer-2.5",
+			autoExecute: false,
 		});
 		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);
@@ -478,6 +567,7 @@ describe("Codex runner", () => {
 				"Make the tote compelling for commuters who need a practical gift.",
 			campaignGoal: "Holiday gift push",
 			agentHarness: "exec",
+			autoExecute: false,
 		});
 		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);

@@ -18,7 +18,7 @@ export function codexStyleToolLabel(
 	isError?: boolean,
 	command?: string,
 ): string {
-	if (toolName === "bash" && command) {
+	if ((toolName === "bash" || toolName === "shell") && command) {
 		const milestone = shellMilestoneLabel(command, phase);
 		if (milestone) return milestone;
 		return phase === "start"
@@ -32,6 +32,13 @@ export function codexStyleToolLabel(
 	}
 	if (toolName === "read") {
 		return phase === "start" ? "Read file" : "Read file completed";
+	}
+	if (toolName === "glob" || toolName === "grep" || toolName === "ls") {
+		return phase === "start"
+			? `${toolName} started`
+			: isError
+				? `${toolName} failed`
+				: `${toolName} completed`;
 	}
 	return phase === "start"
 		? "Tool started"

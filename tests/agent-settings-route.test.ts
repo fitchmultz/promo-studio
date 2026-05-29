@@ -61,6 +61,31 @@ describe("agent settings API", () => {
 		);
 	});
 
+	it("stores canonical Cursor SDK settings", async () => {
+		const { PUT } = await import("@/app/api/agent/settings/route");
+		const response = await PUT(
+			new Request("http://localhost/api/agent/settings", {
+				method: "PUT",
+				body: JSON.stringify({
+					agentCore: "cursor",
+					agentHarness: "sdk",
+					model: "composer-2.5-fast",
+					reasoningEffort: "ignored",
+					authMode: "auto",
+				}),
+			}),
+		);
+
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toMatchObject({
+			settings: {
+				agentCore: "cursor",
+				agentHarness: "sdk",
+				model: "composer-2.5-fast",
+			},
+		});
+	});
+
 	it("rejects invalid runtime settings instead of storing loose strings", async () => {
 		const { PUT } = await import("@/app/api/agent/settings/route");
 		const response = await PUT(

@@ -27,6 +27,20 @@ function SettingsProbe() {
 	);
 }
 
+function SwitchToCursorProbe() {
+	const { settings, updateSettings } = useAgentSettings();
+	return (
+		<button
+			data-harness={settings.agentHarness}
+			data-model={settings.model}
+			type="button"
+			onClick={() => updateSettings({ agentCore: "cursor" })}
+		>
+			{settings.agentCore}
+		</button>
+	);
+}
+
 describe("AgentSettingsProvider", () => {
 	let container: HTMLDivElement;
 	let root: Root;
@@ -67,6 +81,31 @@ describe("AgentSettingsProvider", () => {
 		expect(button?.textContent).toBe("codex");
 		expect(button?.dataset.harness).toBe("exec");
 		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it("resets harness and model when switching to Cursor SDK", () => {
+		act(() => {
+			root.render(
+				<AgentSettingsProvider
+					initialSettings={{
+						agentCore: "codex",
+						agentHarness: "exec",
+						model: "gpt-5.5",
+						reasoningEffort: "low",
+						authMode: "auto",
+					}}
+				>
+					<SwitchToCursorProbe />
+				</AgentSettingsProvider>,
+			);
+		});
+
+		act(() => container.querySelector("button")?.click());
+
+		const button = container.querySelector("button");
+		expect(button?.textContent).toBe("cursor");
+		expect(button?.dataset.harness).toBe("sdk");
+		expect(button?.dataset.model).toBe("composer-2.5-fast");
 	});
 
 	it("persists only explicit edits", () => {

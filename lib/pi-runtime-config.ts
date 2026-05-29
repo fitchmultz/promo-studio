@@ -1,4 +1,5 @@
 import path from "node:path";
+import { PI_DEFAULT_MODEL } from "@/lib/agent-defaults";
 import { toProcessEnv } from "@/lib/process-env";
 import { z } from "zod";
 
@@ -10,7 +11,7 @@ export type PiThinkingLevel =
 	| "high"
 	| "xhigh";
 
-export const PI_DEFAULT_MODEL = "pi-default";
+export { PI_DEFAULT_MODEL } from "@/lib/agent-defaults";
 export const PI_PROVIDER_ENV_KEYS = [
 	"ANTHROPIC_API_KEY",
 	"ANTHROPIC_OAUTH_TOKEN",

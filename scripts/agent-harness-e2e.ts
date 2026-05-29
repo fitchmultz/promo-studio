@@ -4,8 +4,10 @@
  * Verifies transcript streaming during execution and a succeeded receipt.
  */
 import { createVariantRun, executeVariantRun } from "@/lib/agent/runner";
+import type { AgentHarness } from "@/lib/agent/types";
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { agentEventsToActivityRows } from "@/lib/activity-view";
+import { cursorApiKeyConfigured } from "@/lib/config";
 import { prisma } from "@/lib/db";
 
 const BRIEF =
@@ -16,14 +18,15 @@ const MAX_POLLS = 400;
 
 type HarnessCase = {
 	label: string;
-	agentCore: "codex" | "pi";
-	agentHarness: string;
+	agentCore: "codex" | "pi" | "cursor";
+	agentHarness: AgentHarness;
 };
 
 const CASES: HarnessCase[] = [
 	{ label: "codex-sdk", agentCore: "codex", agentHarness: "sdk" },
 	{ label: "codex-exec", agentCore: "codex", agentHarness: "exec" },
 	{ label: "pi-json", agentCore: "pi", agentHarness: "json" },
+	{ label: "cursor-sdk", agentCore: "cursor", agentHarness: "sdk" },
 ];
 
 function sleep(ms: number) {
@@ -78,8 +81,16 @@ async function monitorStreaming(runId: string, until: Promise<unknown>) {
 	});
 	const events = parseAgentEvents(final.transcript);
 	const activity = agentEventsToActivityRows({
-		agentCore: final.agentCore === "pi" ? "pi" : "codex",
-		agentLabel: final.agentCore === "pi" ? "Pi" : "Codex",
+		agentCore:
+			final.agentCore === "pi" || final.agentCore === "cursor"
+				? final.agentCore
+				: "codex",
+		agentLabel:
+			final.agentCore === "pi"
+				? "Pi"
+				: final.agentCore === "cursor"
+					? "Cursor"
+					: "Codex",
 		events,
 		maxBodyChars: 4000,
 		demoLive: true,
@@ -111,6 +122,7 @@ async function runCase(testCase: HarnessCase) {
 		agentCore: testCase.agentCore,
 		agentHarness: testCase.agentHarness,
 		requestedAuthMode: "auto",
+		autoExecute: false,
 	});
 	console.log(
 		`queued ${started.id} core=${started.agentCore} harness=${started.agentHarness}`,
@@ -171,6 +183,11 @@ async function main() {
 	console.log(`agent-harness-e2e using ${databaseUrl}`);
 
 	for (const testCase of CASES) {
+		if (testCase.agentCore === "cursor" && !cursorApiKeyConfigured()) {
+			console.log(`\n=== ${testCase.label} ===`);
+			console.log("SKIP cursor-sdk (CURSOR_API_KEY not configured)");
+			continue;
+		}
 		await runCase(testCase);
 	}
 	console.log("\nAll harnesses passed.");

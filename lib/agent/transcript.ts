@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { LEGACY_TRANSCRIPT_TRUNCATED_MARKER } from "@/lib/agent/process";
+import { unwrapCursorSdkMessage } from "@/lib/cursor-transcript";
 import { isJsonObject } from "@/lib/json";
 
 function eventId(line: string, index: number) {
@@ -21,7 +22,13 @@ export function parseAgentEvents(transcript: string) {
 				if (!isJsonObject(parsed)) {
 					return { id, raw: line, type: "log", parsed: { message: line } };
 				}
-				return { id, raw: line, type: String(parsed.type ?? "event"), parsed };
+				const normalized = unwrapCursorSdkMessage(parsed);
+				return {
+					id,
+					raw: line,
+					type: String(normalized.type ?? "event"),
+					parsed: normalized,
+				};
 			} catch {
 				return { id, raw: line, type: "log", parsed: { message: line } };
 			}

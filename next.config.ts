@@ -25,6 +25,7 @@ const nextConfig: NextConfig = {
 	allowedDevOrigins: ["127.0.0.1"],
 	devIndicators: false,
 	serverExternalPackages: [
+		"@cursor/sdk",
 		"@earendil-works/pi-coding-agent",
 		"@openai/codex-sdk",
 		"better-sqlite3",

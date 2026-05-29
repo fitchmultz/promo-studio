@@ -7,7 +7,12 @@ export { WORKSPACE_DIR_NAME } from "@/lib/workspace-constants";
 const IGNORED_WORKSPACE_NAMES = new Set(["node_modules", "dist", ".DS_Store"]);
 
 export function workspaceStorefrontPath(runId: string) {
-	return path.join(paths.workspaces, `run-${runId}`, "storefront");
+	return path.join(
+		// Keep generated agent workspaces out of Turbopack static trace expansion.
+		/* turbopackIgnore: true */ paths.workspaces,
+		`run-${runId}`,
+		"storefront",
+	);
 }
 
 export async function createVariantWorkspace(runId: string) {
