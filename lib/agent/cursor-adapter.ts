@@ -7,6 +7,7 @@ import { cursorStreamEventToTranscriptLine } from "@/lib/cursor-transcript";
 import { appendLimited } from "@/lib/agent/process";
 import {
 	cursorAutomationLocalOptions,
+	cursorLocalStoreRoot,
 	CURSOR_AUTOMATION_MODE,
 } from "@/lib/agent/cursor-automation-policy";
 import type { VariantCursorSdkRunner } from "@/lib/agent/types";
@@ -14,7 +15,9 @@ import type { VariantCursorSdkRunner } from "@/lib/agent/types";
 export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 	options,
 ) => {
-	const { Agent, CursorAgentError } = await import("@cursor/sdk");
+	const { Agent, CursorAgentError, JsonlLocalAgentStore } = await import(
+		"@cursor/sdk"
+	);
 	const controller = new AbortController();
 	let activeRun:
 		| Awaited<ReturnType<Awaited<ReturnType<typeof Agent.create>>["send"]>>
@@ -38,10 +41,14 @@ export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 			apiKey,
 			options.requestedModel,
 		);
+		const local = {
+			...cursorAutomationLocalOptions(options.workspace),
+			store: new JsonlLocalAgentStore(cursorLocalStoreRoot(options.workspace)),
+		};
 		const agent = await Agent.create({
 			apiKey,
 			model,
-			local: cursorAutomationLocalOptions(options.workspace),
+			local,
 		});
 		try {
 			activeRun = await agent.send(options.input, {

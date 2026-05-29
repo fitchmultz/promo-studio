@@ -94,7 +94,9 @@ describe("variant run transcript API", () => {
 				`{"type":"message_update","payload":"${"x".repeat(1000)}","n":${index}}`,
 		);
 		const full = `${lines.join("\n")}\n`;
-		resolveFullTranscriptMock.mockResolvedValueOnce(full).mockResolvedValueOnce(full);
+		resolveFullTranscriptMock
+			.mockResolvedValueOnce(full)
+			.mockResolvedValueOnce(full);
 
 		const { GET } = await import(
 			"@/app/api/variant-runs/[id]/transcript/route"
@@ -108,9 +110,7 @@ describe("variant run transcript API", () => {
 
 		expect(pollResponse.status).toBe(200);
 		const pollBody = await pollResponse.json();
-		expect(pollBody.text.length).toBeLessThanOrEqual(
-			MAX_POLL_TRANSCRIPT_CHARS,
-		);
+		expect(pollBody.text.length).toBeLessThanOrEqual(MAX_POLL_TRANSCRIPT_CHARS);
 		expect(pollBody.text).toContain('"n":2499');
 		expect(pollBody.text).not.toContain('"n":500');
 		expect(pollBody.totalLines).toBe(2500);

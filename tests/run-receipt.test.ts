@@ -92,7 +92,7 @@ describe("RunReceipt", () => {
 
 	it("renders Cursor SDK execution evidence", () => {
 		const invocation =
-			"Cursor TypeScript SDK Agent.send cwd=/tmp/workspace/run-1/storefront mode=agent sandboxOptions.enabled=true model=composer-2.5-fast";
+			"Cursor TypeScript SDK Agent.send cwd=/tmp/workspace/run-1/storefront mode=agent sandboxOptions.enabled=true local.store=jsonl:/tmp/workspace/run-1/.cursor-sdk-store model=composer-2.5-fast";
 		const markup = renderToStaticMarkup(
 			React.createElement(RunReceipt, {
 				run: {

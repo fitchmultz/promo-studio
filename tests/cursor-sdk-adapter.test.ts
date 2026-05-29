@@ -20,6 +20,9 @@ function mockCursorSdk(
 	}));
 	vi.doMock("@cursor/sdk", () => ({
 		CursorAgentError: class CursorAgentError extends Error {},
+		JsonlLocalAgentStore: class JsonlLocalAgentStore {
+			constructor(readonly rootDir: string) {}
+		},
 		Agent: {
 			async create(options: unknown) {
 				createOptions.push(options);
@@ -129,6 +132,7 @@ describe("defaultCursorSdkRunner", () => {
 			local: {
 				cwd: "/tmp/promo-studio/storefront",
 				sandboxOptions: { enabled: true },
+				store: { rootDir: "/tmp/promo-studio/.cursor-sdk-store" },
 			},
 		});
 		expect(calls.sendInputs).toEqual(["Build a storefront variant."]);
