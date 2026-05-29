@@ -1,3 +1,4 @@
+import { MAX_POLL_TRANSCRIPT_CHARS } from "@/lib/agent/process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireUserMock = vi.fn();
@@ -10,10 +11,15 @@ vi.mock("@/lib/db", () => ({
 		variantRun: { findUnique: findUniqueMock },
 	},
 }));
-vi.mock("@/lib/agent/transcript-store", () => ({
-	resolveFullTranscript: resolveFullTranscriptMock,
-	transcriptBodyForPoll: (full: string) => full,
-}));
+vi.mock("@/lib/agent/transcript-store", async () => {
+	const actual = await vi.importActual<
+		typeof import("@/lib/agent/transcript-store")
+	>("@/lib/agent/transcript-store");
+	return {
+		resolveFullTranscript: resolveFullTranscriptMock,
+		transcriptBodyForPoll: actual.transcriptBodyForPoll,
+	};
+});
 
 function run(overrides: Record<string, unknown> = {}) {
 	return {
@@ -79,5 +85,46 @@ describe("variant run transcript API", () => {
 			agentCore: "codex",
 			invocation: "codex exec",
 		});
+	});
+
+	it("caps oversized non-download transcript payloads while download keeps full fidelity", async () => {
+		const lines = Array.from(
+			{ length: 2500 },
+			(_, index) =>
+				`{"type":"message_update","payload":"${"x".repeat(1000)}","n":${index}}`,
+		);
+		const full = `${lines.join("\n")}\n`;
+		resolveFullTranscriptMock.mockResolvedValueOnce(full).mockResolvedValueOnce(full);
+
+		const { GET } = await import(
+			"@/app/api/variant-runs/[id]/transcript/route"
+		);
+		const pollResponse = await GET(
+			new Request(
+				"http://localhost:3000/api/variant-runs/run-1/transcript?tail=2000",
+			),
+			{ params: Promise.resolve({ id: "run-1" }) },
+		);
+
+		expect(pollResponse.status).toBe(200);
+		const pollBody = await pollResponse.json();
+		expect(pollBody.text.length).toBeLessThanOrEqual(
+			MAX_POLL_TRANSCRIPT_CHARS,
+		);
+		expect(pollBody.text).toContain('"n":2499');
+		expect(pollBody.text).not.toContain('"n":500');
+		expect(pollBody.totalLines).toBe(2500);
+		expect(pollBody.shownLines).toBeGreaterThan(0);
+		expect(pollBody.shownLines).toBeLessThan(2000);
+		expect(pollBody.truncated).toBe(true);
+
+		const downloadResponse = await GET(
+			new Request(
+				"http://localhost:3000/api/variant-runs/run-1/transcript?download=1",
+			),
+			{ params: Promise.resolve({ id: "run-1" }) },
+		);
+		expect(downloadResponse.status).toBe(200);
+		await expect(downloadResponse.text()).resolves.toBe(full);
 	});
 });
