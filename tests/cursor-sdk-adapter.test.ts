@@ -157,6 +157,41 @@ describe("defaultCursorSdkRunner", () => {
 		});
 	});
 
+	it("times out if Cursor SDK setup hangs before a run starts", async () => {
+		const config = await import("@/lib/config");
+		const spy = vi
+			.spyOn(config, "resolveCursorApiKey")
+			.mockReturnValue("test-cursor-key");
+		vi.doMock("@/lib/cursor-model-resolve", () => ({
+			resolveCursorModelSelection: async () => ({ id: "composer-2.5" }),
+		}));
+		vi.doMock("@cursor/sdk", () => ({
+			CursorAgentError: class CursorAgentError extends Error {},
+			JsonlLocalAgentStore: class JsonlLocalAgentStore {
+				constructor(readonly rootDir: string) {}
+			},
+			Agent: {
+				async create() {
+					return new Promise(() => undefined);
+				},
+			},
+		}));
+
+		const result = await defaultCursorSdkRunner({
+			input: "Build a storefront variant.",
+			requestedModel: "composer-2.5-fast",
+			timeoutMs: 1,
+			workspace: "/tmp/promo-studio/storefront",
+		});
+
+		spy.mockRestore();
+		expect(result).toMatchObject({
+			code: null,
+			stderr: "Cursor SDK timed out.",
+			timedOut: true,
+		});
+	});
+
 	it("reports failed run.wait status as a failed process result", async () => {
 		mockCursorSdk(
 			[{ type: "status", agent_id: "a1", run_id: "r1", status: "ERROR" }],

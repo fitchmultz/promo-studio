@@ -4,7 +4,7 @@
 	"description": "Multi-agent commerce demo: Codex, Pi, and Cursor SDK harnesses for isolated storefront variants with shared validation and receipts",
 	"private": true,
 	"engines": {
-		"node": ">=22.19.0"
+		"node": ">=22.19.0 <27"
 	},
 	"scripts": {
 		"test": "tsx scripts/ensure-sqlite-database.ts test.db && DATABASE_URL=file:./test.db prisma db push --force-reset --accept-data-loss && DATABASE_URL=file:./test.db tsx prisma/seed.ts && DATABASE_URL=file:./test.db vitest run",

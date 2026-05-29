@@ -10,7 +10,26 @@ import {
 	cursorLocalStoreRoot,
 	CURSOR_AUTOMATION_MODE,
 } from "@/lib/agent/cursor-automation-policy";
-import type { VariantCursorSdkRunner } from "@/lib/agent/types";
+import type { ProcessResult, VariantCursorSdkRunner } from "@/lib/agent/types";
+
+class CursorSdkTimeoutError extends Error {
+	constructor() {
+		super("Cursor SDK timed out.");
+		this.name = "CursorSdkTimeoutError";
+	}
+}
+
+function cursorTimedOutResult(
+	stdout: string,
+	stderr = "Cursor SDK timed out.",
+) {
+	return {
+		code: null,
+		stdout,
+		stderr,
+		timedOut: true,
+	} satisfies ProcessResult;
+}
 
 export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 	options,
@@ -22,9 +41,16 @@ export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 	let activeRun:
 		| Awaited<ReturnType<Awaited<ReturnType<typeof Agent.create>>["send"]>>
 		| undefined;
+	let activeAgent: Awaited<ReturnType<typeof Agent.create>> | undefined;
+	let rejectTimeout: (error: CursorSdkTimeoutError) => void = () => undefined;
+	const timeoutPromise = new Promise<never>((_resolve, reject) => {
+		rejectTimeout = reject;
+	});
 	const timeout = setTimeout(() => {
 		controller.abort();
 		void activeRun?.cancel().catch(() => undefined);
+		void activeAgent?.[Symbol.asyncDispose]().catch(() => undefined);
+		rejectTimeout(new CursorSdkTimeoutError());
 	}, options.timeoutMs);
 	timeout.unref();
 	let stdout = "";
@@ -37,64 +63,61 @@ export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 		return { code: 1, stdout: "", stderr: message, timedOut: false };
 	}
 	try {
-		const model = await resolveCursorModelSelection(
-			apiKey,
-			options.requestedModel,
-		);
-		const local = {
-			...cursorAutomationLocalOptions(options.workspace),
-			store: new JsonlLocalAgentStore(cursorLocalStoreRoot(options.workspace)),
-		};
-		const agent = await Agent.create({
-			apiKey,
-			model,
-			local,
-		});
-		try {
-			activeRun = await agent.send(options.input, {
-				mode: CURSOR_AUTOMATION_MODE,
+		const runPromise = (async () => {
+			const model = await resolveCursorModelSelection(
+				apiKey,
+				options.requestedModel,
+			);
+			if (controller.signal.aborted) throw new CursorSdkTimeoutError();
+			const local = {
+				...cursorAutomationLocalOptions(options.workspace),
+				store: new JsonlLocalAgentStore(
+					cursorLocalStoreRoot(options.workspace),
+				),
+			};
+			activeAgent = await Agent.create({
+				apiKey,
+				model,
+				local,
 			});
-			for await (const event of activeRun.stream()) {
-				if (controller.signal.aborted) break;
-				const line = redactSecrets(cursorStreamEventToTranscriptLine(event));
-				stdout = appendLimited(stdout, `${line}\n`);
-				options.onStdoutLine?.(line);
-			}
-			if (controller.signal.aborted) {
-				if (activeRun.supports("cancel")) {
-					await activeRun.cancel().catch(() => undefined);
+			try {
+				if (controller.signal.aborted) throw new CursorSdkTimeoutError();
+				activeRun = await activeAgent.send(options.input, {
+					mode: CURSOR_AUTOMATION_MODE,
+				});
+				for await (const event of activeRun.stream()) {
+					if (controller.signal.aborted) break;
+					const line = redactSecrets(cursorStreamEventToTranscriptLine(event));
+					stdout = appendLimited(stdout, `${line}\n`);
+					options.onStdoutLine?.(line);
 				}
-				return {
-					code: null,
-					stdout,
-					stderr: "Cursor SDK timed out.",
-					timedOut: true,
-				};
+				if (controller.signal.aborted) {
+					if (activeRun.supports("cancel")) {
+						await activeRun.cancel().catch(() => undefined);
+					}
+					throw new CursorSdkTimeoutError();
+				}
+				const result = await activeRun.wait();
+				if (result.status === "error" || result.status === "cancelled") {
+					streamFailure = result.result?.trim() || `Run ${result.status}`;
+				}
+			} finally {
+				await activeAgent[Symbol.asyncDispose]();
 			}
-			const result = await activeRun.wait();
-			if (result.status === "error" || result.status === "cancelled") {
-				streamFailure = result.result?.trim() || `Run ${result.status}`;
+			if (streamFailure) {
+				const message = redactSecrets(streamFailure);
+				options.onStderrLine?.(message);
+				return { code: 1, stdout, stderr: message, timedOut: false };
 			}
-		} finally {
-			await agent[Symbol.asyncDispose]();
-		}
-		if (streamFailure) {
-			const message = redactSecrets(streamFailure);
-			options.onStderrLine?.(message);
-			return { code: 1, stdout, stderr: message, timedOut: false };
-		}
-		return { code: 0, stdout, stderr: "", timedOut: false };
+			return { code: 0, stdout, stderr: "", timedOut: false };
+		})();
+		return await Promise.race([runPromise, timeoutPromise]);
 	} catch (error) {
 		const message = redactSecrets(
 			error instanceof Error ? error.message : String(error),
 		);
-		if (controller.signal.aborted) {
-			return {
-				code: null,
-				stdout,
-				stderr: message || "Cursor SDK timed out.",
-				timedOut: true,
-			};
+		if (error instanceof CursorSdkTimeoutError || controller.signal.aborted) {
+			return cursorTimedOutResult(stdout, message || "Cursor SDK timed out.");
 		}
 		if (
 			error instanceof CursorModelUnavailableError ||
