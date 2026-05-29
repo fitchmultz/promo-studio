@@ -48,6 +48,7 @@ vi.mock("@/lib/agent/transcript-store", () => ({
 	resolveFullTranscript: async (_id: string, db: string) => db,
 	readLiveTranscriptForPoll: async (_id: string) => "",
 	runTranscriptFileByteLength: async () => null,
+	transcriptBodyForPoll: (full: string) => full,
 }));
 vi.mock("@/lib/storefront-baseline", () => ({
 	renderStorefrontBaselineHtml: async () => "<html>baseline</html>",

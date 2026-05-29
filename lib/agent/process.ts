@@ -37,7 +37,8 @@ export function tailJsonlForPoll(full: string, maxChars: number): string {
 	for (let index = lines.length - 1; index >= 0; index -= 1) {
 		const line = lines[index] ?? "";
 		const add = line.length + (kept.length ? 1 : 0);
-		if (size + add > maxChars && kept.length > 0) break;
+		if (add > maxChars) continue;
+		if (size + add > maxChars) break;
 		kept.unshift(line);
 		size += add;
 	}

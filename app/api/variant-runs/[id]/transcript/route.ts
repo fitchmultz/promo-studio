@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { resolveFullTranscript } from "@/lib/agent/transcript-store";
+import {
+	resolveFullTranscript,
+	transcriptBodyForPoll,
+} from "@/lib/agent/transcript-store";
 import { prisma } from "@/lib/db";
 import { variantRunTranscriptSelect } from "@/lib/variant-run-dto";
 
@@ -45,13 +48,17 @@ export async function GET(
 	}
 
 	const lines = full.split(/\r?\n/).filter((line) => line.trim().length > 0);
-	const tail = lines.slice(-tailLines).join("\n");
+	const lineTail = `${lines.slice(-tailLines).join("\n")}\n`;
+	const tail = transcriptBodyForPoll(lineTail).trimEnd();
+	const shownLines = tail
+		? tail.split(/\r?\n/).filter((line) => line.trim().length > 0).length
+		: 0;
 
 	return NextResponse.json({
 		text: tail,
 		totalLines: lines.length,
-		shownLines: Math.min(tailLines, lines.length),
-		truncated: lines.length > tailLines,
+		shownLines,
+		truncated: lines.length > shownLines,
 		agentCore: run.agentCore,
 		invocation: run.codexCommand,
 	});

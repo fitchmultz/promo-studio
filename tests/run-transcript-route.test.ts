@@ -12,6 +12,7 @@ vi.mock("@/lib/db", () => ({
 }));
 vi.mock("@/lib/agent/transcript-store", () => ({
 	resolveFullTranscript: resolveFullTranscriptMock,
+	transcriptBodyForPoll: (full: string) => full,
 }));
 
 function run(overrides: Record<string, unknown> = {}) {

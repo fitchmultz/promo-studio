@@ -23,6 +23,7 @@ import {
 	readLiveTranscriptForPoll,
 	resolveFullTranscript,
 	runTranscriptFileByteLength,
+	transcriptBodyForPoll,
 } from "@/lib/agent/transcript-store";
 import {
 	runAgentDisplayLabel,
@@ -52,7 +53,7 @@ export default async function RunDetailPage({
 	const pollTranscript =
 		run.status === "queued" || run.status === "running"
 			? await readLiveTranscriptForPoll(run.id)
-			: fullTranscript;
+			: transcriptBodyForPoll(fullTranscript);
 	const events = parseAgentEvents(pollTranscript);
 	const legacyMarkerTruncated = fullTranscript.includes(
 		LEGACY_TRANSCRIPT_TRUNCATED_MARKER,

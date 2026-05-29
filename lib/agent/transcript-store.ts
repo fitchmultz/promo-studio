@@ -2,9 +2,10 @@ import { appendFile, mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { paths } from "@/lib/config";
 import {
+	MAX_DB_TRANSCRIPT_CHARS,
+	MAX_POLL_TRANSCRIPT_CHARS,
 	MAX_PROCESS_OUTPUT_CHARS,
 	tailJsonlForPoll,
-	MAX_DB_TRANSCRIPT_CHARS,
 } from "@/lib/agent/process";
 import { prisma } from "@/lib/db";
 
@@ -45,6 +46,10 @@ function completeJsonlTail(tail: string, transcriptLength: number) {
 	return firstBreak >= 0 ? tail.slice(firstBreak + 1) : "";
 }
 
+export function transcriptBodyForPoll(full: string): string {
+	return tailJsonlForPoll(full, MAX_POLL_TRANSCRIPT_CHARS);
+}
+
 async function readDbTranscriptTail(runId: string) {
 	const rows = await prisma.$queryRaw<
 		Array<{ transcriptTail: string | null; transcriptLength: number | bigint }>
@@ -70,8 +75,8 @@ export async function readLiveTranscriptForPoll(
 		readRunTranscriptFile(runId),
 		readDbTranscriptTail(runId),
 	]);
-	const fileBody = file ?? "";
-	if (fileBody.length >= dbTail.length) return fileBody;
+	const fileTail = file ? transcriptBodyForPoll(file) : "";
+	if (fileTail.length >= dbTail.length) return fileTail;
 	return dbTail;
 }
 
