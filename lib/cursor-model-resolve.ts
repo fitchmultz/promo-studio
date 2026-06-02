@@ -1,3 +1,4 @@
+import type { ModelListItem } from "@cursor/sdk";
 import {
 	CURSOR_BASE_MODEL_ID,
 	type CursorModelSelection,
@@ -18,9 +19,7 @@ export async function resolveCursorModelSelection(
 	requestedModel: string,
 ): Promise<CursorModelSelection> {
 	const selection = parseCursorModelSelection(requestedModel);
-	let models: Awaited<
-		ReturnType<typeof import("@cursor/sdk")["Cursor"]["models"]["list"]>
-	>;
+	let models: ModelListItem[];
 	try {
 		const { Cursor } = await import("@cursor/sdk");
 		models = await Cursor.models.list({ apiKey });

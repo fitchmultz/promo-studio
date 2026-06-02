@@ -1,3 +1,4 @@
+import type { ModelParameterValue, ModelSelection } from "@cursor/sdk";
 import { z } from "zod";
 import { CURSOR_FAST_MODEL_ID } from "@/lib/agent-defaults";
 
@@ -16,13 +17,10 @@ const CursorModelIdSchema = z
 		"Cursor model ids may contain only letters, numbers, dots, underscores, and hyphens.",
 	);
 
-export interface CursorModelSelection {
-	id: string;
-	params?: Array<{ id: string; value: string }>;
-}
+export type CursorModelSelection = ModelSelection;
 
-function cursorFastParam(enabled: boolean) {
-	return [{ id: "fast", value: enabled ? "true" : "false" }] as const;
+function cursorFastParam(enabled: boolean): ModelParameterValue[] {
+	return [{ id: "fast", value: enabled ? "true" : "false" }];
 }
 
 export function normalizeCursorModel(

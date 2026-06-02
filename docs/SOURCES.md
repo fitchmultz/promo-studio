@@ -41,4 +41,4 @@ When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.7
 
 ## Cursor runtime contract
 
-When `agentCore=cursor`, the integration uses `@cursor/sdk` 1.0.16 with a local agent scoped to the storefront workspace (`Agent.create` + `Agent.send` + `run.stream()`). Promo Studio passes a run-scoped `JsonlLocalAgentStore` under `local.store` so Cursor SDK checkpoint state stays inside `agent-workspaces/run-<id>/.cursor-sdk-store` instead of the caller's global SDK state root. Transcript lines are normalized to the same JSONL activity shape as Codex SDK runs. Live runs require `CURSOR_API_KEY`.
+When `agentCore=cursor`, the integration uses pinned `@cursor/sdk` 1.0.17 with a local agent scoped to the storefront workspace (`Agent.create` + `Agent.send` + `run.stream()`). Promo Studio passes a run-scoped `JsonlLocalAgentStore` under `local.store` so Cursor SDK checkpoint state stays inside `agent-workspaces/run-<id>/.cursor-sdk-store` instead of the caller's global SDK state root. Transcript lines are normalized to the same JSONL activity shape as Codex SDK runs. Live runs require `CURSOR_API_KEY`.
