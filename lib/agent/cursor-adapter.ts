@@ -11,6 +11,7 @@ import {
 	CURSOR_AUTOMATION_MODE,
 } from "@/lib/agent/cursor-automation-policy";
 import type { ProcessResult, VariantCursorSdkRunner } from "@/lib/agent/types";
+import type { Run, SDKAgent } from "@cursor/sdk";
 
 class CursorSdkTimeoutError extends Error {
 	constructor() {
@@ -38,10 +39,8 @@ export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 		"@cursor/sdk"
 	);
 	const controller = new AbortController();
-	let activeRun:
-		| Awaited<ReturnType<Awaited<ReturnType<typeof Agent.create>>["send"]>>
-		| undefined;
-	let activeAgent: Awaited<ReturnType<typeof Agent.create>> | undefined;
+	let activeRun: Run | undefined;
+	let activeAgent: SDKAgent | undefined;
 	let rejectTimeout: (error: CursorSdkTimeoutError) => void = () => undefined;
 	const timeoutPromise = new Promise<never>((_resolve, reject) => {
 		rejectTimeout = reject;
