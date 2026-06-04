@@ -14,7 +14,9 @@ pi --mode json --session-id <run-id> --session-dir <repo>/artifacts/pi-sessions 
 
 Pi v0.76.0 added explicit automation session IDs. Promo Studio uses the variant run ID as `--session-id` and stores Pi session files under gitignored `artifacts/pi-sessions/`, keeping session history deterministic and outside the storefront diff surface. Do **not** use `-p`; that flag is for print mode, not JSON mode.
 
-SDK and RPC were reviewed against the v0.76.0 docs. The SDK is preferred for same-process Node integrations and RPC is preferred for long-lived custom clients, but Promo Studio intentionally keeps Pi in a subprocess for run isolation, CLI extension parity, and a one-shot prompt lifecycle.
+Pi v0.78.1 is the recommended floor for local development because it adds current extension-context APIs, provider coverage, safer package temp installs, and startup session naming. It is not a hard runtime requirement for Promo Studio's JSON harness; the doctor keeps v0.76.0 as the required automation floor and warns when the installed CLI or SDK package is below the recommended v0.78.1 level.
+
+SDK and RPC were reviewed against the v0.78.1 docs. The SDK is preferred for same-process Node integrations and RPC is preferred for long-lived custom clients, but Promo Studio intentionally keeps Pi in a subprocess for run isolation, CLI extension parity, and a one-shot prompt lifecycle.
 
 Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full JSONL, no in-stream truncation markers). The database keeps a **recent tail** for live polling only; the run detail page and poll API read the on-disk file when present. Subprocess in-memory buffers stay at **120KB** and are not used as the final transcript source.
 
@@ -23,7 +25,7 @@ Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full 
 - Gear → **Pi** core, model field (e.g. `cursor/composer-2.5`, `openai-codex/gpt-5.5:low`, or a Pi CLI model pattern such as `sonnet:high`)
 - Optional env: `AGENT_CORE=pi`, `PI_MODEL=cursor/composer-2.5`
 - Model format: any Pi `--model` value is passed through after validation; full `provider/model` or `provider/model:thinking` refs are preferred for deterministic automation, and `:off` is supported for models where thinking should be disabled.
-- Environment forwarding: the Pi subprocess receives safe runtime variables (`PATH`, shell/locale/temp values, `HOME`, `PROJECT_ROOT`), Pi-specific variables (`PI_CODING_AGENT_DIR`, `PI_PACKAGE_DIR`, `PI_OFFLINE`, etc.), and provider auth/config variables listed by `pi --help` (Anthropic, OpenAI/Azure, Gemini, OpenRouter, AWS Bedrock, and other supported providers). Host app secrets such as `DATABASE_URL` and `SESSION_SECRET` are not forwarded. Provider secret values are redacted from Pi error output.
+- Environment forwarding: the Pi subprocess receives safe runtime variables (`PATH`, shell/locale/temp values, `HOME`, `PROJECT_ROOT`), Pi-specific variables (`PI_CODING_AGENT_DIR`, `PI_PACKAGE_DIR`, `PI_OFFLINE`, etc.), and provider auth/config variables listed by `pi --help` (Anthropic, Ant Ling, OpenAI/Azure, NVIDIA NIM, Gemini, OpenRouter, AWS Bedrock, and other supported providers). Host app secrets such as `DATABASE_URL` and `SESSION_SECRET` are not forwarded. Provider secret values are redacted from Pi error output.
 
 ## Studio model list
 
@@ -35,4 +37,4 @@ Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full 
 npm run pi:doctor
 ```
 
-The doctor requires a Pi CLI version with `--session-id` support (v0.76.0 or newer). It also verifies required CLI help flags, checks that the forwarded Pi env allowlist matches the `pi --help` environment section, validates the local `@earendil-works/pi-coding-agent` package version and `PI_MODEL` syntax, checks forwarded Pi environment state, confirms writable/gitignored session storage, and reports model-registry availability warnings.
+The doctor requires a Pi CLI version with `--session-id` support (v0.76.0 or newer), recommends v0.78.1 or newer, and treats the v0.78.1-specific startup session-name flag as a best-practice warning rather than a hard gate. It also verifies required CLI help flags, checks that the forwarded Pi env allowlist matches the `pi --help` environment section, validates the local `@earendil-works/pi-coding-agent` package version and `PI_MODEL` syntax, checks forwarded Pi environment state, confirms writable/gitignored session storage, and reports model-registry availability warnings.

@@ -14,12 +14,14 @@ import {
 import { listAvailablePiModels } from "@/lib/pi-models";
 
 export const MIN_PI_VERSION = "0.76.0";
+export const SUGGESTED_PI_VERSION = "0.78.1";
 export const REQUIRED_PI_HELP_FLAGS = [
 	"--mode <mode>",
 	"--session-id <id>",
 	"--session-dir <dir>",
 	"--model <pattern>",
 ] as const;
+export const SUGGESTED_PI_HELP_FLAGS = ["--name, -n <name>"] as const;
 
 type SpawnResult = {
 	status: number | null;
@@ -105,6 +107,10 @@ export function missingRequiredPiHelpFlags(helpText: string): string[] {
 	return REQUIRED_PI_HELP_FLAGS.filter((flag) => !helpText.includes(flag));
 }
 
+export function missingSuggestedPiHelpFlags(helpText: string): string[] {
+	return SUGGESTED_PI_HELP_FLAGS.filter((flag) => !helpText.includes(flag));
+}
+
 export function piModelEnvCheck(rawModel: string | undefined): PiDoctorCheck {
 	try {
 		const normalized = normalizePiModel(rawModel ?? "");
@@ -139,6 +145,12 @@ function packageVersionCheck(deps: PiDoctorDeps): PiDoctorCheck {
 			return fail(
 				"Pi SDK package",
 				`@earendil-works/pi-coding-agent ${version} is too old; run npm install after updating package.json`,
+			);
+		}
+		if (!versionAtLeast(version, SUGGESTED_PI_VERSION)) {
+			return warn(
+				"Pi SDK package",
+				`@earendil-works/pi-coding-agent ${version} works for required automation, but ${SUGGESTED_PI_VERSION}+ is recommended for current Pi best practices`,
 			);
 		}
 		return ok("Pi SDK package", `@earendil-works/pi-coding-agent ${version}`);
@@ -257,6 +269,15 @@ function piCliVersionCheck(deps: PiDoctorDeps): {
 			version,
 		};
 	}
+	if (!versionAtLeast(version, SUGGESTED_PI_VERSION)) {
+		return {
+			check: warn(
+				"Pi CLI",
+				`pi CLI ${version} works for required automation, but ${SUGGESTED_PI_VERSION}+ is recommended for current Pi best practices`,
+			),
+			version,
+		};
+	}
 	return { check: ok("Pi CLI", version), version };
 }
 
@@ -281,10 +302,20 @@ function piHelpCheck(deps: PiDoctorDeps): PiHelpCheckResult {
 			helpText,
 		};
 	}
+	const missingSuggested = missingSuggestedPiHelpFlags(helpText);
+	if (missingSuggested.length > 0) {
+		return {
+			check: warn(
+				"Pi CLI help",
+				`required automation flags are present; ${SUGGESTED_PI_VERSION}+ session naming flag not found: ${missingSuggested.join(", ")}`,
+			),
+			helpText,
+		};
+	}
 	return {
 		check: ok(
 			"Pi CLI help",
-			"JSON mode, explicit sessions, session dir, and model flags are present",
+			"JSON mode, explicit sessions, session dir, model flags, and startup session naming are present",
 		),
 		helpText,
 	};

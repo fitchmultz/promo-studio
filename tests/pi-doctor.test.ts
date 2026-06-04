@@ -4,18 +4,20 @@ import { describe, expect, it } from "vitest";
 import { PI_CHILD_ENV_KEYS } from "@/lib/pi-runtime-config";
 import {
 	collectPiDoctorChecks,
-	MIN_PI_VERSION,
 	missingRequiredPiHelpFlags,
+	missingSuggestedPiHelpFlags,
 	piEnvHelpDriftCheck,
 	piHelpEnvironmentVariableNames,
 	piModelEnvCheck,
 	REQUIRED_PI_HELP_FLAGS,
+	SUGGESTED_PI_HELP_FLAGS,
+	SUGGESTED_PI_VERSION,
 	versionAtLeast,
 	type PiDoctorDeps,
 } from "@/scripts/pi-doctor";
 
 function piHelpText(envKeys: readonly string[] = PI_CHILD_ENV_KEYS) {
-	return `${REQUIRED_PI_HELP_FLAGS.join("\n")}\n\nEnvironment Variables:\n${envKeys
+	return `${REQUIRED_PI_HELP_FLAGS.join("\n")}\n${SUGGESTED_PI_HELP_FLAGS.join("\n")}\n\nEnvironment Variables:\n${envKeys
 		.map((key) => `  ${key} - test variable`)
 		.join("\n")}\n\nBuilt-in Tool Names:\n  read - test tool`;
 }
@@ -23,14 +25,15 @@ function piHelpText(envKeys: readonly string[] = PI_CHILD_ENV_KEYS) {
 function baseDeps(overrides: Partial<PiDoctorDeps> = {}): PiDoctorDeps {
 	return {
 		spawn: (_command, args) => {
-			if (args[0] === "--version") return { status: 0, stdout: MIN_PI_VERSION };
+			if (args[0] === "--version")
+				return { status: 0, stdout: SUGGESTED_PI_VERSION };
 			if (args[0] === "--help") {
 				return { status: 0, stdout: piHelpText() };
 			}
 			if (args[0] === "check-ignore") return { status: 0, stdout: "" };
 			return { status: 1, stderr: "unexpected command" };
 		},
-		readFile: () => JSON.stringify({ version: MIN_PI_VERSION }),
+		readFile: () => JSON.stringify({ version: SUGGESTED_PI_VERSION }),
 		mkdir: () => undefined,
 		writeFile: () => undefined,
 		rm: () => undefined,
@@ -67,6 +70,13 @@ describe("pi doctor", () => {
 		expect(
 			missingRequiredPiHelpFlags("--mode <mode>\n--session-id <id>"),
 		).toEqual(["--session-dir <dir>", "--model <pattern>"]);
+	});
+
+	it("reports missing suggested Pi best-practice help flags", () => {
+		expect(missingSuggestedPiHelpFlags(piHelpText())).toEqual([]);
+		expect(
+			missingSuggestedPiHelpFlags(REQUIRED_PI_HELP_FLAGS.join("\n")),
+		).toEqual(["--name, -n <name>"]);
 	});
 
 	it("parses the Pi help environment section", () => {
