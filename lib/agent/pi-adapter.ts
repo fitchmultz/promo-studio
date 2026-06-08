@@ -13,7 +13,7 @@ export function piJsonArgs(
 	requestedModel: string,
 	options: PiJsonArgsOptions = {},
 ): string[] {
-	const args = ["--mode", "json"];
+	const args = ["--mode", "json", "--approve"];
 	if (options.sessionId) {
 		args.push("--session-id", options.sessionId);
 		args.push("--session-dir", options.sessionDir ?? paths.piSessions);

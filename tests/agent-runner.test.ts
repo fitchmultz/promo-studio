@@ -515,6 +515,7 @@ describe("Codex runner", () => {
 		expect(piArgs).toEqual([
 			"--mode",
 			"json",
+			"--approve",
 			"--session-id",
 			started.id,
 			"--session-dir",
