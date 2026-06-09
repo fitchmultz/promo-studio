@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { StudioHeroIntro } from "@/components/StudioHeroIntro";
 import { VariantForm } from "@/components/VariantForm";
@@ -6,6 +7,10 @@ import { prisma } from "@/lib/db";
 import { parseFeatures, primaryPromoProduct } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+	title: "Studio",
+};
 
 export default async function StudioPage() {
 	const user = await requireUser();

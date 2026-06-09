@@ -12,6 +12,7 @@ coverage/
 test-results/
 playwright-report/
 artifacts/
+dogfood-output/
 public/generated-scenes/
 *.mp4
 *.mov

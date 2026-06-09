@@ -37,6 +37,7 @@ import {
 	resolveAgentRuntimeSpec,
 	resolveAgentRuntimeSpecFromForm,
 } from "@/lib/agent/runtime-spec";
+import { isUsablePreviewHtml } from "@/lib/preview-quality";
 import { inlineBuiltPreview } from "@/lib/storefront-preview";
 import { readVariantManifest, validateVariantReceipt } from "@/lib/validation";
 import {
@@ -246,6 +247,11 @@ export async function executeVariantRun(
 			workspacePath,
 			manifest.previewPath,
 		);
+		if (!isUsablePreviewHtml(previewHtml)) {
+			throw new Error(
+				"Built preview is missing or malformed: preview artifact is too small to render a complete storefront.",
+			);
+		}
 		return finalizeVariantRun(runId, {
 			status: "succeeded",
 			...agentRuntimePersistenceFields(

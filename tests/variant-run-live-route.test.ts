@@ -25,7 +25,7 @@ function run(overrides: Record<string, unknown> = {}) {
 		agentCore: "codex",
 		transcript: "db tail",
 		changedFiles: '["src/ProductPage.tsx"]',
-		previewHtml: "<html>preview</html>",
+		previewHtml: `<!doctype html><html><body><main>${"preview".repeat(100)}</main></body></html>`,
 		codexCommand: "Codex TypeScript SDK runStreamed",
 		passwordHash: "must-not-leak",
 		user: { passwordHash: "must-not-leak" },

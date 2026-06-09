@@ -22,6 +22,9 @@ export function AgentSettingsFields({
 	const definition = agentCoreDefinition(settings.agentCore);
 	const harnessOptions = definition.harnesses;
 	const fixedHarness = harnessOptions.length === 1 ? harnessOptions[0] : null;
+	const fixedHarnessNote = fixedHarness
+		? `${definition.displayName} uses ${fixedHarness.label} automatically for every variant run.`
+		: "Choose how Codex should execute each variant run.";
 
 	return (
 		<div className="agent-settings-fields">
@@ -52,6 +55,10 @@ export function AgentSettingsFields({
 					);
 				})}
 			</fieldset>
+			<div className="agent-core-callout">
+				<strong>{definition.displayName} run mode</strong>
+				<p>{fixedHarnessNote}</p>
+			</div>
 			{fixedHarness ? (
 				<div className="field">
 					<span className="field-label">Harness</span>

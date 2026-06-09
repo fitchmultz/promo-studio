@@ -90,6 +90,33 @@ describe("RunReceipt", () => {
 		expect(markup).not.toContain("ignored user config/rules");
 	});
 
+	it("surfaces failed run details before the receipt cards", () => {
+		const markup = renderToStaticMarkup(
+			React.createElement(RunReceipt, {
+				run: {
+					...runWithInvocation("pi --mode json"),
+					status: "failed",
+					agentCore: "pi",
+					agentHarness: "json",
+					codexRuntime: "json",
+					error: "Pi failed: Unknown option: --approve",
+					validationResult: "Validation: failed",
+					stderr: "Unknown option: --approve",
+					testsPassed: false,
+					buildPassed: false,
+					commerceInvariantsOk: false,
+				},
+			}),
+		);
+
+		expect(markup).toContain("Failure details");
+		expect(markup.indexOf("Failure details")).toBeLessThan(
+			markup.indexOf("Run outcome"),
+		);
+		expect(markup).toContain("Pi failed: Unknown option: --approve");
+		expect(markup).toContain("stderr:");
+	});
+
 	it("renders Cursor SDK execution evidence", () => {
 		const invocation =
 			"Cursor TypeScript SDK Agent.send cwd=/tmp/workspace/run-1/storefront mode=agent sandboxOptions.enabled=true local.store=jsonl:/tmp/workspace/run-1/.cursor-sdk-store model=composer-2.5-fast";

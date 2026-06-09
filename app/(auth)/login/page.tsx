@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { safeRedirectPath } from "@/lib/redirects";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+	title: "Sign in",
+};
 
 export default async function LoginPage({
 	searchParams,
@@ -19,15 +24,15 @@ export default async function LoginPage({
 				<p className="section-kicker">Demo access</p>
 				<h1 className="login-hero-title">Promo Studio</h1>
 				<p className="login-hero-lede">
-					Sign in to create storefront variants, watch Codex work, and inspect
-					validation receipts.
+					Sign in to create storefront variants, watch Codex, Pi, or Cursor
+					work, and inspect validation receipts.
 				</p>
 				<ol className="login-hero-steps">
 					<li>
 						<span>1</span> Type a campaign brief
 					</li>
 					<li>
-						<span>2</span> Codex edits the storefront workspace
+						<span>2</span> Your selected agent edits the storefront workspace
 					</li>
 					<li>
 						<span>3</span> Review previews, diffs, tests, build, and transcript

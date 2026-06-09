@@ -67,6 +67,23 @@ function harnessHelp(run: VariantRun) {
 	return "This is the Codex SDK invocation descriptor for this run. The prompt was sent through the Codex TypeScript SDK streaming API.";
 }
 
+function runFailureDetails(run: VariantRun) {
+	const failedValidation =
+		run.status === "failed" ||
+		run.testsPassed === false ||
+		run.buildPassed === false ||
+		run.commerceInvariantsOk === false ||
+		/failed|error/i.test(run.validationResult);
+	if (!failedValidation && !run.error && !run.stderr) return "";
+	const details = [
+		run.error ? `Error:\n${run.error}` : "",
+		run.validationResult ? `Validation:\n${run.validationResult}` : "",
+		run.stderr ? `stderr:\n${run.stderr}` : "",
+		run.stdout ? `stdout:\n${run.stdout}` : "",
+	].filter(Boolean);
+	return Array.from(new Set(details)).join("\n\n");
+}
+
 export function RunReceipt({
 	run,
 	detailsOpen = true,
@@ -88,9 +105,19 @@ export function RunReceipt({
 		selectedModel: run.selectedModel,
 	});
 	const workspaceDisplay = workspacePathForDisplay(core, run.workspacePath);
+	const failureDetails = runFailureDetails(run);
 
 	return (
 		<div className="receipt-stack">
+			{failureDetails ? (
+				<section
+					className="receipt-section receipt-failure"
+					aria-labelledby="run-failure-detail-title"
+				>
+					<h3 id="run-failure-detail-title">Failure details</h3>
+					<pre>{failureDetails}</pre>
+				</section>
+			) : null}
 			<section className="receipt-section" aria-labelledby="run-outcome-title">
 				<h3 id="run-outcome-title">Run outcome</h3>
 				<div className="receipt-grid">

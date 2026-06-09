@@ -41,7 +41,7 @@ async function writeVariantArtifacts(workspace: string) {
 	);
 	await writeFile(
 		path.join(workspace, "dist", "index.html"),
-		'<link rel="stylesheet" crossorigin href="/assets/index.css"><script type="module" crossorigin src="/assets/index.js"></script><div id="root">Variant $42.00</div>',
+		`<!doctype html><html><head><link rel="stylesheet" crossorigin href="/assets/index.css"><script type="module" crossorigin src="/assets/index.js"></script></head><body><main id="root"><section><h1>Variant $42.00</h1><p>${"Generated storefront preview. ".repeat(20)}</p></section></main></body></html>`,
 	);
 	await writeFile(
 		path.join(workspace, "artifact", "manifest.json"),
@@ -78,6 +78,7 @@ function expectValidatedVariant(
 	expect(completed.codexCommand).not.toContain("<isolated-workspace>");
 	expect(completed.testsPassed).toBe(true);
 	expect(completed.previewHtml).toContain("Variant $42.00 $&");
+	expect(completed.previewHtml).toContain("<!doctype html><html>");
 	expect(completed.previewHtml).toContain("<style>body::after");
 	expect(completed.previewHtml).toContain("<\\/script-safe>");
 	expect(completed.previewHtml).toContain(
@@ -515,7 +516,6 @@ describe("Codex runner", () => {
 		expect(piArgs).toEqual([
 			"--mode",
 			"json",
-			"--approve",
 			"--session-id",
 			started.id,
 			"--session-dir",
@@ -526,6 +526,7 @@ describe("Codex runner", () => {
 		expect(completed.agentCore).toBe("pi");
 		expect(completed.agentHarness).toBe("json");
 		expect(completed.codexCommand).toContain("pi --mode json");
+		expect(completed.codexCommand).not.toContain("--approve");
 		expect(completed.codexCommand).not.toMatch(/(^|\s)-p(\s|$)/);
 		expect(completed.transcript).toContain("agent_start");
 		expectValidatedVariant(completed, {

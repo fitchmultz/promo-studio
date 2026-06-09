@@ -1,9 +1,6 @@
 import Link from "next/link";
 import type { Product, VariantRun } from "@prisma/client";
-import {
-	runAgentDisplayLabel,
-	workspacePathForDisplay,
-} from "@/lib/agent-display";
+import { formatRunDuration, runAgentDisplayLabel } from "@/lib/agent-display";
 
 export function RunHistory({
 	runs,
@@ -28,8 +25,9 @@ export function RunHistory({
 										})}
 									</span>
 									<small>{run.outputSummary || run.campaignBrief}</small>
-									<small className="history-workspace">
-										{workspacePathForDisplay(run.agentCore, run.workspacePath)}
+									<small className="history-run-meta">
+										Run {run.id.slice(0, 8)} ·{" "}
+										{formatRunDuration(run.startedAt, run.completedAt)}
 									</small>
 								</div>
 								<span className={`status-pill status-pill--${run.status}`}>

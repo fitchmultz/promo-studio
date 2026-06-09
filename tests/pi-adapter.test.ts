@@ -10,7 +10,6 @@ describe("piJsonArgs", () => {
 		expect(args).toEqual([
 			"--mode",
 			"json",
-			"--approve",
 			"--session-id",
 			"run-123",
 			"--session-dir",
@@ -30,7 +29,6 @@ describe("piJsonArgs", () => {
 		).toEqual([
 			"--mode",
 			"json",
-			"--approve",
 			"--session-id",
 			"run-123",
 			"--session-dir",

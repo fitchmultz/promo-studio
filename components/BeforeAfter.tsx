@@ -2,6 +2,7 @@
 
 import { RunPhaseStepper } from "@/components/RunPhaseStepper";
 import { useOptionalRunLiveState } from "@/components/RunLiveProvider";
+import { isUsablePreviewHtml } from "@/lib/preview-quality";
 import { useMonotonicRunPhase } from "@/components/useMonotonicRunPhase";
 import { builtVariantHeading } from "@/lib/agent-display";
 
@@ -30,7 +31,8 @@ export function BeforeAfter({
 	const liveState = useOptionalRunLiveState();
 	const status = liveState?.status ?? initialStatus;
 	const events = liveState?.events ?? [];
-	const hasPreview = liveState?.hasPreview ?? Boolean(previewHtml?.trim());
+	const hasSavedPreview = Boolean(previewHtml?.trim());
+	const hasPreview = liveState?.hasPreview ?? isUsablePreviewHtml(previewHtml);
 	const afterHeading = builtVariantHeading(agentCore, selectedModel);
 	const phase = useMonotonicRunPhase({
 		runId: liveState?.runId,
@@ -44,6 +46,12 @@ export function BeforeAfter({
 	const previewPlaceholder = live
 		? `<p><strong>Variant preview is not ready.</strong></p><p>Current phase: <strong>${escapeHtml(phase.label)}</strong> (step ${phase.step} of ${phase.total}).</p>`
 		: "<p>Variant preview is not ready.</p>";
+	const emptyPreviewTitle = hasSavedPreview
+		? "Saved preview is incomplete."
+		: "Agent did not produce output.";
+	const emptyPreviewBody = hasSavedPreview
+		? "The run saved a preview artifact, but it is too small to show a usable storefront. Check the Validation and Transcript tabs for details."
+		: "No after preview was saved for this run. Check the Validation and Transcript tabs for the failure details.";
 
 	return (
 		<div className="preview-grid">
@@ -60,13 +68,20 @@ export function BeforeAfter({
 			<section className="preview-pane preview-pane--after">
 				<h3>{afterHeading}</h3>
 				{live ? <RunPhaseStepper phase={phase} /> : null}
-				<iframe
-					sandbox="allow-scripts"
-					title="Variant product page"
-					srcDoc={previewHtml || previewPlaceholder}
-					tabIndex={-1}
-					loading="lazy"
-				/>
+				{!live && !hasPreview ? (
+					<div className="preview-empty-state" role="status">
+						<strong>{emptyPreviewTitle}</strong>
+						<p>{emptyPreviewBody}</p>
+					</div>
+				) : (
+					<iframe
+						sandbox="allow-scripts"
+						title="Variant product page"
+						srcDoc={previewHtml || previewPlaceholder}
+						tabIndex={-1}
+						loading="lazy"
+					/>
+				)}
 			</section>
 		</div>
 	);

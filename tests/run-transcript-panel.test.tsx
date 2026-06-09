@@ -5,9 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RunTranscriptPanel } from "@/components/RunTranscriptPanel";
 
-vi.mock("@/components/ActivityLog", () => ({
-	ActivityArchive: () => <div>ACTIVITY_ARCHIVE</div>,
-}));
 vi.mock("@/components/TranscriptViewer", () => ({
 	TranscriptViewer: () => <div>RAW_TRANSCRIPT</div>,
 }));
@@ -32,7 +29,7 @@ describe("RunTranscriptPanel", () => {
 		container.remove();
 	});
 
-	it("defaults to archive activity for completed runs", () => {
+	it("shows raw transcript data by default for completed runs", () => {
 		act(() => {
 			root.render(
 				<RunTranscriptPanel
@@ -46,15 +43,12 @@ describe("RunTranscriptPanel", () => {
 			);
 		});
 
-		expect(container.textContent).toContain("ACTIVITY_ARCHIVE");
-		expect(
-			container
-				.querySelector("details.transcript-advanced")
-				?.hasAttribute("open"),
-		).toBe(false);
+		expect(container.textContent).toContain("Raw JSONL from the agent harness");
+		expect(container.textContent).toContain("RAW_TRANSCRIPT");
+		expect(container.querySelector("details.transcript-advanced")).toBeNull();
 	});
 
-	it("offers download and hides raw JSONL behind Advanced", () => {
+	it("offers transcript download next to the raw JSONL", () => {
 		act(() => {
 			root.render(
 				<RunTranscriptPanel
@@ -72,8 +66,6 @@ describe("RunTranscriptPanel", () => {
 		);
 		expect(download?.textContent).toContain("Download full transcript");
 
-		const advanced = container.querySelector("details.transcript-advanced");
-		expect(advanced?.textContent).toContain("Advanced / Export");
-		expect(advanced?.textContent).toContain("RAW_TRANSCRIPT");
+		expect(container.textContent).toContain("RAW_TRANSCRIPT");
 	});
 });

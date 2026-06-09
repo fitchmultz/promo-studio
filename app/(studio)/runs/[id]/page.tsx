@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ActivityStream } from "@/components/ActivityStream";
 import { BeforeAfter } from "@/components/BeforeAfter";
@@ -30,9 +32,22 @@ import {
 	workspacePathForDisplay,
 } from "@/lib/agent-display";
 import { parseStringArrayJson } from "@/lib/json";
+import { isUsablePreviewHtml } from "@/lib/preview-quality";
 import { renderStorefrontBaselineHtml } from "@/lib/storefront-baseline";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+	params,
+}: {
+	params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+	const { id } = await params;
+	const shortId = id.slice(0, 8);
+	return {
+		title: `Run ${shortId} Detail`,
+	};
+}
 
 export default async function RunDetailPage({
 	params,
@@ -152,7 +167,7 @@ export default async function RunDetailPage({
 				runId={run.id}
 				initialStatus={run.status}
 				initialEvents={events}
-				initialHasPreview={Boolean(run.previewHtml?.trim())}
+				initialHasPreview={isUsablePreviewHtml(run.previewHtml)}
 			>
 				<section className="studio-hero studio-hero--compact">
 					<div className="split-heading">
@@ -167,6 +182,11 @@ export default async function RunDetailPage({
 									completedAt={run.completedAt?.toISOString() ?? null}
 									initialStatus={run.status}
 								/>
+							</p>
+							<p className="run-header-actions">
+								<Link className="button secondary-button" href="/history">
+									Back to history
+								</Link>
 							</p>
 						</div>
 						<RunDetailLiveStatus initialStatus={run.status} />

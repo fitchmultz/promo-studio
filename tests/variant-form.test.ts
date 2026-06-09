@@ -20,6 +20,7 @@ describe("VariantForm", () => {
 	let root: Root;
 
 	beforeEach(() => {
+		vi.stubGlobal("fetch", vi.fn());
 		container = document.createElement("div");
 		document.body.append(container);
 		root = createRoot(container);
@@ -37,6 +38,7 @@ describe("VariantForm", () => {
 	afterEach(() => {
 		act(() => root.unmount());
 		container.remove();
+		vi.unstubAllGlobals();
 	});
 
 	function briefField() {
@@ -63,6 +65,31 @@ describe("VariantForm", () => {
 			container.querySelector<HTMLInputElement>('input[name="campaignGoal"]')
 				?.value,
 		).toBe("Low-stock urgency");
+	});
+
+	it("shows client-side validation before creating a short brief run", () => {
+		const field = briefField();
+		act(() => {
+			const valueSetter = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				"value",
+			)?.set;
+			valueSetter?.call(field, "short");
+			field.dispatchEvent(new Event("input", { bubbles: true }));
+		});
+
+		const form = container.querySelector("form");
+		if (!form) throw new Error("Variant form was not rendered.");
+		act(() => {
+			form.dispatchEvent(
+				new SubmitEvent("submit", { bubbles: true, cancelable: true }),
+			);
+		});
+
+		expect(container.textContent).toContain(
+			"Describe the campaign in at least 12 characters.",
+		);
+		expect(globalThis.fetch).not.toHaveBeenCalled();
 	});
 
 	it("does not overwrite a custom user brief when changing presets", () => {

@@ -2,9 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-	title: "Promo Studio",
+	title: {
+		default: "Promo Studio",
+		template: "%s — Promo Studio",
+	},
 	description:
-		"Autonomous storefront variant studio powered by Codex code execution.",
+		"Autonomous storefront variant studio powered by Codex, Pi, and Cursor agents.",
 };
 
 export const viewport: Viewport = {

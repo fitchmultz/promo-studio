@@ -1,6 +1,5 @@
 "use client";
 
-import { ActivityArchive } from "@/components/ActivityLog";
 import { TranscriptViewer } from "@/components/TranscriptViewer";
 
 interface EventItem {
@@ -15,7 +14,6 @@ export function RunTranscriptPanel({
 	agentCore,
 	selectedModel = "",
 	invocation,
-	initialEvents,
 	initialStatus,
 }: {
 	runId: string;
@@ -31,17 +29,9 @@ export function RunTranscriptPanel({
 		<>
 			<p className="muted">
 				{isRunning
-					? "Live activity is streaming in the panel above. This tab keeps a readable log and export options."
-					: "Human-readable activity from this run."}
+					? "Live activity is streaming in the panel above. The raw JSONL transcript below updates from the stored run log."
+					: "Raw JSONL from the agent harness, one JSON object per line."}
 			</p>
-			{isRunning ? null : (
-				<ActivityArchive
-					agentCore={agentCore}
-					selectedModel={selectedModel}
-					initialEvents={initialEvents}
-					initialStatus={initialStatus}
-				/>
-			)}
 			<div className="transcript-export">
 				<a
 					className="button secondary-button"
@@ -50,18 +40,12 @@ export function RunTranscriptPanel({
 					Download full transcript
 				</a>
 			</div>
-			<details className="transcript-advanced">
-				<summary>Advanced / Export</summary>
-				<p className="muted">
-					Raw JSONL from the agent harness (one JSON object per line).
-				</p>
-				<TranscriptViewer
-					runId={runId}
-					agentCore={agentCore}
-					selectedModel={selectedModel}
-					invocation={invocation}
-				/>
-			</details>
+			<TranscriptViewer
+				runId={runId}
+				agentCore={agentCore}
+				selectedModel={selectedModel}
+				invocation={invocation}
+			/>
 		</>
 	);
 }

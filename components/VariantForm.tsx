@@ -29,6 +29,7 @@ const presets = [
 ] as const;
 
 const defaultPreset = presets[0];
+const CAMPAIGN_BRIEF_MIN_LENGTH = 12;
 
 function isPresetBrief(brief: string) {
 	return presets.some((preset) => preset.brief === brief);
@@ -44,13 +45,25 @@ export function VariantForm({ productId }: { productId: string }) {
 
 	function selectPreset(preset: (typeof presets)[number]) {
 		setGoal(preset.label);
+		setError("");
 		if (isPresetBrief(brief)) setBrief(preset.brief);
+	}
+
+	function validateBrief(value: string) {
+		if (value.trim().length < CAMPAIGN_BRIEF_MIN_LENGTH) {
+			setError("Describe the campaign in at least 12 characters.");
+			return false;
+		}
+		return true;
 	}
 
 	function submit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
+		const trimmedBrief = brief.trim();
+		if (!validateBrief(brief)) return;
 		setError("");
 		const form = new FormData(event.currentTarget);
+		form.set("campaignBrief", trimmedBrief);
 		startTransition(async () => {
 			const response = await fetch("/api/variant-runs", {
 				method: "POST",
@@ -114,11 +127,31 @@ export function VariantForm({ productId }: { productId: string }) {
 				<textarea
 					name="campaignBrief"
 					value={brief}
-					onChange={(event) => setBrief(event.target.value)}
+					onChange={(event) => {
+						setBrief(event.target.value);
+						if (
+							error &&
+							event.target.value.trim().length >= CAMPAIGN_BRIEF_MIN_LENGTH
+						) {
+							setError("");
+						}
+					}}
+					onInvalid={(event) => {
+						event.preventDefault();
+						validateBrief(event.currentTarget.value);
+					}}
 					rows={5}
+					required
+					minLength={CAMPAIGN_BRIEF_MIN_LENGTH}
+					aria-invalid={Boolean(error)}
+					aria-describedby={error ? "campaign-brief-error" : undefined}
 				/>
 			</label>
-			{error ? <p className="badge sev-1">{error}</p> : null}
+			{error ? (
+				<p className="badge sev-1" id="campaign-brief-error">
+					{error}
+				</p>
+			) : null}
 			<button
 				className="button primary-button create-button"
 				disabled={isPending}

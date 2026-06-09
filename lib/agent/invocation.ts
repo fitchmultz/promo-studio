@@ -52,7 +52,6 @@ function buildPiJsonInvocation(requestedModel: string, runId: string) {
 		"pi",
 		"--mode",
 		"json",
-		"--approve",
 		"--session-id",
 		runId,
 		"--session-dir",

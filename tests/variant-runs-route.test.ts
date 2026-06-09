@@ -8,6 +8,7 @@ const afterMock = vi.fn((callback: () => void | Promise<void>) => {
 });
 const productFindManyMock = vi.fn();
 const variantRunFindManyMock = vi.fn();
+const variantRunFindFirstMock = vi.fn();
 
 vi.mock("next/server", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("next/server")>();
@@ -28,7 +29,10 @@ vi.mock("@/lib/agent/transcript", () => ({
 vi.mock("@/lib/db", () => ({
 	prisma: {
 		product: { findMany: productFindManyMock },
-		variantRun: { findMany: variantRunFindManyMock },
+		variantRun: {
+			findFirst: variantRunFindFirstMock,
+			findMany: variantRunFindManyMock,
+		},
 	},
 }));
 
@@ -88,6 +92,7 @@ describe("variant run API", () => {
 				features: "[]",
 			},
 		]);
+		variantRunFindFirstMock.mockReset().mockResolvedValue(null);
 		variantRunFindManyMock.mockReset().mockResolvedValue([]);
 	});
 
@@ -95,7 +100,9 @@ describe("variant run API", () => {
 		variantRunFindManyMock.mockResolvedValue([listedRun()]);
 		const { GET } = await import("@/app/api/variant-runs/route");
 
-		const response = await GET();
+		const response = await GET(
+			new Request("http://localhost:3000/api/variant-runs"),
+		);
 
 		expect(response.status).toBe(200);
 		const payload = await response.json();
@@ -106,8 +113,17 @@ describe("variant run API", () => {
 			startedAt: "2026-05-26T12:00:00.000Z",
 			product: { name: "Ribbed Market Tote" },
 		});
+		expect(payload.pagination).toMatchObject({
+			limit: 30,
+			hasMore: false,
+			nextCursor: null,
+		});
 		expect(variantRunFindManyMock).toHaveBeenCalledWith(
-			expect.objectContaining({ select: expect.any(Object) }),
+			expect.objectContaining({
+				select: expect.any(Object),
+				take: 31,
+				orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+			}),
 		);
 	});
 
@@ -226,6 +242,27 @@ describe("variant run API", () => {
 		);
 	});
 
+	it("rejects JSON campaign creation with form guidance", async () => {
+		const { POST } = await import("@/app/api/variant-runs/route");
+		const response = await POST(
+			new Request("http://localhost:3000/api/variant-runs", {
+				method: "POST",
+				headers: {
+					origin: "http://localhost:3000",
+					"content-type": "application/json",
+				},
+				body: JSON.stringify({
+					campaignBrief: "Create a vivid commuter gift campaign.",
+				}),
+			}),
+		);
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({
+			error: "Send campaign data as form-encoded.",
+		});
+		expect(createVariantRunMock).not.toHaveBeenCalled();
+	});
+
 	it("rejects short briefs", async () => {
 		const { POST } = await import("@/app/api/variant-runs/route");
 		const response = await POST(
@@ -281,8 +318,67 @@ describe("variant run API", () => {
 		const workspacePath = "/tmp/agent-workspaces/run-1/storefront";
 		variantRunFindManyMock.mockResolvedValue([listedRun({ workspacePath })]);
 		const { GET } = await import("@/app/api/variant-runs/route");
-		const response = await GET();
+		const response = await GET(
+			new Request("http://localhost:3000/api/variant-runs"),
+		);
 		const payload = await response.json();
 		expect(payload.runs[0].workspacePath).toBe(workspacePath);
+	});
+
+	it("ignores stale pagination cursors instead of throwing", async () => {
+		variantRunFindFirstMock.mockResolvedValue(null);
+		variantRunFindManyMock.mockResolvedValue([listedRun({ id: "run-1" })]);
+		const { GET } = await import("@/app/api/variant-runs/route");
+		const response = await GET(
+			new Request(
+				"http://localhost:3000/api/variant-runs?limit=2&cursor=missing-run",
+			),
+		);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.runs.map((run: { id: string }) => run.id)).toEqual([
+			"run-1",
+		]);
+		expect(variantRunFindManyMock).toHaveBeenCalledWith(
+			expect.not.objectContaining({ cursor: expect.any(Object) }),
+		);
+	});
+
+	it("paginates run lists with cursor and limit", async () => {
+		variantRunFindFirstMock.mockResolvedValue({ id: "run-1" });
+		variantRunFindManyMock.mockResolvedValue([
+			listedRun({ id: "run-2" }),
+			listedRun({ id: "run-3" }),
+			listedRun({ id: "run-4" }),
+		]);
+		const { GET } = await import("@/app/api/variant-runs/route");
+		const response = await GET(
+			new Request(
+				"http://localhost:3000/api/variant-runs?limit=2&cursor=run-1",
+			),
+		);
+		const payload = await response.json();
+
+		expect(payload.runs.map((run: { id: string }) => run.id)).toEqual([
+			"run-2",
+			"run-3",
+		]);
+		expect(payload.pagination).toEqual({
+			limit: 2,
+			hasMore: true,
+			nextCursor: "run-3",
+		});
+		expect(variantRunFindFirstMock).toHaveBeenCalledWith(
+			expect.objectContaining({ where: { id: "run-1" } }),
+		);
+		expect(variantRunFindManyMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				cursor: { id: "run-1" },
+				orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+				skip: 1,
+				take: 3,
+			}),
+		);
 	});
 });

@@ -6,20 +6,51 @@ import { parseAgentEvents } from "@/lib/agent/transcript";
 import { prisma } from "@/lib/db";
 import { primaryPromoProduct } from "@/lib/products";
 import {
+	normalizeRunListLimit,
+	variantRunCursorPageArgs,
+} from "@/lib/variant-run-pagination";
+import {
 	serializeVariantRunListItem,
 	variantRunListSelect,
 } from "@/lib/variant-run-dto";
 import { isSameOriginPost, sameOriginResponseBaseUrl } from "@/lib/same-origin";
 
-export async function GET() {
+function expectsFormEncoded(request: Request) {
+	const contentType = request.headers.get("content-type") ?? "";
+	return (
+		contentType.includes("multipart/form-data") ||
+		contentType.includes("application/x-www-form-urlencoded")
+	);
+}
+
+export async function GET(request: Request) {
 	const user = await requireUser();
-	const runs = await prisma.variantRun.findMany({
-		where: user.role === "admin" ? undefined : { userId: user.id },
+	const searchParams = new URL(request.url).searchParams;
+	const requestedCursor = searchParams.get("cursor");
+	const limit = normalizeRunListLimit(searchParams.get("limit"));
+	const where = user.role === "admin" ? undefined : { userId: user.id };
+	const cursorExists = requestedCursor
+		? await prisma.variantRun.findFirst({
+				where: { id: requestedCursor, ...where },
+				select: { id: true },
+			})
+		: null;
+	const cursor = cursorExists ? requestedCursor : null;
+	const runsPage = await prisma.variantRun.findMany({
+		where,
 		select: variantRunListSelect,
-		orderBy: { startedAt: "desc" },
-		take: 30,
+		...variantRunCursorPageArgs(cursor, limit),
 	});
-	return NextResponse.json({ runs: runs.map(serializeVariantRunListItem) });
+	const hasMore = runsPage.length > limit;
+	const runs = runsPage.slice(0, limit);
+	return NextResponse.json({
+		runs: runs.map(serializeVariantRunListItem),
+		pagination: {
+			limit,
+			hasMore,
+			nextCursor: hasMore ? (runs.at(-1)?.id ?? null) : null,
+		},
+	});
 }
 
 export async function POST(request: Request) {
@@ -27,6 +58,12 @@ export async function POST(request: Request) {
 		return NextResponse.json(
 			{ error: "Cross-origin requests are not accepted." },
 			{ status: 403 },
+		);
+	}
+	if (!expectsFormEncoded(request)) {
+		return NextResponse.json(
+			{ error: "Send campaign data as form-encoded." },
+			{ status: 400 },
 		);
 	}
 	const user = await requireUser();

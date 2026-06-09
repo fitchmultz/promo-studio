@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { isUsablePreviewHtml } from "@/lib/preview-quality";
 
 export const variantRunListSelect = {
 	id: true,
@@ -57,6 +58,7 @@ export const variantRunLiveSelect = {
 	userId: true,
 	status: true,
 	agentCore: true,
+	previewHtml: true,
 } satisfies Prisma.VariantRunSelect;
 
 type VariantRunListRecord = Prisma.VariantRunGetPayload<{
@@ -151,6 +153,6 @@ export function serializeVariantRunLive(
 	return {
 		id: run.id,
 		status: run.status,
-		hasPreview: run.status === "succeeded",
+		hasPreview: isUsablePreviewHtml(run.previewHtml),
 	};
 }
