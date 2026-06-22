@@ -14,9 +14,9 @@ pi --mode json --session-id <run-id> --session-dir <repo>/artifacts/pi-sessions 
 
 Pi v0.76.0 added explicit automation session IDs. Promo Studio uses the variant run ID as `--session-id` and stores Pi session files under gitignored `artifacts/pi-sessions/`, keeping session history deterministic and outside the storefront diff surface. Do **not** use `-p`; that flag is for print mode, not JSON mode.
 
-Pi v0.78.1 is the recommended floor for local development because it adds current extension-context APIs, provider coverage, safer package temp installs, and startup session naming. It is not a hard runtime requirement for Promo Studio's JSON harness; the doctor keeps v0.76.0 as the required automation floor and warns when the installed CLI or SDK package is below the recommended v0.78.1 level.
+Pi v0.79.10 is the required floor for local development and Pi automation runs. The doctor fails when the installed CLI or SDK package is below v0.79.10 so local runs match the current package floor.
 
-SDK and RPC were reviewed against the v0.78.1 docs. The SDK is preferred for same-process Node integrations and RPC is preferred for long-lived custom clients, but Promo Studio intentionally keeps Pi in a subprocess for run isolation, CLI extension parity, and a one-shot prompt lifecycle.
+SDK and RPC were reviewed against the v0.79.10 docs. The SDK is preferred for same-process Node integrations and RPC is preferred for long-lived custom clients, but Promo Studio intentionally keeps Pi in a subprocess for run isolation, CLI extension parity, and a one-shot prompt lifecycle.
 
 Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full JSONL, no in-stream truncation markers). The database keeps a **recent tail** for live polling only; the run detail page and poll API read the on-disk file when present. Subprocess in-memory buffers stay at **120KB** and are not used as the final transcript source.
 
@@ -37,4 +37,4 @@ Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full 
 npm run pi:doctor
 ```
 
-The doctor requires a Pi CLI version with `--session-id` support (v0.76.0 or newer), recommends v0.78.1 or newer, and treats the v0.78.1-specific startup session-name flag as a best-practice warning rather than a hard gate. It also verifies required CLI help flags, checks that the forwarded Pi env allowlist matches the `pi --help` environment section, validates the local `@earendil-works/pi-coding-agent` package version and `PI_MODEL` syntax, checks forwarded Pi environment state, confirms writable/gitignored session storage, and reports model-registry availability warnings.
+The doctor requires Pi CLI v0.79.10 or newer and treats the startup session-name flag as a best-practice warning rather than a hard gate. It also verifies required CLI help flags, checks that the forwarded Pi env allowlist matches the `pi --help` environment section, validates the local `@earendil-works/pi-coding-agent` package version and `PI_MODEL` syntax, checks forwarded Pi environment state, confirms writable/gitignored session storage, and reports model-registry availability warnings.

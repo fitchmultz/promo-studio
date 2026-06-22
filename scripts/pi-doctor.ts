@@ -13,8 +13,8 @@ import {
 } from "@/lib/pi-runtime-config";
 import { listAvailablePiModels } from "@/lib/pi-models";
 
-export const MIN_PI_VERSION = "0.76.0";
-export const SUGGESTED_PI_VERSION = "0.78.1";
+export const MIN_PI_VERSION = "0.79.10";
+export const SUGGESTED_PI_VERSION = "0.79.10";
 export const REQUIRED_PI_HELP_FLAGS = [
 	"--mode <mode>",
 	"--session-id <id>",
@@ -264,7 +264,7 @@ function piCliVersionCheck(deps: PiDoctorDeps): {
 		return {
 			check: fail(
 				"Pi CLI",
-				`pi CLI ${version || "unknown"} is too old; Promo Studio requires v${MIN_PI_VERSION} or newer for --session-id automation runs`,
+				`pi CLI ${version || "unknown"} is too old; Promo Studio requires v${MIN_PI_VERSION} or newer for Pi automation runs`,
 			),
 			version,
 		};
