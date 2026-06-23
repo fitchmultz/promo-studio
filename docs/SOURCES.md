@@ -37,7 +37,7 @@ When `agentCore=codex`, the integration uses `CODEX_RUNTIME=sdk` by default thro
 
 ## Pi runtime contract
 
-When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.79.10 or newer for required automation and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process.
+When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.80.1 or newer for required automation and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process.
 
 ## Cursor runtime contract
 
