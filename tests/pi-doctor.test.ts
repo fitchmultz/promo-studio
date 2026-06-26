@@ -60,9 +60,9 @@ function baseDeps(overrides: Partial<PiDoctorDeps> = {}): PiDoctorDeps {
 
 describe("pi doctor", () => {
 	it("compares semver-style Pi CLI versions", () => {
-		expect(versionAtLeast("0.80.1", "0.80.1")).toBe(true);
-		expect(versionAtLeast("0.80.2", "0.80.1")).toBe(true);
-		expect(versionAtLeast("0.80.0", "0.80.1")).toBe(false);
+		expect(versionAtLeast("0.80.2", "0.80.2")).toBe(true);
+		expect(versionAtLeast("0.80.3", "0.80.2")).toBe(true);
+		expect(versionAtLeast("0.80.1", "0.80.2")).toBe(false);
 		expect(versionAtLeast("not-a-version", "0.80.1")).toBe(false);
 	});
 

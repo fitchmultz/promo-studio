@@ -13,8 +13,8 @@ import {
 } from "@/lib/pi-runtime-config";
 import { listAvailablePiModels } from "@/lib/pi-models";
 
-export const MIN_PI_VERSION = "0.80.1";
-export const SUGGESTED_PI_VERSION = "0.80.1";
+export const MIN_PI_VERSION = "0.80.2";
+export const SUGGESTED_PI_VERSION = "0.80.2";
 export const REQUIRED_PI_HELP_FLAGS = [
 	"--mode <mode>",
 	"--session-id <id>",

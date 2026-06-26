@@ -33,12 +33,12 @@ Regardless of agent core:
 
 ## Codex runtime contract
 
-When `agentCore=codex`, the integration uses `CODEX_RUNTIME=sdk` by default through `@openai/codex-sdk` streamed turns. The SDK path relies on the version-matched `@openai/codex` CLI bundled through the SDK dependency. The preserved `CODEX_RUNTIME=exec` fallback expects `codex exec` to support JSONL output, ephemeral non-interactive runs, ignored user config/rules, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides for `approval_policy`, `sandbox_workspace_write.network_access`, `web_search`, and `model_reasoning_effort`.
+When `agentCore=codex`, the integration uses `CODEX_RUNTIME=sdk` by default through `@openai/codex-sdk@0.142.3` streamed turns. The SDK path relies on the version-matched `@openai/codex` CLI bundled through the SDK dependency. The preserved `CODEX_RUNTIME=exec` fallback expects `codex exec` to support JSONL output, ephemeral non-interactive runs, ignored user config/rules, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides for `approval_policy`, `sandbox_workspace_write.network_access`, `web_search`, and `model_reasoning_effort`.
 
 ## Pi runtime contract
 
-When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.80.1 or newer for required automation and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process.
+When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.80.2 or newer for required automation and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process.
 
 ## Cursor runtime contract
 
-When `agentCore=cursor`, the integration uses pinned `@cursor/sdk` 1.0.17 with a local agent scoped to the storefront workspace (`Agent.create` + `Agent.send` + `run.stream()`). Promo Studio passes a run-scoped `JsonlLocalAgentStore` under `local.store` so Cursor SDK checkpoint state stays inside `agent-workspaces/run-<id>/.cursor-sdk-store` instead of the caller's global SDK state root. Transcript lines are normalized to the same JSONL activity shape as Codex SDK runs. Live runs require `CURSOR_API_KEY`.
+When `agentCore=cursor`, the integration uses pinned `@cursor/sdk` 1.0.22 with a local agent scoped to the storefront workspace (`Agent.create` + `Agent.send` + `run.stream()`). Promo Studio passes a run-scoped `JsonlLocalAgentStore` under `local.store` so Cursor SDK checkpoint state stays inside `agent-workspaces/run-<id>/.cursor-sdk-store` instead of the caller's global SDK state root. Transcript lines are normalized to the same JSONL activity shape as Codex SDK runs. Live runs require `CURSOR_API_KEY`.
