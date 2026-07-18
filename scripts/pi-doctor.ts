@@ -13,8 +13,8 @@ import {
 } from "@/lib/pi-runtime-config";
 import { listAvailablePiModels } from "@/lib/pi-models";
 
-export const MIN_PI_VERSION = "0.80.2";
-export const SUGGESTED_PI_VERSION = "0.80.2";
+export const MIN_PI_VERSION = "0.80.10";
+export const SUGGESTED_PI_VERSION = "0.80.10";
 export const REQUIRED_PI_HELP_FLAGS = [
 	"--mode <mode>",
 	"--session-id <id>",
@@ -213,28 +213,28 @@ function sessionDirIgnoreCheck(deps: PiDoctorDeps): PiDoctorCheck {
 	);
 }
 
-async function modelRegistryCheck(deps: PiDoctorDeps): Promise<PiDoctorCheck> {
+async function modelRuntimeCheck(deps: PiDoctorDeps): Promise<PiDoctorCheck> {
 	try {
 		const result = await deps.listModels();
 		const configured = result.models.filter(
 			(model) => model.value !== "pi-default",
 		);
 		if (result.error) {
-			return warn("Pi model registry", result.error);
+			return warn("Pi model runtime", result.error);
 		}
 		if (configured.length === 0) {
 			return warn(
-				"Pi model registry",
+				"Pi model runtime",
 				"no auth-configured models reported; extension-backed or manually typed PI_MODEL refs may still work",
 			);
 		}
 		return ok(
-			"Pi model registry",
+			"Pi model runtime",
 			`${configured.length} auth-configured model${configured.length === 1 ? "" : "s"} available`,
 		);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		return warn("Pi model registry", message);
+		return warn("Pi model runtime", message);
 	}
 }
 
@@ -405,7 +405,7 @@ export async function collectPiDoctorChecks(
 	checks.push(piChildEnvCheck(deps));
 	checks.push(sessionDirCheck(deps));
 	checks.push(sessionDirIgnoreCheck(deps));
-	checks.push(await modelRegistryCheck(deps));
+	checks.push(await modelRuntimeCheck(deps));
 	return checks;
 }
 

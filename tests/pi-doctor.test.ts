@@ -60,10 +60,10 @@ function baseDeps(overrides: Partial<PiDoctorDeps> = {}): PiDoctorDeps {
 
 describe("pi doctor", () => {
 	it("compares semver-style Pi CLI versions", () => {
-		expect(versionAtLeast("0.80.2", "0.80.2")).toBe(true);
-		expect(versionAtLeast("0.80.3", "0.80.2")).toBe(true);
-		expect(versionAtLeast("0.80.1", "0.80.2")).toBe(false);
-		expect(versionAtLeast("not-a-version", "0.80.1")).toBe(false);
+		expect(versionAtLeast("0.80.10", "0.80.10")).toBe(true);
+		expect(versionAtLeast("0.80.11", "0.80.10")).toBe(true);
+		expect(versionAtLeast("0.80.9", "0.80.10")).toBe(false);
+		expect(versionAtLeast("not-a-version", "0.80.10")).toBe(false);
 	});
 
 	it("reports missing required automation help flags", () => {
@@ -121,7 +121,7 @@ describe("pi doctor", () => {
 			"Pi child env",
 			"Pi session dir",
 			"Pi session gitignore",
-			"Pi model registry",
+			"Pi model runtime",
 		]);
 	});
 

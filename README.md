@@ -67,7 +67,7 @@ Choose core, harness, and model in the studio UI or via `.env` defaults (`AGENT_
 
 ## Fastest way to see it work
 
-**Prerequisites:** Node.js `>=22.19.0 <27`, npm.
+**Prerequisites:** Node.js `^22.19.0 || >=24 <27`, npm.
 
 ```bash
 npm install

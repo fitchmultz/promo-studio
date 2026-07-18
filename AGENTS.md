@@ -39,7 +39,7 @@ Receipts store `agentCore`, `agentHarness`, and legacy `codexRuntime` (`sdk`, `e
 ## Node
 
 - **Default:** Node 24 (`.node-version` / `mise exec node@24`).
-- **Supported:** Node `>=22.19.0 <27` (Pi SDK floor; excludes unsupported Node 27+).
+- **Supported:** Node `^22.19.0 || >=24 <27` (Pi SDK floor; excludes unsupported Node 23 and 27+).
 
 ## Dev server
 

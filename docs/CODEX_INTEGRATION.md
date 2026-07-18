@@ -6,7 +6,7 @@ Promo Studio uses Codex as an autonomous code agent, not as a text completion AP
 
 ## Current SDK contract
 
-Reviewed for `@openai/codex-sdk@0.142.3` / bundled `@openai/codex`:
+Reviewed for `@openai/codex-sdk@0.144.5` / bundled `@openai/codex`:
 
 - The TypeScript SDK wraps the version-matched `@openai/codex` CLI and exchanges JSONL events over stdin/stdout.
 - `runStreamed()` is the right API for host apps that need live tool, file, command, and usage events.
@@ -14,11 +14,11 @@ Reviewed for `@openai/codex-sdk@0.142.3` / bundled `@openai/codex`:
 - The SDK resolves its bundled native CLI from `@openai/codex` optional dependencies. Promo Studio does not pass `codexPathOverride`; that option is reserved for custom binary probes.
 - Supplying `env` to `new Codex()` disables broad process-env inheritance. Promo Studio passes a deliberately small child environment and only includes subscription auth state or API-key credentials according to the selected auth mode.
 
-The upstream `0.142.3` SDK type surface does not require a TypeScript SDK migration for this app. Promo Studio does not select Codex profiles and instead sends explicit per-run SDK/thread options.
+The upstream `0.144.5` SDK type surface does not require a TypeScript SDK migration for this app. Promo Studio does not select Codex profiles and instead sends explicit per-run SDK/thread options.
 
 ## Current exec contract
 
-Reviewed for the bundled Codex CLI from `@openai/codex-sdk@0.142.3` using the current non-interactive mode documentation and CLI reference:
+Reviewed for the bundled Codex CLI from `@openai/codex-sdk@0.144.5` using the current non-interactive mode documentation and CLI reference:
 
 - `codex exec` is the stable non-interactive CLI surface for scripted runs.
 - `--json` is the documented machine-readable mode and emits JSONL events such as `thread.started`, `turn.started`, `item.*`, `turn.completed`, `turn.failed`, and `error`.

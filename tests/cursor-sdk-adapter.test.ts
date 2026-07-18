@@ -6,6 +6,7 @@ type MockSdkMessage = Record<string, unknown>;
 function mockCursorSdk(
 	messages: MockSdkMessage[],
 	waitStatus: "finished" | "error" = "finished",
+	waitError?: string,
 ) {
 	const createOptions: unknown[] = [];
 	const sendInputs: unknown[] = [];
@@ -26,7 +27,7 @@ function mockCursorSdk(
 		Agent: {
 			async create(options: unknown) {
 				createOptions.push(options);
-				return new MockAgent(messages, waitStatus, sendInputs);
+				return new MockAgent(messages, waitStatus, waitError, sendInputs);
 			},
 		},
 	}));
@@ -40,12 +41,13 @@ class MockAgent {
 	constructor(
 		private readonly messages: MockSdkMessage[],
 		private readonly waitStatus: "finished" | "error",
+		private readonly waitError: string | undefined,
 		private readonly sendInputs: unknown[],
 	) {}
 
 	async send(input: unknown) {
 		this.sendInputs.push(input);
-		return new MockRun(this.messages, this.waitStatus);
+		return new MockRun(this.messages, this.waitStatus, this.waitError);
 	}
 
 	async [Symbol.asyncDispose]() {}
@@ -58,6 +60,7 @@ class MockRun {
 	constructor(
 		private readonly messages: MockSdkMessage[],
 		private readonly waitStatus: "finished" | "error",
+		private readonly waitError?: string,
 	) {}
 
 	supports(operation: string) {
@@ -72,7 +75,13 @@ class MockRun {
 		return {
 			id: "run_1",
 			status: this.waitStatus,
-			result: this.waitStatus === "error" ? "authentication failed" : "done",
+			result:
+				this.waitStatus === "error" && !this.waitError
+					? "authentication failed"
+					: this.waitStatus === "finished"
+						? "done"
+						: undefined,
+			error: this.waitError ? { message: this.waitError } : undefined,
 		};
 	}
 
@@ -213,5 +222,22 @@ describe("defaultCursorSdkRunner", () => {
 			timedOut: false,
 		});
 		expect(stderrLines).toEqual(["authentication failed"]);
+	});
+
+	it("reports the Cursor SDK RunError message when result text is absent", async () => {
+		mockCursorSdk([], "error", "credit quota exceeded");
+
+		const result = await defaultCursorSdkRunner({
+			input: "Build a storefront variant.",
+			requestedModel: "",
+			timeoutMs: 30_000,
+			workspace: "/tmp/promo-studio/storefront",
+		});
+
+		expect(result).toMatchObject({
+			code: 1,
+			stderr: "credit quota exceeded",
+			timedOut: false,
+		});
 	});
 });

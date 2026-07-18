@@ -14,9 +14,9 @@ pi --mode json --session-id <run-id> --session-dir <repo>/artifacts/pi-sessions 
 
 Pi v0.76.0 added explicit automation session IDs. Promo Studio uses the variant run ID as `--session-id` and stores Pi session files under gitignored `artifacts/pi-sessions/`, keeping session history deterministic and outside the storefront diff surface. Do **not** use `-p`; that flag is for print mode, not JSON mode.
 
-Pi v0.80.2 is the required floor for local development and Pi automation runs. The doctor fails when the installed CLI or SDK package is below v0.80.2 so local runs match the current package floor.
+Pi v0.80.10 is the required floor for local development and Pi automation runs. The doctor fails when the installed CLI or SDK package is below v0.80.10 so local runs match the current package floor.
 
-SDK and RPC were reviewed against the v0.80.2 package/docs. The SDK is preferred for same-process Node integrations and RPC is preferred for long-lived custom clients, but Promo Studio intentionally keeps Pi in a subprocess for run isolation, CLI extension parity, and a one-shot prompt lifecycle.
+SDK and RPC were reviewed against the v0.80.10 package/docs. The SDK is preferred for same-process Node integrations and RPC is preferred for long-lived custom clients, but Promo Studio intentionally keeps Pi in a subprocess for run isolation, CLI extension parity, and a one-shot prompt lifecycle. The studio model list uses the async `ModelRuntime` API introduced in v0.80.8.
 
 Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full JSONL, no in-stream truncation markers). The database keeps a **recent tail** for live polling only; the run detail page and poll API read the on-disk file when present. Subprocess in-memory buffers stay at **120KB** and are not used as the final transcript source.
 
@@ -29,7 +29,7 @@ Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full 
 
 ## Studio model list
 
-`GET /api/agent/pi-models` lists models from Pi `ModelRegistry` (auth-configured providers) and always includes `pi-default`. Extension-backed models (for example **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) may be missing from the list because they are loaded by Pi extensions at CLI startup; type the ref manually when needed.
+`GET /api/agent/pi-models` lists auth-configured models through Pi `ModelRuntime` and always includes `pi-default`. The route disables live catalog network refresh so opening Agent settings remains a local, low-latency operation; it uses Pi's built-in, configured, and cached catalogs. Extension-backed models (for example **`cursor/composer-2.5`** via **`pi-cursor-sdk`**) may be missing because they are loaded by Pi extensions at CLI startup; type the ref manually when needed.
 
 ## Doctor
 
@@ -37,4 +37,4 @@ Stdout is appended line-by-line to `artifacts/transcripts/<run-id>.jsonl` (full 
 npm run pi:doctor
 ```
 
-The doctor requires Pi CLI v0.80.2 or newer and treats the startup session-name flag as a best-practice warning rather than a hard gate. It also verifies required CLI help flags, checks that the forwarded Pi env allowlist matches the `pi --help` environment section, validates the local `@earendil-works/pi-coding-agent` package version and `PI_MODEL` syntax, checks forwarded Pi environment state, confirms writable/gitignored session storage, and reports model-registry availability warnings.
+The doctor requires Pi CLI v0.80.10 or newer and treats the startup session-name flag as a best-practice warning rather than a hard gate. It also verifies required CLI help flags, checks that the forwarded Pi env allowlist matches the `pi --help` environment section, validates the local `@earendil-works/pi-coding-agent` package version and `PI_MODEL` syntax, checks forwarded Pi environment state, confirms writable/gitignored session storage, and reports model-runtime availability warnings.

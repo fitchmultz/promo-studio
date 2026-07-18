@@ -11,14 +11,15 @@ export interface PiModelsListResult {
 	error?: string;
 }
 
-/** List Pi models with configured auth via ModelRegistry (server-only). */
+/** List Pi models with configured auth via ModelRuntime (server-only). */
 export async function listAvailablePiModels(): Promise<PiModelsListResult> {
 	try {
 		const pi = await import("@earendil-works/pi-coding-agent");
-		const authStorage = pi.AuthStorage.create();
-		const modelRegistry = pi.ModelRegistry.create(authStorage);
-		const registryError = modelRegistry.getError();
-		const available = await Promise.resolve(modelRegistry.getAvailable());
+		const modelRuntime = await pi.ModelRuntime.create({
+			allowModelNetwork: false,
+		});
+		const registryError = modelRuntime.getError();
+		const available = await modelRuntime.getAvailable();
 
 		const models: PiModelOption[] = [
 			{

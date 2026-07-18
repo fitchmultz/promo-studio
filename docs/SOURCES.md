@@ -13,6 +13,12 @@ Promo Studio is built from local project code and the installed agent harness co
 - [templates/storefront/BRAND_RULES.md](../templates/storefront/BRAND_RULES.md) — product and campaign constraints.
 - [tests/](../tests/) — executable validation for auth, config, workspace isolation, manifest validation, route behavior, per-harness selection, and runner lifecycle.
 
+## Dependency compatibility
+
+TypeScript stays on 6.0.3 while Next.js 16.2.10 requires the legacy `typescript/lib/typescript.js` resolver entry. TypeScript 7.0.2 no longer ships that file, so `next typegen` treats TypeScript as missing and attempts to reinstall it; update TypeScript after Next supports the new package layout.
+
+Node support is `^22.19.0 || >=24 <27`: current Vitest, Prisma, and jsdom releases exclude Node 23, while `better-sqlite3@12.11.1` excludes Node 27+. npm is pinned to 11.18.0, the newest release compatible with the minimum Node version. `package.json` exact-pins reviewed install-script approvals for Prisma engines, native SQLite/image/build tooling, optional `fsevents`, and the Pi dependency branch's protobuf and Google no-op hooks; re-review those approvals when their versions change. The obsolete `sqlite3` override was removed because the installed tree now uses only `better-sqlite3`.
+
 ## Product data
 
 The seeded product is the Ribbed Market Tote:
@@ -33,12 +39,12 @@ Regardless of agent core:
 
 ## Codex runtime contract
 
-When `agentCore=codex`, the integration uses `CODEX_RUNTIME=sdk` by default through `@openai/codex-sdk@0.142.3` streamed turns. The SDK path relies on the version-matched `@openai/codex` CLI bundled through the SDK dependency. The preserved `CODEX_RUNTIME=exec` fallback expects `codex exec` to support JSONL output, ephemeral non-interactive runs, ignored user config/rules, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides for `approval_policy`, `sandbox_workspace_write.network_access`, `web_search`, and `model_reasoning_effort`.
+When `agentCore=codex`, the integration uses `CODEX_RUNTIME=sdk` by default through `@openai/codex-sdk@0.144.5` streamed turns. The SDK path relies on the version-matched `@openai/codex` CLI bundled through the SDK dependency. The preserved `CODEX_RUNTIME=exec` fallback expects `codex exec` to support JSONL output, ephemeral non-interactive runs, ignored user config/rules, `workspace-write` sandboxing, `--skip-git-repo-check`, `--cd`, `-m`, stdin prompt input via `-`, and config overrides for `approval_policy`, `sandbox_workspace_write.network_access`, `web_search`, and `model_reasoning_effort`.
 
 ## Pi runtime contract
 
-When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.80.2 or newer for required automation and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process.
+When `agentCore=pi`, the integration uses `@earendil-works/pi-coding-agent` v0.80.10 or newer for required automation and runs `pi --mode json` as a subprocess. Promo Studio passes the prompt on stdin, sets `--session-id <run-id>`, stores sessions under gitignored `artifacts/pi-sessions`, and forwards only safe runtime plus Pi/provider environment variables to the child process.
 
 ## Cursor runtime contract
 
-When `agentCore=cursor`, the integration uses pinned `@cursor/sdk` 1.0.22 with a local agent scoped to the storefront workspace (`Agent.create` + `Agent.send` + `run.stream()`). Promo Studio passes a run-scoped `JsonlLocalAgentStore` under `local.store` so Cursor SDK checkpoint state stays inside `agent-workspaces/run-<id>/.cursor-sdk-store` instead of the caller's global SDK state root. Transcript lines are normalized to the same JSONL activity shape as Codex SDK runs. Live runs require `CURSOR_API_KEY`.
+When `agentCore=cursor`, the integration uses pinned `@cursor/sdk` 1.0.23 with a local agent scoped to the storefront workspace (`Agent.create` + `Agent.send` + `run.stream()`). Promo Studio passes a run-scoped `JsonlLocalAgentStore` under `local.store` so Cursor SDK checkpoint state stays inside `agent-workspaces/run-<id>/.cursor-sdk-store` instead of the caller's global SDK state root. Transcript lines are normalized to the same JSONL activity shape as Codex SDK runs. Live runs require `CURSOR_API_KEY`.

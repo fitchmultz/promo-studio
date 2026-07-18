@@ -98,7 +98,10 @@ export const defaultCursorSdkRunner: VariantCursorSdkRunner = async (
 				}
 				const result = await activeRun.wait();
 				if (result.status === "error" || result.status === "cancelled") {
-					streamFailure = result.result?.trim() || `Run ${result.status}`;
+					streamFailure =
+						result.result?.trim() ||
+						result.error?.message.trim() ||
+						`Run ${result.status}`;
 				}
 			} finally {
 				await activeAgent[Symbol.asyncDispose]();
