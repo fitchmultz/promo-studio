@@ -72,7 +72,7 @@
 		"@connectrpc/connect-node": {
 			"undici": "^6.27.0"
 		},
-		"hono": "^4.12.30",
+		"hono": "^4.13.13",
 		"undici": "^7.28.0"
 	},
 	"packageManager": "npm@11.18.0",
