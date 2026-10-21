@@ -15,7 +15,7 @@ import { listAvailablePiModels } from "@/lib/pi-models";
 import { piCliCommand } from "@/lib/pi-cli";
 
 export const MIN_PI_VERSION = "0.80.10";
-export const SUGGESTED_PI_VERSION = "0.80.10";
+export const SUGGESTED_PI_VERSION = "1.3.0";
 export const REQUIRED_PI_HELP_FLAGS = [
 	"--mode <mode>",
 	"--session-id <id>",

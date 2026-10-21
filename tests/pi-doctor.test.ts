@@ -143,6 +143,31 @@ describe("pi doctor", () => {
 		]);
 	});
 
+	it("recommends the installed baseline without raising the automation floor", async () => {
+		const deps = baseDeps();
+		const checks = await collectPiDoctorChecks(
+			baseDeps({
+				spawn: (command, args, options) =>
+					args.at(-1) === "--version"
+						? { status: 0, stdout: "0.80.10" }
+						: deps.spawn(command, args, options),
+				readFile: () => JSON.stringify({ version: "0.80.10" }),
+			}),
+		);
+
+		expect(checks.find((check) => check.label === "Pi CLI")).toMatchObject({
+			severity: "warn",
+			message: expect.stringContaining("1.3.0+"),
+		});
+		expect(
+			checks.find((check) => check.label === "Pi SDK package"),
+		).toMatchObject({
+			severity: "warn",
+			message: expect.stringContaining("1.3.0+"),
+		});
+		expect(checks.some((check) => check.severity === "fail")).toBe(false);
+	});
+
 	it("prints help even when unrelated host app env is invalid", () => {
 		const tsxBin = path.join(
 			process.cwd(),
