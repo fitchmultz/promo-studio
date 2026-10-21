@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	createVariantRun,
 	drainQueuedVariantRunQueue,
@@ -13,6 +13,9 @@ import type { VariantCursorSdkRunner } from "@/lib/agent/types";
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { paths } from "@/lib/config";
 import { prisma } from "@/lib/db";
+
+// Every runner/SDK in these tests is injected; no live credentials are needed.
+afterEach(() => vi.restoreAllMocks());
 
 async function waitForRun(id: string) {
 	for (let index = 0; index < 40; index += 1) {
@@ -421,7 +424,8 @@ describe("Codex runner", () => {
 	});
 
 	it("runs Cursor SDK harness with mocked cursor runner", async () => {
-		process.env.CURSOR_API_KEY = "test-cursor-key";
+		const config = await import("@/lib/config");
+		vi.spyOn(config, "cursorApiKeyConfigured").mockReturnValue(true);
 		const user = await prisma.user.findUniqueOrThrow({
 			where: { email: "demo@promostudio.test" },
 		});
