@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultCursorSdkRunner } from "@/lib/agent/cursor-adapter";
+import * as config from "@/lib/config";
 
 type MockSdkMessage = Record<string, unknown>;
 
@@ -8,6 +9,8 @@ function mockCursorSdk(
 	waitStatus: "finished" | "error" = "finished",
 	waitError?: string,
 ) {
+	// The SDK is mocked; don't depend on ambient credentials parsed at import time.
+	vi.spyOn(config, "resolveCursorApiKey").mockReturnValue("test-cursor-key");
 	const createOptions: unknown[] = [];
 	const sendInputs: unknown[] = [];
 
@@ -92,7 +95,7 @@ describe("defaultCursorSdkRunner", () => {
 	afterEach(() => {
 		vi.doUnmock("@cursor/sdk");
 		vi.doUnmock("@/lib/cursor-model-resolve");
-		vi.clearAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it("streams SDK messages with local automation options", async () => {
