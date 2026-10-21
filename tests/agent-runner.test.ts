@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	createVariantRun,
 	drainQueuedVariantRunQueue,
@@ -13,6 +13,10 @@ import type { VariantCursorSdkRunner } from "@/lib/agent/types";
 import { parseAgentEvents } from "@/lib/agent/transcript";
 import { paths } from "@/lib/config";
 import { prisma } from "@/lib/db";
+import { piCliCommand } from "@/lib/pi-cli";
+
+// Every runner/SDK in these tests is injected; no live credentials are needed.
+afterEach(() => vi.restoreAllMocks());
 
 async function waitForRun(id: string) {
 	for (let index = 0; index < 40; index += 1) {
@@ -421,7 +425,8 @@ describe("Codex runner", () => {
 	});
 
 	it("runs Cursor SDK harness with mocked cursor runner", async () => {
-		process.env.CURSOR_API_KEY = "test-cursor-key";
+		const config = await import("@/lib/config");
+		vi.spyOn(config, "cursorApiKeyConfigured").mockReturnValue(true);
 		const user = await prisma.user.findUniqueOrThrow({
 			where: { email: "demo@promostudio.test" },
 		});
@@ -483,8 +488,10 @@ describe("Codex runner", () => {
 		const product = await prisma.product.findUniqueOrThrow({
 			where: { id: "ribbed-market-tote" },
 		});
+		let piCommand = "";
 		let piArgs: string[] = [];
-		const runner: VariantProcessRunner = async (_command, args, options) => {
+		const runner: VariantProcessRunner = async (command, args, options) => {
+			piCommand = command;
 			piArgs = args;
 			const events = [
 				{ type: "agent_start" },
@@ -513,7 +520,9 @@ describe("Codex runner", () => {
 		await drainQueuedVariantRunQueue({ processRunner: runner });
 		const completed = await waitForRun(started.id);
 
+		expect(piCommand).toBe(process.execPath);
 		expect(piArgs).toEqual([
+			...piCliCommand().slice(1),
 			"--mode",
 			"json",
 			"--session-id",
@@ -525,7 +534,7 @@ describe("Codex runner", () => {
 		]);
 		expect(completed.agentCore).toBe("pi");
 		expect(completed.agentHarness).toBe("json");
-		expect(completed.codexCommand).toContain("pi --mode json");
+		expect(completed.codexCommand).toBe([piCommand, ...piArgs].join(" "));
 		expect(completed.codexCommand).not.toContain("--approve");
 		expect(completed.codexCommand).not.toMatch(/(^|\s)-p(\s|$)/);
 		expect(completed.transcript).toContain("agent_start");

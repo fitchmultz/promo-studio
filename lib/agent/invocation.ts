@@ -6,6 +6,7 @@ import { cursorAutomationDescriptorParts } from "@/lib/agent/cursor-automation-p
 import { agentDisplayName } from "@/lib/agent/definitions";
 import { codexModelArgs, codexReasoningArgs, paths } from "@/lib/config";
 import type { AgentCore, AgentHarness } from "@/lib/agent/types";
+import { piCliCommand } from "@/lib/pi-cli";
 
 interface InvocationParams {
 	core: AgentCore;
@@ -49,7 +50,7 @@ function buildCodexSdkInvocation(params: {
 
 function buildPiJsonInvocation(requestedModel: string, runId: string) {
 	const parts = [
-		"pi",
+		...piCliCommand(),
 		"--mode",
 		"json",
 		"--session-id",

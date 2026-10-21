@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	agentTimeoutMs,
 	codexChildEnv,
@@ -22,6 +22,7 @@ const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
 const ORIGINAL_SESSION_SECRET = process.env.SESSION_SECRET;
 
 afterEach(() => {
+	vi.unstubAllEnvs();
 	process.env.CODEX_API_KEY = "";
 	delete process.env.GEMINI_API_KEY;
 	if (ORIGINAL_DATABASE_URL === undefined) {
@@ -225,6 +226,20 @@ console.log(JSON.stringify({
 
 		expect(childEnv.HOME).toBeUndefined();
 		expect(childEnv.CODEX_HOME).toBeUndefined();
+	});
+
+	it.each([
+		"ANTHROPIC_AUTH_TOKEN",
+		"BASETEN_API_KEY",
+		"META_API_KEY",
+		"QWEN_TOKEN_PLAN_API_KEY",
+		"QWEN_TOKEN_PLAN_CN_API_KEY",
+	])("forwards and redacts Pi 1.3 provider credential %s", (key) => {
+		const secret = `test-only-${key}-credential`;
+		vi.stubEnv(key, secret);
+
+		expect(piChildEnv()[key]).toBe(secret);
+		expect(redactSecrets(`provider error: ${secret}`)).not.toContain(secret);
 	});
 
 	it("scopes Pi child process environments to Pi runtime and provider auth", () => {
