@@ -18,9 +18,6 @@ import { piCliCommand } from "@/lib/pi-cli";
 // Every runner/SDK in these tests is injected; no live credentials are needed.
 afterEach(() => vi.restoreAllMocks());
 
-// Every runner/SDK in these tests is injected; no live credentials are needed.
-afterEach(() => vi.restoreAllMocks());
-
 async function waitForRun(id: string) {
 	for (let index = 0; index < 40; index += 1) {
 		const run = await prisma.variantRun.findUnique({ where: { id } });
