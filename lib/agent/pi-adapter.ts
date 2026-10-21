@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import { piCliCommand } from "@/lib/pi-cli";
 import { paths, piChildEnv, redactSecrets } from "@/lib/config";
 import { runProcess } from "@/lib/agent/process";
 import type { VariantProcessRunner } from "@/lib/agent/types";
@@ -35,9 +36,13 @@ export async function runPiRuntime(params: {
 	onStderrLine?: (line: string) => void;
 }) {
 	await mkdir(paths.piSessions, { recursive: true });
+	const [command, ...prefixArgs] = piCliCommand();
 	const result = await params.processRunner(
-		"pi",
-		piJsonArgs(params.requestedModel, { sessionId: params.runId }),
+		command,
+		[
+			...prefixArgs,
+			...piJsonArgs(params.requestedModel, { sessionId: params.runId }),
+		],
 		{
 			cwd: params.workspace,
 			env: piChildEnv(),

@@ -47,7 +47,7 @@ export const AGENT_CORE_DEFINITIONS = {
 		showAuthMode: false,
 		showReasoningEffort: false,
 		harnessDescription:
-			"Pi runs pi --mode json in the isolated storefront. The campaign prompt is sent on stdin. Extension models, for example cursor/composer-2.5, are passed via --model.",
+			"Pi runs the project-local unbundled JSON CLI in the isolated storefront. The campaign prompt is sent on stdin. Extension models, for example cursor/composer-2.5, are passed via --model.",
 	},
 	cursor: {
 		core: "cursor",

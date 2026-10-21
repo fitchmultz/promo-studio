@@ -12,9 +12,10 @@ import {
 	PI_SECRET_ENV_KEYS,
 } from "@/lib/pi-runtime-config";
 import { listAvailablePiModels } from "@/lib/pi-models";
+import { piCliCommand } from "@/lib/pi-cli";
 
 export const MIN_PI_VERSION = "0.80.10";
-export const SUGGESTED_PI_VERSION = "0.80.10";
+export const SUGGESTED_PI_VERSION = "1.3.0";
 export const REQUIRED_PI_HELP_FLAGS = [
 	"--mode <mode>",
 	"--session-id <id>",
@@ -59,7 +60,7 @@ function help() {
 
 Usage: npm run pi:doctor
 
-Checks that the pi CLI and local Pi SDK package are ready for JSON harness runs.
+Checks the project-local unbundled Pi CLI and SDK used for JSON harness runs.
 
 Exit codes:
   0  pi CLI responds and all required automation checks pass
@@ -247,13 +248,16 @@ function piCliVersionCheck(deps: PiDoctorDeps): {
 	check: PiDoctorCheck;
 	version?: string;
 } {
-	const result = deps.spawn("pi", ["--version"], { encoding: "utf8" });
+	const [command, ...prefixArgs] = piCliCommand();
+	const result = deps.spawn(command, [...prefixArgs, "--version"], {
+		encoding: "utf8",
+	});
 	if (result.status !== 0) {
 		const details = outputText(result.stderr) || outputText(result.stdout);
 		return {
 			check: fail(
 				"Pi CLI",
-				`pi CLI is not available on PATH.${details ? ` ${details.trim()}` : ""}`,
+				`project-local Pi CLI could not start.${details ? ` ${details.trim()}` : ""}`,
 			),
 		};
 	}
@@ -282,7 +286,10 @@ function piCliVersionCheck(deps: PiDoctorDeps): {
 }
 
 function piHelpCheck(deps: PiDoctorDeps): PiHelpCheckResult {
-	const result = deps.spawn("pi", ["--help"], { encoding: "utf8" });
+	const [command, ...prefixArgs] = piCliCommand();
+	const result = deps.spawn(command, [...prefixArgs, "--help"], {
+		encoding: "utf8",
+	});
 	if (result.status !== 0) {
 		return {
 			check: fail(

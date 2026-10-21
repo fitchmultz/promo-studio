@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PI_CHILD_ENV_KEYS } from "@/lib/pi-runtime-config";
+import { piCliCommand } from "@/lib/pi-cli";
 import {
 	collectPiDoctorChecks,
 	missingRequiredPiHelpFlags,
@@ -25,9 +26,9 @@ function piHelpText(envKeys: readonly string[] = PI_CHILD_ENV_KEYS) {
 function baseDeps(overrides: Partial<PiDoctorDeps> = {}): PiDoctorDeps {
 	return {
 		spawn: (_command, args) => {
-			if (args[0] === "--version")
+			if (args.at(-1) === "--version")
 				return { status: 0, stdout: SUGGESTED_PI_VERSION };
-			if (args[0] === "--help") {
+			if (args.at(-1) === "--help") {
 				return { status: 0, stdout: piHelpText() };
 			}
 			if (args[0] === "check-ignore") return { status: 0, stdout: "" };
@@ -59,6 +60,23 @@ function baseDeps(overrides: Partial<PiDoctorDeps> = {}): PiDoctorDeps {
 }
 
 describe("pi doctor", () => {
+	it("forwards every environment variable documented by the installed Pi CLI", () => {
+		const [command, ...args] = piCliCommand();
+		const result = spawnSync(command, [...args, "--help"], {
+			encoding: "utf8",
+			timeout: 30_000,
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.status).toBe(0);
+		expect(
+			piHelpEnvironmentVariableNames(result.stdout).length,
+		).toBeGreaterThan(0);
+		expect(piEnvHelpDriftCheck(result.stdout)).toMatchObject({
+			severity: "ok",
+		});
+	});
+
 	it("compares semver-style Pi CLI versions", () => {
 		expect(versionAtLeast("0.80.10", "0.80.10")).toBe(true);
 		expect(versionAtLeast("0.80.11", "0.80.10")).toBe(true);
@@ -123,6 +141,31 @@ describe("pi doctor", () => {
 			"Pi session gitignore",
 			"Pi model runtime",
 		]);
+	});
+
+	it("recommends the installed baseline without raising the automation floor", async () => {
+		const deps = baseDeps();
+		const checks = await collectPiDoctorChecks(
+			baseDeps({
+				spawn: (command, args, options) =>
+					args.at(-1) === "--version"
+						? { status: 0, stdout: "0.80.10" }
+						: deps.spawn(command, args, options),
+				readFile: () => JSON.stringify({ version: "0.80.10" }),
+			}),
+		);
+
+		expect(checks.find((check) => check.label === "Pi CLI")).toMatchObject({
+			severity: "warn",
+			message: expect.stringContaining("1.3.0+"),
+		});
+		expect(
+			checks.find((check) => check.label === "Pi SDK package"),
+		).toMatchObject({
+			severity: "warn",
+			message: expect.stringContaining("1.3.0+"),
+		});
+		expect(checks.some((check) => check.severity === "fail")).toBe(false);
 	});
 
 	it("prints help even when unrelated host app env is invalid", () => {
